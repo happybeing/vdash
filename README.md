@@ -10,7 +10,8 @@ The plan is to leverage *nix command line tools to deliver suitable input to **s
 
 ## TODO
 - [x] make skeleton app which can parse command line options and display usage
-- [ ] add a dummy chart using tui-rs
+- [ ] use tui-rs to show stdin in a scrolling 'Debug' window
+- [ ] add a dummy chart
 - [ ] animate the chart as new data arrives on stdin
 - [ ] get a trivial display that updates as the vault log grows.
 
