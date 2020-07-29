@@ -1,4 +1,4 @@
-# Dashboard for SAFE Network Vaults
+# Terminal Dashboard for a SAFE Network Vault
 
 Status: experimental code, nothing to see here yet!
 
@@ -10,7 +10,7 @@ The plan is to leverage *nix command line tools to deliver suitable input to **s
 
 ## TODO
 - [x] make skeleton app which can parse command line options and display usage
-- [ ] create a dummy chart using tui-rs
+- [ ] add a dummy chart using tui-rs
 - [ ] animate the chart as new data arrives on stdin
 - [ ] get a trivial display that updates as the vault log grows.
 
