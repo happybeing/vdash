@@ -9,12 +9,13 @@
 //! and use the lines from each file to provide telemetry for that logfile
 //! in the dashboard.
 
+use std::{error::Error, io};
 use std::collections::HashMap;
 
 use linemux::MuxedLines;
 use tokio::stream::StreamExt;
 
-// use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
     backend::TermionBackend,
     layout::{Constraint, Corner, Direction, Layout},
@@ -26,12 +27,18 @@ use tui::{
 
 struct LogMonitor {
   logfile:  String,  
+  index: usize,
 }
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
 
 impl LogMonitor {
   pub fn new(f: String) -> LogMonitor {
+    let index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
     LogMonitor {
       logfile: f,
+      index,
     }
   }
 }
@@ -56,10 +63,41 @@ pub async fn main() -> std::io::Result<()> {
       lines.add_file(&f).await?;
     }
 
+    draw_dashboard(&monitors);
     while let Some(Ok(line)) = lines.next().await {
-      println!("({}) {}", line.source().display(), line.line());
+      // println!("({}) {}", line.source().display(), line.line());
+      draw_dashboard(&monitors);
     }
 
     Ok(())
+}
+
+fn draw_dashboard(monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
+  // Terminal initialization
+  let stdout = io::stdout().into_raw_mode()?;
+  let stdout = MouseTerminal::from(stdout);
+  let stdout = AlternateScreen::from(stdout);
+  let backend = TermionBackend::new(stdout);
+  let mut terminal = Terminal::new(backend)?;
+
+  let columns_percent = 100 / monitors.len() as u16;
+  terminal.draw(|f| {
+    let chunks = Layout::default()
+      .direction(Direction::Horizontal)
+      .constraints([Constraint::Percentage(columns_percent), Constraint::Percentage(50)].as_ref())
+      .split(f.size());
+
+      for (logfile, monitor) in monitors.iter() {
+      let monitor_list: Vec<ListItem> = vec![ListItem::new("testing...1")];
+      let monitor_widget = List::new(monitor_list)
+      .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
+      .highlight_style(
+          Style::default()
+              .bg(Color::LightGreen)
+              .add_modifier(Modifier::BOLD),
+      );
+      f.render_widget(monitor_widget,chunks[monitor.index]);
+    }
+  })
 }
 
