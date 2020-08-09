@@ -20,26 +20,32 @@ use tui::{
     backend::TermionBackend,
     layout::{Constraint, Corner, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Spans},
+    text::{Span, Spans, Text},
     widgets::{Widget, Block, BorderType, Borders, List, ListItem},
     Terminal,
 };
 
 struct LogMonitor {
-  logfile:  String,  
   index: usize,
+  logfile:  String,  
+  content: Vec<String>,
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
 
-impl LogMonitor {
+impl<'a> LogMonitor {
   pub fn new(f: String) -> LogMonitor {
     let index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
     LogMonitor {
-      logfile: f,
       index,
+      logfile: f,
+      content: vec!["test string".to_string()],
     }
+  }
+
+  pub fn append_to_content(mut self, text: &'a str) {
+    self.content.push(text.to_string());
   }
 }
 
@@ -48,7 +54,7 @@ pub async fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
 
     let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
-    let mut lines = MuxedLines::new()?;
+    let mut logfiles = MuxedLines::new()?;
 
     for f in args {
       let widget = Block::default()
@@ -60,11 +66,11 @@ pub async fn main() -> std::io::Result<()> {
 
       let monitor = LogMonitor::new(f.to_string());
       monitors.insert(f.to_string(), monitor);
-      lines.add_file(&f).await?;
+      logfiles.add_file(&f).await?;
     }
 
     draw_dashboard(&monitors);
-    while let Some(Ok(line)) = lines.next().await {
+    while let Some(Ok(line)) = logfiles.next().await {
       // println!("({}) {}", line.source().display(), line.line());
       draw_dashboard(&monitors);
     }
@@ -80,6 +86,7 @@ fn draw_dashboard(monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()>
   let backend = TermionBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
 
+  // TODO provide a constraint *per* monitor
   let columns_percent = 100 / monitors.len() as u16;
   terminal.draw(|f| {
     let chunks = Layout::default()
@@ -88,16 +95,20 @@ fn draw_dashboard(monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()>
       .split(f.size());
 
       for (logfile, monitor) in monitors.iter() {
-      let monitor_list: Vec<ListItem> = vec![ListItem::new("testing...1")];
-      let monitor_widget = List::new(monitor_list)
-      .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
-      .highlight_style(
-          Style::default()
-              .bg(Color::LightGreen)
-              .add_modifier(Modifier::BOLD),
-      );
-      f.render_widget(monitor_widget,chunks[monitor.index]);
-    }
+        let items: Vec<ListItem> = monitor.content.iter().map(|s| {
+            ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
+        })
+        .collect();
+
+        let monitor_widget = List::new(items)
+          .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
+          .highlight_style(
+              Style::default()
+                  .bg(Color::LightGreen)
+                  .add_modifier(Modifier::BOLD),
+          );
+        f.render_widget(monitor_widget,chunks[monitor.index]);
+      }
   })
 }
 
