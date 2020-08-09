@@ -34,7 +34,7 @@ struct LogMonitor {
 use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
 
-impl<'a> LogMonitor {
+impl LogMonitor {
   pub fn new(f: String) -> LogMonitor {
     let index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
     LogMonitor {
@@ -44,7 +44,7 @@ impl<'a> LogMonitor {
     }
   }
 
-  pub fn append_to_content(mut self, text: &'a str) {
+  pub fn append_to_content(&mut self, text: &str) {
     self.content.push(text.to_string());
   }
 }
@@ -69,10 +69,18 @@ pub async fn main() -> std::io::Result<()> {
       logfiles.add_file(&f).await?;
     }
 
-    draw_dashboard(&monitors);
+    draw_dashboard(&monitors).unwrap();
     while let Some(Ok(line)) = logfiles.next().await {
       // println!("({}) {}", line.source().display(), line.line());
-      draw_dashboard(&monitors);
+      let source_str = line.source().to_str().unwrap();
+      let source = String::from(source_str);
+
+      match monitors.get_mut(&source) {
+        None => (),
+        Some(monitor) => monitor.append_to_content(line.line())
+      }
+
+      draw_dashboard(&monitors).unwrap();
     }
 
     Ok(())
