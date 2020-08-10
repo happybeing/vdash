@@ -15,6 +15,9 @@ use std::collections::HashMap;
 use linemux::MuxedLines;
 use tokio::stream::StreamExt;
 
+mod event;
+use crate::event::{Event, Events};
+
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
     backend::TermionBackend,
@@ -53,6 +56,7 @@ impl LogMonitor {
 pub async fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
 
+    let events = Events::new();
     let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
     let mut logfiles = MuxedLines::new()?;
 
@@ -69,6 +73,24 @@ pub async fn main() -> std::io::Result<()> {
       logfiles.add_file(&f).await?;
     }
 
+    loop {
+      let e = match events.next() {
+        Ok(Event::Input(input)) => {
+            if input == Key::Char('q') {
+                return Ok(());
+            }
+        }
+        
+        Ok(Event::Tick) => {
+          draw_dashboard(&monitors).unwrap();
+        }
+
+        Err(error) => {
+          
+        }
+      };
+    }
+
     draw_dashboard(&monitors).unwrap();
     while let Some(Ok(line)) = logfiles.next().await {
       // println!("({}) {}", line.source().display(), line.line());
@@ -79,7 +101,6 @@ pub async fn main() -> std::io::Result<()> {
         None => (),
         Some(monitor) => monitor.append_to_content(line.line())
       }
-
       draw_dashboard(&monitors).unwrap();
     }
 
