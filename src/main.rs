@@ -61,13 +61,6 @@ pub async fn main() -> std::io::Result<()> {
     let mut logfiles = MuxedLines::new()?;
 
     for f in args {
-      let widget = Block::default()
-      .title(f.to_string())
-      .borders(Borders::LEFT | Borders::RIGHT)
-      .border_style(Style::default().fg(Color::White))
-      .border_type(BorderType::Rounded)
-      .style(Style::default().bg(Color::Black));
-
       let monitor = LogMonitor::new(f.to_string());
       monitors.insert(f.to_string(), monitor);
       logfiles.add_file(&f).await?;
@@ -86,7 +79,7 @@ pub async fn main() -> std::io::Result<()> {
         }
 
         Err(error) => {
-          
+          println!("{}", error);
         }
       };
     }
@@ -120,8 +113,21 @@ fn draw_dashboard(monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()>
   terminal.draw(|f| {
     let chunks = Layout::default()
       .direction(Direction::Horizontal)
-      .constraints([Constraint::Percentage(columns_percent), Constraint::Percentage(50)].as_ref())
+      .constraints([Constraint::Percentage(100)].as_ref())
       .split(f.size());
+
+      let size = f.size();
+      let block = Block::default()
+          .borders(Borders::ALL)
+          .title("safe-dash SAFE vault montoring dashboard")
+          .border_type(BorderType::Rounded);
+      f.render_widget(block, size);
+
+    let chunks = Layout::default()
+      .direction(Direction::Horizontal)
+      .margin(1)
+      .constraints([Constraint::Percentage(columns_percent), Constraint::Percentage(50)].as_ref())
+      .split(size);
 
       for (logfile, monitor) in monitors.iter() {
         let items: Vec<ListItem> = monitor.content.iter().map(|s| {
