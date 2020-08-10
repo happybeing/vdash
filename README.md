@@ -16,8 +16,8 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] send text for each logfile to its own window
   - [ ] make a window that scrolls text
 - [ ] implement events
-  - [ ] keyboard events: q = quit
-  - [ ] resize terminal window
+  - [x] keyboard events: q = quit
+  - [x] resize terminal window
   - [ ] simultaneous with logfile monitoring
 - [ ] add some charts
   - [ ] add parsing of dummy logfile input to LogMonitor
