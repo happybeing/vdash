@@ -15,10 +15,11 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] watch one or more logfiles specified on the command line
   - [x] send text for each logfile to its own window
   - [ ] make a window that scrolls text
-- [ ] implement events
+- [x] implement events
   - [x] keyboard events: q = quit
   - [x] resize terminal window
-  - [ ] simultaneous with logfile monitoring
+  - [x] make simultaneous with logfile monitoring
+- [ ] remove tokio and use standard runtime
 - [ ] add some charts
   - [ ] add parsing of dummy logfile input to LogMonitor
   - [ ] use to generate a dummy test chart

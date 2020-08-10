@@ -9,6 +9,8 @@
 //! and use the lines from each file to provide telemetry for that logfile
 //! in the dashboard.
 
+#![recursion_limit="256"] // Prevent select! macro blowing up
+
 use std::{error::Error, io};
 use std::collections::HashMap;
 
@@ -52,6 +54,12 @@ impl LogMonitor {
   }
 }
 
+use futures::{
+  future::FutureExt, // for `.fuse()`
+  pin_mut,
+  select,
+};
+
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -66,38 +74,56 @@ pub async fn main() -> std::io::Result<()> {
       logfiles.add_file(&f).await?;
     }
 
+    // Use futures of async functions to handle events
+    // concurrently with logfile changes.
     loop {
-      let e = match events.next() {
-        Ok(Event::Input(input)) => {
-            if input == Key::Char('q') {
-                return Ok(());
+      let events_future = next_event(&events).fuse();
+      let logfiles_future = logfiles.next().fuse();
+      pin_mut!(events_future, logfiles_future);
+    
+      select! {
+        (e) = events_future => {
+          match e {
+            Ok(Event::Input(input)) => {
+                if input == Key::Char('q') {
+                    return Ok(());
+                }
             }
-        }
+            
+            Ok(Event::Tick) => {
+              draw_dashboard(&monitors).unwrap();
+            }
+    
+            Err(error) => {
+              println!("{}", error);
+            }
+          }
+        },
+        (line) = logfiles_future => {
+          match line {
+            Some(Ok(line)) => {
+              let source_str = line.source().to_str().unwrap();
+              let source = String::from(source_str);
         
-        Ok(Event::Tick) => {
-          draw_dashboard(&monitors).unwrap();
-        }
-
-        Err(error) => {
-          println!("{}", error);
-        }
-      };
-    }
-
-    draw_dashboard(&monitors).unwrap();
-    while let Some(Ok(line)) = logfiles.next().await {
-      // println!("({}) {}", line.source().display(), line.line());
-      let source_str = line.source().to_str().unwrap();
-      let source = String::from(source_str);
-
-      match monitors.get_mut(&source) {
-        None => (),
-        Some(monitor) => monitor.append_to_content(line.line())
+              match monitors.get_mut(&source) {
+                None => (),
+                Some(monitor) => monitor.append_to_content(line.line())
+              }
+            },
+            Some(Err(e)) => panic!("{}", e),
+            None => (),
+          }
+        },
       }
-      draw_dashboard(&monitors).unwrap();
     }
-
+    
     Ok(())
+}
+
+use std::sync::mpsc;
+
+async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
+  events.next()
 }
 
 fn draw_dashboard(monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
