@@ -2,22 +2,31 @@
 
 **Status:** experimental code, nothing to see here yet!
 
-**safe-dash** is a Rust command line program which uses [tui-rs](https://github.com/fdehau/tui-rs) to display a dashboard based in the terminal, using data that arrives from an input stream (stdin). Initially for use with a SAFE Network Vault, it should be general enough to be used to provide a dashboard for any suitably formatted input stream.
+**safe-dash** is a Rust command line program which uses [tui-rs](https://github.com/fdehau/tui-rs) to display a dashboard based in the terminal, gathered from one or more logfiles, updated as each logfile grows. 
 
-The aims to provide a terminal based graphical dashboard display based of SAFE Network Vault status and activity for a vault on the local machine. **safe-dash** will consume input from stdin and use it to display display and update terminal graphics containing one or more customisable charts.
+Although designed for use with a SAFE Network Vault, it should be easily adapted to create a dashboard for logfiles which can be parsed to gather metrics.
 
-The plan is to leverage *nix command line tools to deliver suitable input to **safe-dash**, and allow simple charts to be selected and customised with command line options, with the option of using configuration files when things get more complex.
+## SAFE Network Vault Dashboard
+**safe-dash** aims to provide a terminal based graphical dashboard display based of SAFE Network Vault status and activity for a vault on the local machine. It parses input from one or more vault logfiles to gather live vault metrics which are displayed using terminal graphics.
 
 ## TODO
 - [x] make skeleton app which can parse command line options and display usage
-- [ ] use tui-rs to show stdin in a scrolling 'Debug' window
+- [ ] use tui-rs to 'tail' specified logfiles in separate windows
+  - [x] watch one or more logfiles specified on the command line
+  - [x] send text for each logfile to its own window
   - [ ] make a window that scrolls text
-  - [ ] grab text from stdin and send to the window
+- [ ] implement events
+  - [ ] keyboard events: q = quit
+  - [ ] resize terminal window
+  - [ ] simultaneous with logfile monitoring
 - [ ] add some charts
+  - [ ] add parsing of dummy logfile input to LogMonitor
+  - [ ] use to generate a dummy test chart
+  - [ ] update parser to work on real vault log (keeping test logfile as an option)
   - [ ] mock storage chart: horizontal bar chart (vault storage limit/used)
   - [ ] mock chunk metering: vertical bar chart (total, immutable, sequence etc chunks)
-  - [ ] get data into storage chart (poll disk)
-  - [ ] get data into chunk metering (initialise from log file, accumulate session from stdin)
+  - [ ] get real data into storage chart (poll disk)
+  - [ ] get real data into chunk metering
 
 ## Build
 ### Get pre-requisites
