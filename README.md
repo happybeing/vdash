@@ -15,11 +15,20 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] watch one or more logfiles specified on the command line
   - [x] send text for each logfile to its own window
   - [ ] make a window that scrolls text
+  - [ ] add CLI param to specify number of logfile lines to scroll (remember ASSCROLL!)
 - [x] implement events
   - [x] keyboard events: q = quit
   - [x] resize terminal window
   - [x] make simultaneous with logfile monitoring
-- [ ] remove tokio and use standard runtime
+- [ ] Implement tabbing for Summary / Detail views
+- [ ] Tab1: Summary view: all vaults on one page
+  - [ ] just logfile for each vault (divide vertically)
+  - [ ] add a storage summary to the left of each logfile
+- [ ] Tab2: Detail view: tab for each vault
+  - [ ] h-band1: Storage chart / Data Types chart h-bar
+  - [ ] h-band2: Activity over time (full width)
+  - [ ] h-band3: Logfile (full width)
+- [ ] investigate removing tokio to just use standard runtime (see linemux [issue #15](https://github.com/jmagnuson/linemux/issues/15))
 - [ ] add some charts
   - [ ] add parsing of dummy logfile input to LogMonitor
   - [ ] use to generate a dummy test chart
