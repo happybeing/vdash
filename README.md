@@ -55,7 +55,22 @@ cd safe-dash
 cargo build
 ```
 
-### Test safe-dash
+### Quick Test
+Here's a couple of useful commands to build and run safe-dash using Linux logfiles rather than actual vault files. 
+
+Open two terminals and in one run safe-dash with:
+```
+RUSTFLAGS="$RUSTFLAGS -A unused" cargo run /var/log/auth.log /var/log/apport.log  
+```
+
+In a second terminal you can affect the first logfile by trying and failing to 'su root':
+```
+su root </dev/null
+```
+
+You can use any logfiles for this basic level of testing.
+
+### Vault Test
 When there is a live test network you will be able to use safe-dash with that, but pre-beta those test networks are only available intermittently. The following therefore shows how to run a local test network and use safe-dash with this.
 
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/safe-api/tree/master/safe-cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
