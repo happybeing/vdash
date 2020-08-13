@@ -231,9 +231,8 @@ fn draw_dash_detail(
   LogMonitor>)
   -> std::io::Result<()> {
   
-  // TODO provide a constraint *per* monitor
-  let columns_percent = 100 / monitors.len() as u16;
-  terminal.draw(|f| {
+    let constraints = make_percentage_constraints(monitors.len());
+    terminal.draw(|f| {
       let size = f.size();
       let block = Block::default()
           .borders(Borders::ALL)
@@ -244,7 +243,7 @@ fn draw_dash_detail(
     let chunks = Layout::default()
       .direction(Direction::Horizontal)
       .margin(1)
-      .constraints([Constraint::Percentage(columns_percent), Constraint::Percentage(50)].as_ref())
+      .constraints(constraints.as_ref())
       .split(size);
 
       for (logfile, monitor) in monitors.iter() {
