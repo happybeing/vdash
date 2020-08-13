@@ -90,67 +90,67 @@ impl DashDetail {
 
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+  let args: Vec<String> = std::env::args().skip(1).collect();
 
-    let mut dash_state = DashState::new();
+  let mut dash_state = DashState::new();
 
-    let events = Events::new();
-    let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
-    let mut logfiles = MuxedLines::new()?;
+  let events = Events::new();
+  let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
+  let mut logfiles = MuxedLines::new()?;
 
-    for f in args {
-      let monitor = LogMonitor::new(f.to_string());
-      monitors.insert(f.to_string(), monitor);
-      logfiles.add_file(&f).await?;
-    }
+  for f in args {
+    let monitor = LogMonitor::new(f.to_string());
+    monitors.insert(f.to_string(), monitor);
+    logfiles.add_file(&f).await?;
+  }
 
-    // Use futures of async functions to handle events
-    // concurrently with logfile changes.
-    loop {
-      let events_future = next_event(&events).fuse();
-      let logfiles_future = logfiles.next().fuse();
-      pin_mut!(events_future, logfiles_future);
-    
-      select! {
-        (e) = events_future => {
-          match e {
-            Ok(Event::Input(input)) => {
-                match input {
-                  Key::Char('q') => return Ok(()),
-                  Key::Char('s')|
-                  Key::Char('S') => dash_state.main_view = DashViewMain::DashSummary,
-                  Key::Char('d')|
-                  Key::Char('D') => dash_state.main_view = DashViewMain::DashDetail,
-                  _ => {},
-                }
-            }
-            
-            Ok(Event::Tick) => {
-              draw_dashboard(&dash_state, &monitors).unwrap();
-            }
-    
-            Err(error) => {
-              println!("{}", error);
-            }
-          }
-        },
-        (line) = logfiles_future => {
-          match line {
-            Some(Ok(line)) => {
-              let source_str = line.source().to_str().unwrap();
-              let source = String::from(source_str);
-        
-              match monitors.get_mut(&source) {
-                None => (),
-                Some(monitor) => monitor.append_to_content(line.line())
+  // Use futures of async functions to handle events
+  // concurrently with logfile changes.
+  loop {
+    let events_future = next_event(&events).fuse();
+    let logfiles_future = logfiles.next().fuse();
+    pin_mut!(events_future, logfiles_future);
+  
+    select! {
+      (e) = events_future => {
+        match e {
+          Ok(Event::Input(input)) => {
+              match input {
+                Key::Char('q') => return Ok(()),
+                Key::Char('s')|
+                Key::Char('S') => dash_state.main_view = DashViewMain::DashSummary,
+                Key::Char('d')|
+                Key::Char('D') => dash_state.main_view = DashViewMain::DashDetail,
+                _ => {},
               }
-            },
-            Some(Err(e)) => panic!("{}", e),
-            None => (),
           }
-        },
-      }
+          
+          Ok(Event::Tick) => {
+            draw_dashboard(&dash_state, &monitors).unwrap();
+          }
+  
+          Err(error) => {
+            println!("{}", error);
+          }
+        }
+      },
+      (line) = logfiles_future => {
+        match line {
+          Some(Ok(line)) => {
+            let source_str = line.source().to_str().unwrap();
+            let source = String::from(source_str);
+      
+            match monitors.get_mut(&source) {
+              None => (),
+              Some(monitor) => monitor.append_to_content(line.line())
+            }
+          },
+          Some(Err(e)) => panic!("{}", e),
+          None => (),
+        }
+      },
     }
+  }
 }
 
 use std::sync::mpsc;
