@@ -21,7 +21,7 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] resize terminal window
   - [x] make simultaneous with logfile monitoring
 - [x] Implement tabbing for Summary / Detail views
-- [ ] Implement help: popup on ?, h, H to show keyboard commands (q, s,d, and 0-n for detail+vault)
+- [ ] [Issue #1](https://github.com/theWebalyst/safe-dash/issues/1https://github.com/theWebalyst/safe-dash/issues/1): Implement popup help on ?, h, H
 - [ ] Tab1: Summary view: all vaults on one page
   - [ ] just logfile for each vault (divide vertically)
   - [ ] add a storage summary to the left of each logfile
