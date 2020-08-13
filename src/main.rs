@@ -90,6 +90,13 @@ impl DashDetail {
 
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
+  // Terminal initialization
+  let stdout = io::stdout().into_raw_mode()?;
+  let stdout = MouseTerminal::from(stdout);
+  let stdout = AlternateScreen::from(stdout);
+  let backend = TermionBackend::new(stdout);
+  let mut terminal = Terminal::new(backend)?;
+
   let args: Vec<String> = std::env::args().skip(1).collect();
 
   let mut dash_state = DashState::new();
@@ -116,7 +123,8 @@ pub async fn main() -> std::io::Result<()> {
         match e {
           Ok(Event::Input(input)) => {
               match input {
-                Key::Char('q') => return Ok(()),
+                Key::Char('q')|
+                Key::Char('Q') => return Ok(()),
                 Key::Char('s')|
                 Key::Char('S') => dash_state.main_view = DashViewMain::DashSummary,
                 Key::Char('d')|
@@ -126,7 +134,7 @@ pub async fn main() -> std::io::Result<()> {
           }
           
           Ok(Event::Tick) => {
-            draw_dashboard(&dash_state, &monitors).unwrap();
+            draw_dashboard(&mut terminal, &dash_state, &monitors).unwrap();
           }
   
           Err(error) => {
@@ -159,22 +167,25 @@ async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
   events.next()
 }
 
-fn draw_dashboard(dash_state: &DashState, monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
+fn draw_dashboard(
+    terminal: &mut tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>, 
+    dash_state: &DashState, 
+    monitors: &HashMap<String, 
+    LogMonitor>)
+    -> std::io::Result<()> {
   match dash_state.main_view {
-    DashViewMain::DashSummary => draw_dash_summary(dash_state, monitors),
-    DashViewMain::DashDetail => draw_dash_detail(dash_state, monitors),
+    DashViewMain::DashSummary => draw_dash_summary(terminal, dash_state, monitors),
+    DashViewMain::DashDetail => draw_dash_detail(terminal, dash_state, monitors),
   }
 }
 
-fn draw_dash_summary(dash_state: &DashState, monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
-  // Terminal initialization
-  let stdout = io::stdout().into_raw_mode()?;
-  let stdout = MouseTerminal::from(stdout);
-  let stdout = AlternateScreen::from(stdout);
-  let backend = TermionBackend::new(stdout);
-  let mut terminal = Terminal::new(backend)?;
-
-  // TODO provide a constraint *per* monitor
+fn draw_dash_summary(
+  terminal: &mut tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>, 
+  dash_state: &DashState, 
+  monitors: &HashMap<String, 
+  LogMonitor>)
+  -> std::io::Result<()> {
+// TODO provide a constraint *per* monitor
   let columns_percent = 100 / monitors.len() as u16;
   terminal.draw(|f| {
     let chunks = Layout::default()
@@ -185,7 +196,7 @@ fn draw_dash_summary(dash_state: &DashState, monitors: &HashMap<String, LogMonit
       let size = f.size();
       let block = Block::default()
           .borders(Borders::ALL)
-          .title("safe-dash SAFE vault montoring dashboard == SUMMARY == ")
+          .title("SAFE Vault Monitor: SUMMARY ")
           .border_type(BorderType::Rounded);
       f.render_widget(block, size);
 
@@ -213,14 +224,13 @@ fn draw_dash_summary(dash_state: &DashState, monitors: &HashMap<String, LogMonit
   })
 }
 
-fn draw_dash_detail(dash_state: &DashState, monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
-  // Terminal initialization
-  let stdout = io::stdout().into_raw_mode()?;
-  let stdout = MouseTerminal::from(stdout);
-  let stdout = AlternateScreen::from(stdout);
-  let backend = TermionBackend::new(stdout);
-  let mut terminal = Terminal::new(backend)?;
-
+fn draw_dash_detail(
+  terminal: &mut tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>, 
+  dash_state: &DashState, 
+  monitors: &HashMap<String, 
+  LogMonitor>)
+  -> std::io::Result<()> {
+  
   // TODO provide a constraint *per* monitor
   let columns_percent = 100 / monitors.len() as u16;
   terminal.draw(|f| {
@@ -232,7 +242,7 @@ fn draw_dash_detail(dash_state: &DashState, monitors: &HashMap<String, LogMonito
       let size = f.size();
       let block = Block::default()
           .borders(Borders::ALL)
-          .title("safe-dash SAFE vault montoring dashboard == DETAIL == ")
+          .title("SAFE Vault Monitor:  DETAIL ")
           .border_type(BorderType::Rounded);
       f.render_widget(block, size);
 
