@@ -1,6 +1,6 @@
 # Terminal Dashboard for a SAFE Network Vault
 
-**Status:** experimental code, nothing to see here yet!
+**Status:** simple logfile viewing capability (branch: general-logile-viewer)
 
 **safe-dash** is a Rust command line program which uses [tui-rs](https://github.com/fdehau/tui-rs) to display a dashboard based in the terminal, gathered from one or more logfiles, updated as each logfile grows. 
 
