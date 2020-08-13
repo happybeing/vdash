@@ -231,14 +231,14 @@ fn draw_dash_detail(
   LogMonitor>)
   -> std::io::Result<()> {
   
-    let constraints = make_percentage_constraints(monitors.len());
-    terminal.draw(|f| {
-      let size = f.size();
-      let block = Block::default()
-          .borders(Borders::ALL)
-          .title("SAFE Vault Monitor:  DETAIL ")
-          .border_type(BorderType::Rounded);
-      f.render_widget(block, size);
+  let constraints = make_percentage_constraints(monitors.len());
+  terminal.draw(|f| {
+    let size = f.size();
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title("SAFE Vault Monitor:  DETAIL ")
+        .border_type(BorderType::Rounded);
+    f.render_widget(block, size);
 
     let chunks = Layout::default()
       .direction(Direction::Horizontal)
@@ -246,21 +246,21 @@ fn draw_dash_detail(
       .constraints(constraints.as_ref())
       .split(size);
 
-      for (logfile, monitor) in monitors.iter() {
-        let items: Vec<ListItem> = monitor.content.iter().map(|s| {
-            ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
-        })
-        .collect();
+    for (logfile, monitor) in monitors.iter() {
+      let items: Vec<ListItem> = monitor.content.iter().map(|s| {
+          ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
+      })
+      .collect();
 
-        let monitor_widget = List::new(items)
-          .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
-          .highlight_style(
-              Style::default()
-                  .bg(Color::LightGreen)
-                  .add_modifier(Modifier::BOLD),
-          );
-        f.render_widget(monitor_widget,chunks[monitor.index]);
-      }
+      let monitor_widget = List::new(items)
+        .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
+        .highlight_style(
+            Style::default()
+                .bg(Color::LightGreen)
+                .add_modifier(Modifier::BOLD),
+        );
+      f.render_widget(monitor_widget,chunks[monitor.index]);
+    }
   })
 }
 

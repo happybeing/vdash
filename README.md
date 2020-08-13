@@ -26,9 +26,12 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] just logfile for each vault (divide vertically)
   - [ ] add a storage summary to the left of each logfile
 - [ ] Detail view: tab for each vault
-  - [ ] h-band1: Storage chart / Data Types chart h-bar
-  - [ ] h-band2: Activity over time (full width)
-  - [ ] h-band3: Logfile (full width)
+  - [ ] Indicate the current logfile (default to the first)
+  - [ ] Create empty bands ready for..
+  - [ ] h-band1: Heading of logfile and space for some metrics (e.g. size MB)
+  - [ ] h-band2: Storage chart / Data Types chart h-bar
+  - [ ] h-band3: Activity over time (full width)
+  - [ ] h-band4: Logfile (full width)
 - [ ] investigate removing tokio to just use standard runtime (see linemux [issue #15](https://github.com/jmagnuson/linemux/issues/15))
 - [ ] add some charts
   - [ ] add parsing of dummy logfile input to LogMonitor
