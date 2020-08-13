@@ -30,6 +30,8 @@ use tui::{
     Terminal,
 };
 
+type TuiTerminal = tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>;
+
 use futures::{
   future::FutureExt, // for `.fuse()`
   pin_mut,
@@ -168,7 +170,7 @@ async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
 }
 
 fn draw_dashboard(
-    terminal: &mut tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>, 
+    terminal: &mut TuiTerminal, 
     dash_state: &DashState, 
     monitors: &HashMap<String, 
     LogMonitor>)
@@ -180,7 +182,7 @@ fn draw_dashboard(
 }
 
 fn draw_dash_summary(
-  terminal: &mut tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>, 
+  terminal: &mut TuiTerminal, 
   dash_state: &DashState, 
   monitors: &HashMap<String, 
   LogMonitor>)
@@ -225,7 +227,7 @@ fn draw_dash_summary(
 }
 
 fn draw_dash_detail(
-  terminal: &mut tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>, 
+  terminal: &mut TuiTerminal, 
   dash_state: &DashState, 
   monitors: &HashMap<String, 
   LogMonitor>)
