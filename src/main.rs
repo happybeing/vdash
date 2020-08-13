@@ -92,7 +92,7 @@ impl DashDetail {
 pub async fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
 
-    let dash_state = DashState::new();
+    let mut dash_state = DashState::new();
 
     let events = Events::new();
     let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
@@ -115,8 +115,13 @@ pub async fn main() -> std::io::Result<()> {
         (e) = events_future => {
           match e {
             Ok(Event::Input(input)) => {
-                if input == Key::Char('q') {
-                    return Ok(());
+                match input {
+                  Key::Char('q') => return Ok(()),
+                  Key::Char('s')|
+                  Key::Char('S') => dash_state.main_view = DashViewMain::DashSummary,
+                  Key::Char('d')|
+                  Key::Char('D') => dash_state.main_view = DashViewMain::DashDetail,
+                  _ => {},
                 }
             }
             
@@ -146,8 +151,6 @@ pub async fn main() -> std::io::Result<()> {
         },
       }
     }
-    
-    Ok(())
 }
 
 use std::sync::mpsc;
@@ -157,6 +160,13 @@ async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
 }
 
 fn draw_dashboard(dash_state: &DashState, monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
+  match dash_state.main_view {
+    DashViewMain::DashSummary => draw_dash_summary(dash_state, monitors),
+    DashViewMain::DashDetail => draw_dash_detail(dash_state, monitors),
+  }
+}
+
+fn draw_dash_summary(dash_state: &DashState, monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
   // Terminal initialization
   let stdout = io::stdout().into_raw_mode()?;
   let stdout = MouseTerminal::from(stdout);
@@ -175,7 +185,54 @@ fn draw_dashboard(dash_state: &DashState, monitors: &HashMap<String, LogMonitor>
       let size = f.size();
       let block = Block::default()
           .borders(Borders::ALL)
-          .title("safe-dash SAFE vault montoring dashboard")
+          .title("safe-dash SAFE vault montoring dashboard == SUMMARY == ")
+          .border_type(BorderType::Rounded);
+      f.render_widget(block, size);
+
+    let chunks = Layout::default()
+      .direction(Direction::Horizontal)
+      .margin(1)
+      .constraints([Constraint::Percentage(columns_percent), Constraint::Percentage(50)].as_ref())
+      .split(size);
+
+      for (logfile, monitor) in monitors.iter() {
+        let items: Vec<ListItem> = monitor.content.iter().map(|s| {
+            ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
+        })
+        .collect();
+
+        let monitor_widget = List::new(items)
+          .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
+          .highlight_style(
+              Style::default()
+                  .bg(Color::LightGreen)
+                  .add_modifier(Modifier::BOLD),
+          );
+        f.render_widget(monitor_widget,chunks[monitor.index]);
+      }
+  })
+}
+
+fn draw_dash_detail(dash_state: &DashState, monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
+  // Terminal initialization
+  let stdout = io::stdout().into_raw_mode()?;
+  let stdout = MouseTerminal::from(stdout);
+  let stdout = AlternateScreen::from(stdout);
+  let backend = TermionBackend::new(stdout);
+  let mut terminal = Terminal::new(backend)?;
+
+  // TODO provide a constraint *per* monitor
+  let columns_percent = 100 / monitors.len() as u16;
+  terminal.draw(|f| {
+    let chunks = Layout::default()
+      .direction(Direction::Horizontal)
+      .constraints([Constraint::Percentage(100)].as_ref())
+      .split(f.size());
+
+      let size = f.size();
+      let block = Block::default()
+          .borders(Borders::ALL)
+          .title("safe-dash SAFE vault montoring dashboard == DETAIL == ")
           .border_type(BorderType::Rounded);
       f.render_widget(block, size);
 
