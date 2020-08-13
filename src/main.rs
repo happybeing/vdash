@@ -30,6 +30,12 @@ use tui::{
     Terminal,
 };
 
+use futures::{
+  future::FutureExt, // for `.fuse()`
+  pin_mut,
+  select,
+};
+
 struct LogMonitor {
   index: usize,
   logfile:  String,  
@@ -54,15 +60,39 @@ impl LogMonitor {
   }
 }
 
-use futures::{
-  future::FutureExt, // for `.fuse()`
-  pin_mut,
-  select,
-};
+enum DashViewMain {DashSummary, DashDetail}
+
+struct DashState {
+  main_view: DashViewMain,
+
+  // For DashViewMain::dashDetail
+  dash_detail: DashDetail,
+}
+
+impl DashState {
+  pub fn new() -> DashState { 
+    DashState {
+      main_view: DashViewMain::DashSummary, 
+      dash_detail: DashDetail::new(),
+    }
+  }
+}
+
+struct DashDetail {
+  active_view: usize,
+}
+
+impl DashDetail {
+  pub fn new() -> Self { 
+    DashDetail { active_view: 0, }
+  }
+}
 
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+
+    let dash_state = DashState::new();
 
     let events = Events::new();
     let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
@@ -91,7 +121,7 @@ pub async fn main() -> std::io::Result<()> {
             }
             
             Ok(Event::Tick) => {
-              draw_dashboard(&monitors).unwrap();
+              draw_dashboard(&dash_state, &monitors).unwrap();
             }
     
             Err(error) => {
@@ -126,7 +156,7 @@ async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
   events.next()
 }
 
-fn draw_dashboard(monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
+fn draw_dashboard(dash_state: &DashState, monitors: &HashMap<String, LogMonitor>) -> std::io::Result<()> {
   // Terminal initialization
   let stdout = io::stdout().into_raw_mode()?;
   let stdout = MouseTerminal::from(stdout);
