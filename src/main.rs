@@ -1,6 +1,6 @@
 //! safe-dash is a learning Rust project which aspires to be a SAFE Network vault montoring dashboard
 //!
-//! Builds a dashboard based on one or more logfiles
+//! Displays and updates a dashboard based on one or more logfiles
 //!
 //! Usage:
 //!     safe-dash /path/to/file1 [/path/to/file2 ...]
@@ -8,6 +8,8 @@
 //! The files could be present or not, and the dashboard will monitor each file
 //! and use the lines from each file to provide telemetry for that logfile
 //! in the dashboard.
+//! 
+//! Keyboard commands: '?' or 'h' to get help, or 'q' to quit.
 
 #![recursion_limit="256"] // Prevent select! macro blowing up
 
