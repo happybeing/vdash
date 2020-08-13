@@ -22,10 +22,10 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] make simultaneous with logfile monitoring
 - [x] Implement tabbing for Summary / Detail views
 - [ ] [Issue #1](https://github.com/theWebalyst/safe-dash/issues/1https://github.com/theWebalyst/safe-dash/issues/1): Implement popup help on ?, h, H
-- [ ] Tab1: Summary view: all vaults on one page
-  - [ ] just logfile for each vault (divide vertically)
+- [ ] Summary view: all vaults on one page
+  - [x] just logfile for each vault (divide vertically)
   - [ ] add a storage summary to the left of each logfile
-- [ ] Tab2: Detail view: tab for each vault
+- [ ] Detail view: tab for each vault
   - [ ] h-band1: Storage chart / Data Types chart h-bar
   - [ ] h-band2: Activity over time (full width)
   - [ ] h-band3: Logfile (full width)

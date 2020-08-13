@@ -190,37 +190,37 @@ fn draw_dash_summary(
   LogMonitor>)
   -> std::io::Result<()> {
   
-    // TODO provide a constraint *per* monitor
-  let columns_percent = 100 / monitors.len() as u16;
-  terminal.draw(|f| {
-      let size = f.size();
-      let block = Block::default()
-          .borders(Borders::ALL)
-          .title("SAFE Vault Monitor: SUMMARY ")
-          .border_type(BorderType::Rounded);
-      f.render_widget(block, size);
+  let constraints = make_percentage_constraints(monitors.len());
 
+  terminal.draw(|f| {
+    let size = f.size();
+    let block = Block::default()
+    .borders(Borders::ALL)
+    .title("SAFE Vault Monitor: SUMMARY ")
+    .border_type(BorderType::Rounded);
+    f.render_widget(block, size);
+    
     let chunks = Layout::default()
-      .direction(Direction::Horizontal)
+      .direction(Direction::Vertical)
       .margin(1)
-      .constraints([Constraint::Percentage(columns_percent), Constraint::Percentage(50)].as_ref())
+      .constraints(constraints.as_ref())
       .split(size);
 
-      for (logfile, monitor) in monitors.iter() {
+    for (logfile, monitor) in monitors.iter() {
         let items: Vec<ListItem> = monitor.content.iter().map(|s| {
             ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
         })
         .collect();
 
-        let monitor_widget = List::new(items)
-          .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
-          .highlight_style(
-              Style::default()
-                  .bg(Color::LightGreen)
-                  .add_modifier(Modifier::BOLD),
-          );
-        f.render_widget(monitor_widget,chunks[monitor.index]);
-      }
+      let monitor_widget = List::new(items)
+        .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
+        .highlight_style(
+            Style::default()
+                .bg(Color::LightGreen)
+                .add_modifier(Modifier::BOLD),
+        );
+      f.render_widget(monitor_widget,chunks[monitor.index]);
+    }
   })
 }
 
@@ -265,3 +265,18 @@ fn draw_dash_detail(
   })
 }
 
+fn make_percentage_constraints(count: usize) -> Vec<Constraint> {
+  let percent = 100 / count as u16;
+  let mut constraints = Vec::new();
+  let mut total_percent = 0;
+
+  for i in 1..count+1 {
+    total_percent += percent;
+    let mut next_percent = percent;
+    if i == count && total_percent < 100 {
+      next_percent = 100 - total_percent;
+    }
+    constraints.push(Constraint::Percentage(next_percent));
+  }
+  constraints
+} 
