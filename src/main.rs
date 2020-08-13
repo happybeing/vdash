@@ -189,14 +189,10 @@ fn draw_dash_summary(
   monitors: &HashMap<String, 
   LogMonitor>)
   -> std::io::Result<()> {
-// TODO provide a constraint *per* monitor
+  
+    // TODO provide a constraint *per* monitor
   let columns_percent = 100 / monitors.len() as u16;
   terminal.draw(|f| {
-    let chunks = Layout::default()
-      .direction(Direction::Horizontal)
-      .constraints([Constraint::Percentage(100)].as_ref())
-      .split(f.size());
-
       let size = f.size();
       let block = Block::default()
           .borders(Borders::ALL)
@@ -238,11 +234,6 @@ fn draw_dash_detail(
   // TODO provide a constraint *per* monitor
   let columns_percent = 100 / monitors.len() as u16;
   terminal.draw(|f| {
-    let chunks = Layout::default()
-      .direction(Direction::Horizontal)
-      .constraints([Constraint::Percentage(100)].as_ref())
-      .split(f.size());
-
       let size = f.size();
       let block = Block::default()
           .borders(Borders::ALL)
