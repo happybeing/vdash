@@ -20,7 +20,8 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] keyboard events: q = quit
   - [x] resize terminal window
   - [x] make simultaneous with logfile monitoring
-- [ ] Implement tabbing for Summary / Detail views
+- [x] Implement tabbing for Summary / Detail views
+- [ ] Implement help: popup on ?, h, H to show keyboard commands (q, s,d, and 0-n for detail+vault)
 - [ ] Tab1: Summary view: all vaults on one page
   - [ ] just logfile for each vault (divide vertically)
   - [ ] add a storage summary to the left of each logfile
