@@ -271,10 +271,10 @@ fn make_percentage_constraints(count: usize) -> Vec<Constraint> {
 
   for i in 1..count+1 {
     total_percent += percent;
-    let mut next_percent = percent;
-    if i == count && total_percent < 100 {
-      next_percent = 100 - total_percent;
-    }
+
+    let next_percent = if i == count && total_percent < 100 
+      { 100 - total_percent } else { percent };
+
     constraints.push(Constraint::Percentage(next_percent));
   }
   constraints
