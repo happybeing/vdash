@@ -15,7 +15,11 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] watch one or more logfiles specified on the command line
   - [x] send text for each logfile to its own window
   - [ ] make a window that scrolls text
-  - [ ] add CLI param to specify number of logfile lines to scroll (remember ASSCROLL!)
+    - [ ] when the window is full make it scroll to show the last line
+    - [ ] limit the number of lines retained by a LogMonitor
+    - [ ] add CLI param: number of logfile lines retain
+  - [ ] add ability to populate a monitor by processing the logfile from the start
+  - [ ] add CLI param: process existing logfile content
   - [ ] make 'logtail' command on branch general-logile-viewer:
     - [ ] git checkout general-logile-viewer && git merge master
     - [ ] disable detail view
