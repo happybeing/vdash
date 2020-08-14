@@ -16,6 +16,12 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] send text for each logfile to its own window
   - [ ] make a window that scrolls text
   - [ ] add CLI param to specify number of logfile lines to scroll (remember ASSCROLL!)
+  - [ ] make 'logtail' command on branch general-logile-viewer:
+    - [ ] git checkout general-logile-viewer && git merge master
+    - [ ] disable detail view
+    - [ ] change Cargo.toml to build 'logtail'
+    - [ ] update README for 'logtail'
+    - [ ] fork to make new repo 'logtail' and publish as a Rust util
 - [x] implement events
   - [x] keyboard events: q = quit
   - [x] resize terminal window
