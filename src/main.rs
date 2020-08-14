@@ -27,12 +27,12 @@ use crate::util::{StatefulList};
 
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
-    backend::TermionBackend,
-    layout::{Constraint, Corner, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Span, Spans, Text},
-    widgets::{Widget, Block, BorderType, Borders, List, ListItem},
-    Terminal,
+  backend::TermionBackend,
+  layout::{Constraint, Corner, Direction, Layout},
+  style::{Color, Modifier, Style},
+  text::{Span, Spans, Text},
+  widgets::{Widget, Block, BorderType, Borders, List, ListItem},
+  Terminal,
 };
 
 type TuiTerminal = tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>;
