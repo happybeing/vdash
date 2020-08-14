@@ -218,9 +218,9 @@ fn draw_dash_summary(
       let monitor_widget = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
         .highlight_style(
-            Style::default()
-                .bg(Color::LightGreen)
-                .add_modifier(Modifier::BOLD),
+          Style::default()
+            .bg(Color::LightGreen)
+            .add_modifier(Modifier::BOLD),
         );
       f.render_widget(monitor_widget,chunks[monitor.index]);
     }
@@ -238,9 +238,9 @@ fn draw_dash_detail(
   terminal.draw(|f| {
     let size = f.size();
     let block = Block::default()
-        .borders(Borders::ALL)
-        .title("SAFE Vault Monitor:  DETAIL ")
-        .border_type(BorderType::Rounded);
+      .borders(Borders::ALL)
+      .title("SAFE Vault Monitor:  DETAIL ")
+      .border_type(BorderType::Rounded);
     f.render_widget(block, size);
 
     let chunks = Layout::default()
@@ -258,9 +258,9 @@ fn draw_dash_detail(
       let monitor_widget = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
         .highlight_style(
-            Style::default()
-                .bg(Color::LightGreen)
-                .add_modifier(Modifier::BOLD),
+          Style::default()
+            .bg(Color::LightGreen)
+            .add_modifier(Modifier::BOLD),
         );
       f.render_widget(monitor_widget,chunks[monitor.index]);
     }
@@ -281,4 +281,4 @@ fn make_percentage_constraints(count: usize) -> Vec<Constraint> {
     constraints.push(Constraint::Percentage(next_percent));
   }
   constraints
-} 
+}
