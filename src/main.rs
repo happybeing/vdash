@@ -175,11 +175,12 @@ async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
 }
 
 fn draw_dashboard(
-    terminal: &mut TuiTerminal, 
-    dash_state: &DashState, 
-    monitors: &HashMap<String, 
-    LogMonitor>)
-    -> std::io::Result<()> {
+  terminal: &mut TuiTerminal, 
+  dash_state: &DashState, 
+  monitors: &HashMap<String, 
+  LogMonitor>)
+  -> std::io::Result<()> {
+
   match dash_state.main_view {
     DashViewMain::DashSummary => draw_dash_summary(terminal, dash_state, monitors),
     DashViewMain::DashDetail => draw_dash_detail(terminal, dash_state, monitors),
@@ -210,17 +211,17 @@ fn draw_dash_summary(
       .split(size);
 
     for (logfile, monitor) in monitors.iter() {
-        let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
-            ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
-        })
-        .collect();
+      let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
+        ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
+      })
+      .collect();
 
       let monitor_widget = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
         .highlight_style(
           Style::default()
-            .bg(Color::LightGreen)
-            .add_modifier(Modifier::BOLD),
+          .bg(Color::LightGreen)
+          .add_modifier(Modifier::BOLD),
         );
       f.render_widget(monitor_widget,chunks[monitor.index]);
     }
