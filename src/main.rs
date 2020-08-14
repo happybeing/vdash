@@ -22,6 +22,9 @@ use tokio::stream::StreamExt;
 mod event;
 use crate::event::{Event, Events};
 
+mod util;
+use crate::util::{StatefulList};
+
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
     backend::TermionBackend,
@@ -43,7 +46,7 @@ use futures::{
 struct LogMonitor {
   index: usize,
   logfile:  String,  
-  content: Vec<String>,
+  content: StatefulList<String>,
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -55,12 +58,12 @@ impl LogMonitor {
     LogMonitor {
       index,
       logfile: f,
-      content: vec!["test string".to_string()],
+      content: StatefulList::with_items(vec!["test string".to_string()]),
     }
   }
 
   pub fn append_to_content(&mut self, text: &str) {
-    self.content.push(text.to_string());
+    self.content.items.push(text.to_string());
   }
 }
 
@@ -207,7 +210,7 @@ fn draw_dash_summary(
       .split(size);
 
     for (logfile, monitor) in monitors.iter() {
-        let items: Vec<ListItem> = monitor.content.iter().map(|s| {
+        let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
             ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
         })
         .collect();
@@ -247,7 +250,7 @@ fn draw_dash_detail(
       .split(size);
 
     for (logfile, monitor) in monitors.iter() {
-      let items: Vec<ListItem> = monitor.content.iter().map(|s| {
+      let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
           ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
       })
       .collect();
