@@ -136,12 +136,14 @@ pub async fn main() -> std::io::Result<()> {
                 Key::Char('S') => dash_state.main_view = DashViewMain::DashSummary,
                 Key::Char('d')|
                 Key::Char('D') => dash_state.main_view = DashViewMain::DashDetail,
-                _ => {},
+                Key::Down => monitors.get_mut("/var/log/auth.log").unwrap().content.next(),
+                Key::Up => monitors.get_mut("/var/log/auth.log").unwrap().content.previous(),
+              _ => {},
               }
           }
           
           Ok(Event::Tick) => {
-            draw_dashboard(&mut terminal, &dash_state, &monitors).unwrap();
+            draw_dashboard(&mut terminal, &dash_state, &mut monitors).unwrap();
           }
   
           Err(error) => {
@@ -177,7 +179,7 @@ async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
 fn draw_dashboard(
   terminal: &mut TuiTerminal, 
   dash_state: &DashState, 
-  monitors: &HashMap<String, 
+  monitors: &mut HashMap<String, 
   LogMonitor>)
   -> std::io::Result<()> {
 
@@ -190,7 +192,7 @@ fn draw_dashboard(
 fn draw_dash_summary(
   terminal: &mut TuiTerminal, 
   dash_state: &DashState, 
-  monitors: &HashMap<String, 
+  monitors: &mut HashMap<String, 
   LogMonitor>)
   -> std::io::Result<()> {
   
@@ -210,7 +212,8 @@ fn draw_dash_summary(
       .constraints(constraints.as_ref())
       .split(size);
 
-    for (logfile, monitor) in monitors.iter() {
+    for (logfile, monitor) in monitors.iter_mut() {
+      monitor.content.state.select(Some(monitor.content.items.len()-1));
       let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
         ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
       })
@@ -223,7 +226,7 @@ fn draw_dash_summary(
           .bg(Color::LightGreen)
           .add_modifier(Modifier::BOLD),
         );
-      f.render_widget(monitor_widget,chunks[monitor.index]);
+      f.render_stateful_widget(monitor_widget,chunks[monitor.index], &mut monitor.content.state);
     }
   })
 }
@@ -231,7 +234,7 @@ fn draw_dash_summary(
 fn draw_dash_detail(
   terminal: &mut TuiTerminal, 
   dash_state: &DashState, 
-  monitors: &HashMap<String, 
+  monitors: &mut HashMap<String, 
   LogMonitor>)
   -> std::io::Result<()> {
   
@@ -250,7 +253,8 @@ fn draw_dash_detail(
       .constraints(constraints.as_ref())
       .split(size);
 
-    for (logfile, monitor) in monitors.iter() {
+    for (logfile, monitor) in monitors.iter_mut() {
+      monitor.content.state.select(Some(monitor.content.items.len()-1));
       let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
           ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
       })
@@ -263,7 +267,7 @@ fn draw_dash_detail(
             .bg(Color::LightGreen)
             .add_modifier(Modifier::BOLD),
         );
-      f.render_widget(monitor_widget,chunks[monitor.index]);
+      f.render_stateful_widget(monitor_widget,chunks[monitor.index], &mut monitor.content.state);
     }
   })
 }
