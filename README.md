@@ -18,6 +18,7 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
     - [x] when the window is full make it scroll to show the last line
     - [x] limit the number of lines retained by a LogMonitor
     - [ ] add CLI param: number of logfile lines retain
+  - [x] add CLI usage message
   - [ ] add ability to populate a monitor by processing the logfile from the start
   - [ ] add CLI param: process existing logfile content
   - [ ] make 'logtail' command on branch general-logile-viewer:
