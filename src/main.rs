@@ -46,6 +46,7 @@ use futures::{
 struct LogMonitor {
   index: usize,
   logfile:  String,  
+  max_content: usize, // Limit number of lines in content
   content: StatefulList<String>,
 }
 
@@ -58,12 +59,16 @@ impl LogMonitor {
     LogMonitor {
       index,
       logfile: f,
+      max_content: 100,
       content: StatefulList::with_items(vec!["test string".to_string()]),
     }
   }
 
   pub fn append_to_content(&mut self, text: &str) {
     self.content.items.push(text.to_string());
+    if self.content.items.len() > self.max_content {
+      self.content.items = self.content.items.split_off(self.content.items.len() - self.max_content);
+    }
   }
 }
 

@@ -16,7 +16,7 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
   - [x] send text for each logfile to its own window
   - [ ] make a window that scrolls text
     - [x] when the window is full make it scroll to show the last line
-    - [ ] limit the number of lines retained by a LogMonitor
+    - [x] limit the number of lines retained by a LogMonitor
     - [ ] add CLI param: number of logfile lines retain
   - [ ] add ability to populate a monitor by processing the logfile from the start
   - [ ] add CLI param: process existing logfile content
