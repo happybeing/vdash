@@ -43,6 +43,9 @@ use futures::{
   select,
 };
 
+static MAX_CONTENT: usize = 100;
+static MAX_CONTENT_STR: &str = "100";
+
 struct LogMonitor {
   index: usize,
   logfile:  String,  
@@ -54,12 +57,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
 
 impl LogMonitor {
-  pub fn new(f: String) -> LogMonitor {
+  pub fn new(f: String, max_lines: usize) -> LogMonitor {
     let index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
     LogMonitor {
       index,
       logfile: f,
-      max_content: 100,
+      max_content: max_lines,
       content: StatefulList::with_items(vec!["test string".to_string()]),
     }
   }
@@ -100,25 +103,38 @@ impl DashDetail {
   }
 }
 
+use std::path::PathBuf;
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Monitor multiple logfiles in the terminal.")]
+struct Opt {
+  /// Maximum number of lines to keep for each logfile
+  #[structopt(short = "l", long, default_value = MAX_CONTENT_STR)]
+  lines_max: usize,
+
+  /// One or more logfiles to monitor
+  #[structopt(name = "LOGFILE")]
+  files: Vec<String>,
+}
+
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
-  let args: Vec<String> = std::env::args().skip(1).collect();
-  if args.is_empty() {
-    let command_path = std::env::current_exe().unwrap();
-    println!("Usage: {} logfile1 [logfile2 ...]", command_path.file_name().unwrap().to_string_lossy());
-    println!();
-    println!("A dashboard to display the last few lines of one or more logfiles.");
+  let opt = Opt::from_args();
+
+  if opt.files.is_empty() {
+    println!("{}: no logfile(s) specified.", Opt::clap().get_name());
+    println!("Try '{} --help' for more information.", Opt::clap().get_name());
     return Ok(());
   }
 
   let mut dash_state = DashState::new();
-
   let events = Events::new();
   let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
   let mut logfiles = MuxedLines::new()?;
 
-  for f in args {
-    let monitor = LogMonitor::new(f.to_string());
+  for f in opt.files {
+    let monitor = LogMonitor::new(f.to_string(), opt.lines_max);
     monitors.insert(f.to_string(), monitor);
     logfiles.add_file(&f).await?;
   }

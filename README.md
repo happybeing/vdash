@@ -11,13 +11,13 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
 
 ## TODO
 - [x] make skeleton app which can parse command line options and display usage
-- [ ] use tui-rs to 'tail' specified logfiles in separate windows
+- [x] use tui-rs to 'tail' specified logfiles in separate windows
   - [x] watch one or more logfiles specified on the command line
   - [x] send text for each logfile to its own window
-  - [ ] make a window that scrolls text
+  - [x] make a window that scrolls text
     - [x] when the window is full make it scroll to show the last line
     - [x] limit the number of lines retained by a LogMonitor
-    - [ ] add CLI param: number of logfile lines retain
+    - [x] add CLI param: number of logfile lines retain
   - [x] add CLI usage message
   - [ ] add ability to populate a monitor by processing the logfile from the start
   - [ ] add CLI param: process existing logfile content
