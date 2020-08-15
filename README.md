@@ -11,6 +11,11 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
 
 ## TODO
 - [x] make skeleton app which can parse command line options and display usage
+- [x] implement events
+  - [x] keyboard events: q = quit
+  - [x] resize terminal window
+  - [x] make simultaneous with logfile monitoring
+- [x] Implement tabbing for Summary / Detail views
 - [x] use tui-rs to 'tail' specified logfiles in separate windows
   - [x] watch one or more logfiles specified on the command line
   - [x] send text for each logfile to its own window
@@ -19,19 +24,14 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
     - [x] limit the number of lines retained by a LogMonitor
     - [x] add CLI param: number of logfile lines retain
   - [x] add CLI usage message
-  - [ ] add ability to populate a monitor by processing the logfile from the start
-  - [ ] add CLI param: process existing logfile content
-  - [ ] make 'logtail' command on branch general-logile-viewer:
-    - [ ] git checkout general-logile-viewer && git merge master
-    - [ ] disable detail view
-    - [ ] change Cargo.toml to build 'logtail'
-    - [ ] update README for 'logtail'
-    - [ ] fork to make new repo 'logtail' and publish as a Rust util
-- [x] implement events
-  - [x] keyboard events: q = quit
-  - [x] resize terminal window
-  - [x] make simultaneous with logfile monitoring
-- [x] Implement tabbing for Summary / Detail views
+- [ ] add ability to populate a monitor by processing the logfile from the start
+- [ ] add CLI param: process existing logfile content
+- [ ] make 'logtail' command on branch general-logile-viewer:
+  - [ ] git checkout general-logile-viewer && git merge master
+  - [ ] disable detail view
+  - [ ] change Cargo.toml to build 'logtail'
+  - [ ] update README for 'logtail'
+  - [ ] fork to make new repo 'logtail' and publish as a Rust util
 - [ ] [Issue #1](https://github.com/theWebalyst/safe-dash/issues/1https://github.com/theWebalyst/safe-dash/issues/1): Implement popup help on ?, h, H
 - [ ] Summary view: all vaults on one page
   - [x] just logfile for each vault (divide vertically)
