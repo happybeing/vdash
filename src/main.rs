@@ -105,8 +105,7 @@ pub async fn main() -> std::io::Result<()> {
   let args: Vec<String> = std::env::args().skip(1).collect();
   if args.is_empty() {
     let command_path = std::env::current_exe().unwrap();
-    let command = command_path.as_path().file_name().unwrap();
-    println!("Usage: {} logfile1 [logfile2 ...]", command.to_str().unwrap().to_string());
+    println!("Usage: {} logfile1 [logfile2 ...]", command_path.file_name().unwrap().to_string_lossy());
     println!();
     println!("A dashboard to display the last few lines of one or more logfiles.");
     return Ok(());
