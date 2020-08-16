@@ -13,7 +13,7 @@
 
 #![recursion_limit="256"] // Prevent select! macro blowing up
 
-use std::{error::Error, io};
+use std::io;
 use std::collections::HashMap;
 
 use linemux::MuxedLines;
@@ -37,14 +37,16 @@ use tui::{
 
 type TuiTerminal = tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>;
 
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
 use futures::{
   future::FutureExt, // for `.fuse()`
   pin_mut,
   select,
 };
 
-static MAX_CONTENT: usize = 100;
-static MAX_CONTENT_STR: &str = "100";
+static MAX_CONTENT: &str = "100";
 
 struct LogMonitor {
   index: usize,
@@ -63,8 +65,30 @@ impl LogMonitor {
       index,
       logfile: f,
       max_content: max_lines,
-      content: StatefulList::with_items(vec!["test string".to_string()]),
+      content: StatefulList::with_items(vec![]),
     }
+  }
+
+  pub fn load_logfile(&mut self) -> std::io::Result<()> {
+    let f = File::open(self.logfile.to_string());
+    let mut f = match f {
+      Ok(file) => file,
+      Err(e) => return Ok(()),  // It's ok for a logfile not to exist yet
+    };
+
+    let f = BufReader::new(f);
+
+    for line in f.lines() {
+        let line = line.expect("Unable to read line");
+        self.process_line(&line);
+    }
+
+    Ok(())
+  }
+
+  pub fn process_line(&mut self, text: &str) {
+    // TODO parse and update metrics
+    self.append_to_content(text);
   }
 
   pub fn append_to_content(&mut self, text: &str) {
@@ -73,6 +97,8 @@ impl LogMonitor {
       self.content.items = self.content.items.split_off(self.content.items.len() - self.max_content);
     }
   }
+
+  fn _reset_metrics(&mut self) {}
 }
 
 enum DashViewMain {DashSummary, DashDetail}
@@ -103,15 +129,18 @@ impl DashDetail {
   }
 }
 
-use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Monitor multiple logfiles in the terminal.")]
 struct Opt {
   /// Maximum number of lines to keep for each logfile
-  #[structopt(short = "l", long, default_value = MAX_CONTENT_STR)]
+  #[structopt(short = "l", long, default_value = MAX_CONTENT)]
   lines_max: usize,
+
+  /// Ignore any existing logfile content
+  #[structopt(short, long)]
+  ignore_existing: bool,
 
   /// One or more logfiles to monitor
   #[structopt(name = "LOGFILE")]
@@ -133,9 +162,21 @@ pub async fn main() -> std::io::Result<()> {
   let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
   let mut logfiles = MuxedLines::new()?;
 
+  println!("Loading...");
   for f in opt.files {
-    let monitor = LogMonitor::new(f.to_string(), opt.lines_max);
-    monitors.insert(f.to_string(), monitor);
+    let mut monitor = LogMonitor::new(f.to_string(), opt.lines_max);
+    println!("{}", monitor.logfile);
+    if opt.ignore_existing {
+        monitors.insert(f.to_string(), monitor);
+    } else {
+        match monitor.load_logfile() {
+        Ok(()) => {monitors.insert(f.to_string(), monitor);},
+        Err(e) => {
+          println!("...failed: {}", e);
+          return Ok(());
+        },
+      }
+    }
     logfiles.add_file(&f).await?;
   }
 
@@ -242,7 +283,9 @@ fn draw_dash_summary(
       .split(size);
 
     for (logfile, monitor) in monitors.iter_mut() {
-      monitor.content.state.select(Some(monitor.content.items.len()-1));
+      let len = monitor.content.items.len();
+      if len > 0 {monitor.content.state.select(Some(monitor.content.items.len()-1));}
+
       let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
         ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
       })
@@ -302,7 +345,7 @@ fn draw_dash_detail(
 }
 
 fn make_percentage_constraints(count: usize) -> Vec<Constraint> {
-  let percent = 100 / count as u16;
+  let percent = if count > 0 { 100 / count as u16 } else { 0 };
   let mut constraints = Vec::new();
   let mut total_percent = 0;
 

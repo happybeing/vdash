@@ -24,8 +24,8 @@ Although designed for use with a SAFE Network Vault, it should be easily adapted
     - [x] limit the number of lines retained by a LogMonitor
     - [x] add CLI param: number of logfile lines retain
   - [x] add CLI usage message
-- [ ] add ability to populate a monitor by processing the logfile from the start
-- [ ] add CLI param: process existing logfile content
+- [x] add ability to populate a monitor by processing the logfile from the start
+- [x] add CLI param: --ignore-existing logfile content
 - [ ] make 'logtail' command on branch general-logile-viewer:
   - [ ] git checkout general-logile-viewer && git merge master
   - [ ] disable detail view
