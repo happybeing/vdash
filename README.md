@@ -1,14 +1,20 @@
 # Terminal Dashboard for Monitoring Log Files
 
-**logtail-dash** is a Rust command line program which displays the last few lines of a one or more logfiles in the terminal. It watches for changes and updates the display in the manner of `tail -f`. 
+**logtail** is a Rust command line program which displays the last few lines of a one or more logfiles in the terminal. It watches for changes and updates the display in the manner of `tail -f`. 
 
 The command is written in Rust and uses [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI, and [linemux](https://github.com/jmagnuson/linemux) to monitor the logfiles.
 
-It is not particularly clever and was written as a learning project, but is a useful little utility which I believe could easily be adapted for MacOS or Windows.
+It is not particularly clever and was written as a learning project, but is a useful little utility.
 
-Starting from **logtail-dash** I'm working on a SAFE Network Vault Dashboard ([vault-dash](https://github.com/theWebalyst/vault-dash)) which will provide metrics based on vault logfiles. In fact **vault-dash** was the original goal but I saw value in splitting out **logtail-dash** as a separate utility.
+Supports **Linux** only as far as I know, but it's worth testing out on **MacOS** and **Windows**. If it doesn't work I don't think it will be hard to get working on those platforms.
 
-## Usage:
+Starting from **logtail** I'm working on a SAFE Network Vault Dashboard ([vault-dash](https://github.com/theWebalyst/vault-dash)) which will provide metrics based on vault logfiles. In fact **vault-dash** was the original goal but I saw value in splitting out **logtail-dash** as a separate utility.
+
+## Install from crates.io
+
+    cargo install logtail
+
+## Usage
 
 In the terminal type the command and the paths of one or more logfiles you want to monitor. For example:
 
@@ -24,7 +30,7 @@ For more information:
 ### Get pre-requisites
 1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-### Build logtail-dash
+### Build logtail
 ```
 git clone https://github.com/theWebalyst/logtail-dash
 cd logtail-dash
