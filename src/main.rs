@@ -266,15 +266,8 @@ fn draw_dash_horizontal(
 
   terminal.draw(|f| {
     let size = f.size();
-    let block = Block::default()
-    .borders(Borders::ALL)
-    .title(" logtail ")
-    .border_type(BorderType::Rounded);
-    f.render_widget(block, size);
-    
     let chunks = Layout::default()
       .direction(Direction::Vertical)
-      .margin(1)
       .constraints(constraints.as_ref())
       .split(size);
 
@@ -309,15 +302,8 @@ fn draw_dash_vertical(
   let constraints = make_percentage_constraints(monitors.len());
   terminal.draw(|f| {
     let size = f.size();
-    let block = Block::default()
-      .borders(Borders::ALL)
-      .title(" logtail ")
-      .border_type(BorderType::Rounded);
-    f.render_widget(block, size);
-
     let chunks = Layout::default()
       .direction(Direction::Horizontal)
-      .margin(1)
       .constraints(constraints.as_ref())
       .split(size);
 
