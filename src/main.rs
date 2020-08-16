@@ -1,15 +1,13 @@
-//! safe-dash is a learning Rust project which aspires to be a SAFE Network vault montoring dashboard
+//! logtail is a logfile monitoring dashboard in the terminal
 //!
 //! Displays and updates a dashboard based on one or more logfiles
 //!
-//! Usage:
-//!     safe-dash /path/to/file1 [/path/to/file2 ...]
-//!
-//! The files could be present or not, and the dashboard will monitor each file
-//! and use the lines from each file to provide telemetry for that logfile
-//! in the dashboard.
+//! Example:
+//!   logtail /var/log/auth.log /var/log/kern.log
 //! 
-//! Keyboard commands: '?' or 'h' to get help, or 'q' to quit.
+//! Press 'v' and 'h' for a vertical or horizontal layout.
+//! 
+//! See README or try `logtail -h` for more information.
 
 #![recursion_limit="256"] // Prevent select! macro blowing up
 
@@ -101,31 +99,31 @@ impl LogMonitor {
   fn _reset_metrics(&mut self) {}
 }
 
-enum DashViewMain {DashSummary, DashDetail}
+enum DashViewMain {DashHorizontal, DashVertical}
 
 struct DashState {
   main_view: DashViewMain,
 
-  // For DashViewMain::dashDetail
-  dash_detail: DashDetail,
+  // For DashViewMain::DashVertical
+  dash_vertical: DashVertical,
 }
 
 impl DashState {
   pub fn new() -> DashState { 
     DashState {
-      main_view: DashViewMain::DashSummary, 
-      dash_detail: DashDetail::new(),
+      main_view: DashViewMain::DashHorizontal, 
+      dash_vertical: DashVertical::new(),
     }
   }
 }
 
-struct DashDetail {
+struct DashVertical {
   active_view: usize,
 }
 
-impl DashDetail {
+impl DashVertical {
   pub fn new() -> Self { 
-    DashDetail { active_view: 0, }
+    DashVertical { active_view: 0, }
   }
 }
 
@@ -202,12 +200,10 @@ pub async fn main() -> std::io::Result<()> {
               match input {
                 Key::Char('q')|
                 Key::Char('Q') => return Ok(()),
-                Key::Char('s')|
-                Key::Char('S') => dash_state.main_view = DashViewMain::DashSummary,
-                Key::Char('d')|
-                Key::Char('D') => dash_state.main_view = DashViewMain::DashDetail,
-                Key::Down => monitors.get_mut("/var/log/auth.log").unwrap().content.next(),
-                Key::Up => monitors.get_mut("/var/log/auth.log").unwrap().content.previous(),
+                Key::Char('h')|
+                Key::Char('H') => dash_state.main_view = DashViewMain::DashHorizontal,
+                Key::Char('v')|
+                Key::Char('V') => dash_state.main_view = DashViewMain::DashVertical,
               _ => {},
               }
           }
@@ -254,12 +250,12 @@ fn draw_dashboard(
   -> std::io::Result<()> {
 
   match dash_state.main_view {
-    DashViewMain::DashSummary => draw_dash_summary(terminal, dash_state, monitors),
-    DashViewMain::DashDetail => draw_dash_detail(terminal, dash_state, monitors),
+    DashViewMain::DashHorizontal => draw_dash_horizontal(terminal, dash_state, monitors),
+    DashViewMain::DashVertical => draw_dash_vertical(terminal, dash_state, monitors),
   }
 }
 
-fn draw_dash_summary(
+fn draw_dash_horizontal(
   terminal: &mut TuiTerminal, 
   dash_state: &DashState, 
   monitors: &mut HashMap<String, 
@@ -272,7 +268,7 @@ fn draw_dash_summary(
     let size = f.size();
     let block = Block::default()
     .borders(Borders::ALL)
-    .title("SAFE Vault Monitor: SUMMARY ")
+    .title(" logtail ")
     .border_type(BorderType::Rounded);
     f.render_widget(block, size);
     
@@ -303,7 +299,7 @@ fn draw_dash_summary(
   })
 }
 
-fn draw_dash_detail(
+fn draw_dash_vertical(
   terminal: &mut TuiTerminal, 
   dash_state: &DashState, 
   monitors: &mut HashMap<String, 
@@ -315,7 +311,7 @@ fn draw_dash_detail(
     let size = f.size();
     let block = Block::default()
       .borders(Borders::ALL)
-      .title("SAFE Vault Monitor:  DETAIL ")
+      .title(" logtail ")
       .border_type(BorderType::Rounded);
     f.render_widget(block, size);
 
