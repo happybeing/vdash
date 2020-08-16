@@ -20,7 +20,7 @@ In the terminal type the command and the paths of one or more logfiles you want 
 
     logtail /var/log/auth.log /var/log/kern.log
 
-When the dashboard is active, pressing 'v' or 'h' switches between horizontal and vertical arrangments (when vieing more than one logfile).
+When the dashboard is active, pressing 'v' or 'h' switches between horizontal and vertical arrangments (when viewing more than one logfile).
 
 For more information:
 
