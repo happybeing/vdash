@@ -1,5 +1,5 @@
 [package]
-name = "slogtail"
+name = "logtail"
 version = "0.1.0"
 authors = ["Mark <git@happybeing.com>"]
 edition = "2018"
