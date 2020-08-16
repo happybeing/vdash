@@ -1,81 +1,42 @@
-# Terminal Dashboard for a SAFE Network Vault
+# Terminal Dashboard for Monitoring Log Files
 
-**Status:** simple logfile viewing capability (branch: general-logile-viewer)
+**logtail-dash** is a Rust command line program which displays the last few lines of a one or more logfiles in the terminal. It watches for changes and updates the display in the manner of `tail -f`. 
 
-**safe-dash** is a Rust command line program which uses [tui-rs](https://github.com/fdehau/tui-rs) to display a dashboard based in the terminal, gathered from one or more logfiles, updated as each logfile grows. 
+The command is written in Rust and uses [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI, and [linemux](https://github.com/jmagnuson/linemux) to monitor the logfiles.
 
-Although designed for use with a SAFE Network Vault, it should be easily adapted to create a dashboard for logfiles which can be parsed to gather metrics.
+It is not particularly clever and was written as a learning project, but is a useful little utility which I believe could easily be adapted for MacOS or Windows.
 
-## SAFE Network Vault Dashboard
-**safe-dash** aims to provide a terminal based graphical dashboard display based of SAFE Network Vault status and activity for a vault on the local machine. It parses input from one or more vault logfiles to gather live vault metrics which are displayed using terminal graphics.
+Starting from **logtail-dash** I'm working on a SAFE Network Vault Dashboard ([vault-dash](https://github.com/theWebalyst/vault-dash)) which will provide metrics based on vault logfiles. In fact **vault-dash** was the original goal but I saw value in splitting out **logtail-dash** as a separate utility.
 
-## TODO
-- [x] make skeleton app which can parse command line options and display usage
-- [x] implement events
-  - [x] keyboard events: q = quit
-  - [x] resize terminal window
-  - [x] make simultaneous with logfile monitoring
-- [x] Implement tabbing for Summary / Detail views
-- [x] use tui-rs to 'tail' specified logfiles in separate windows
-  - [x] watch one or more logfiles specified on the command line
-  - [x] send text for each logfile to its own window
-  - [x] make a window that scrolls text
-    - [x] when the window is full make it scroll to show the last line
-    - [x] limit the number of lines retained by a LogMonitor
-    - [x] add CLI param: number of logfile lines retain
-  - [x] add CLI usage message
-- [x] add ability to populate a monitor by processing the logfile from the start
-- [x] add CLI param: --ignore-existing logfile content
-- [ ] make 'logtail' command on branch general-logile-viewer:
-  - [ ] git checkout general-logile-viewer && git merge master
-  - [ ] disable detail view
-  - [ ] change Cargo.toml to build 'logtail'
-  - [ ] update README for 'logtail'
-  - [ ] fork to make new repo 'logtail' and publish as a Rust util
-- [ ] [Issue #1](https://github.com/theWebalyst/safe-dash/issues/1https://github.com/theWebalyst/safe-dash/issues/1): Implement popup help on ?, h, H
-- [ ] Summary view: all vaults on one page
-  - [x] just logfile for each vault (divide vertically)
-  - [ ] add a storage summary to the left of each logfile
-- [ ] Detail view: tab for each vault
-  - [ ] Indicate the current logfile (default to the first)
-  - [ ] Create empty bands ready for..
-  - [ ] h-band1: Heading of logfile and space for some metrics (e.g. size MB)
-  - [ ] h-band2: Storage chart / Data Types chart h-bar
-  - [ ] h-band3: Activity over time (full width)
-  - [ ] h-band4: Logfile (full width)
-- [ ] investigate removing tokio to just use standard runtime (see linemux [issue #15](https://github.com/jmagnuson/linemux/issues/15))
-- [ ] add some charts
-  - [ ] add parsing of dummy logfile input to LogMonitor
-  - [ ] use to generate a dummy test chart
-  - [ ] update parser to work on real vault log (keeping test logfile as an option)
-  - [ ] mock storage chart: horizontal bar chart (vault storage limit/used)
-  - [ ] mock chunk metering: vertical bar chart (total, immutable, sequence etc chunks)
-  - [ ] get real data into storage chart (poll disk)
-  - [ ] get real data into chunk metering
+## Usage:
+
+In the terminal type the command and the paths of one or more logfiles you want to monitor. For example:
+
+    logtail /var/log/auth.log /var/log/kern.log
+
+When the dashboard is active, pressing 'v' or 'h' switches between horizontal and vertical arrangments (when vieing more than one logfile).
+
+For more information:
+
+    logtail --help
 
 ## Build
 ### Get pre-requisites
 1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-2. **Get the SAFE CLI:** either download using an install script or build the SAFE CLI locally. Instructions for both options are [here](https://github.com/maidsafe/safe-api/tree/master/safe-cli#safe-cli).
-
-3. **Get the SAFE Vault:** when you have the SAFE CLI working you can install the vault software with the command ` safe vault install` (details [here](https://github.com/maidsafe/safe-api/tree/master/safe-cli#vault-install)).
-
-You are now ready to get safe-dash and can test it by running a local test network as described next.
-
-### Build safe-dash
+### Build logtail-dash
 ```
-git clone https://github.com/theWebalyst/safe-dash
-cd safe-dash
+git clone https://github.com/theWebalyst/logtail-dash
+cd logtail-dash
 cargo build
 ```
 
 ### Quick Test
-Here's a couple of useful commands to build and run safe-dash using Linux logfiles rather than actual vault files. 
+Here's a couple of useful commands to build and run logtail-dash using Linux logfiles rather than actual vault files. 
 
-Open two terminals and in one run safe-dash with:
+Open two terminals and in one run logtail-dash with:
 ```
-RUSTFLAGS="$RUSTFLAGS -A unused" cargo run /var/log/auth.log /var/log/apport.log  
+RUSTFLAGS="$RUSTFLAGS -A unused" cargo run /var/log/auth.log /var/log/kern.log
 ```
 
 In a second terminal you can affect the first logfile by trying and failing to 'su root':
@@ -84,28 +45,6 @@ su root </dev/null
 ```
 
 You can use any logfiles for this basic level of testing.
-
-### Vault Test
-When there is a live test network you will be able to use safe-dash with that, but pre-beta those test networks are only available intermittently. The following therefore shows how to run a local test network and use safe-dash with this.
-
-1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/safe-api/tree/master/safe-cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
-    ```
-    safe vault -t run-baby-fleming
-    ```
-2. **Run safe-dash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start safe-dash with:
-    ```
-    cd safe-dash
-    cargo run <params>
-    ```
-3. **Upload files using SAFE CLI:** in the SAFE CLI window you can perform operations on the local test network that will affect the vault and the effects will be shown in safe-dash. For example, to [use the SAFE CLI to upload files](https://github.com/maidsafe/safe-api/tree/master/safe-cli#files):
-    ```
-    safe files put ./<some-directory>/ --recursive
-    ```
-
-If you want to try safe-dash with a live network, check to see if one is running at the SAFE Network community forum: https://safenetforum.org
-
-### safe-dash usage:
-safe-dash `<params>` are still to be defined, but for now assume a path to the logfile of a running safe-vault.
 
 ## LICENSE
 
