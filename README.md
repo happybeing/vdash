@@ -38,7 +38,7 @@ cargo build
 ```
 
 ### Quick Test
-Here's a couple of useful commands to build and run logtail-dash using Linux logfiles rather than actual vault files. 
+Here's a couple of useful commands to build and run `logtail` to monitor a couple of Linux logfiles.
 
 Open two terminals and in one run logtail-dash with:
 ```
@@ -50,7 +50,14 @@ In a second terminal you can affect the first logfile by trying and failing to '
 su root </dev/null
 ```
 
-You can use any logfiles for this basic level of testing.
+You can use any logfiles for this basic level of testing. Here are some to try:
+
+    /var/log/syslog
+    /var/log/auth.log 
+    /var/log/lastlog
+    /var/log/dmesg
+    /var/log/kern.log
+    /var/log/boot.log
 
 ## LICENSE
 
