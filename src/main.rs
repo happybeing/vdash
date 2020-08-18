@@ -175,7 +175,14 @@ pub async fn main() -> std::io::Result<()> {
         },
       }
     }
-    logfiles.add_file(&f).await?;
+    match logfiles.add_file(&f).await {
+      Ok(_) => println!("{} done.", &f),
+      Err(e) => {
+        println!("ERROR: {}", e);
+        println!("Note: it is ok for the file not to exist, but the file's parent directory must exist.");
+        return Ok(());
+      }
+    }
   }
 
   // Terminal initialization
