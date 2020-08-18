@@ -25,12 +25,13 @@ use crate::util::{StatefulList};
 
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
+  backend::Backend,
   backend::TermionBackend,
   layout::{Constraint, Corner, Direction, Layout},
   style::{Color, Modifier, Style},
   text::{Span, Spans, Text},
   widgets::{Widget, Block, BorderType, Borders, List, ListItem},
-  Terminal,
+  Terminal, Frame,
 };
 
 type TuiTerminal = tui::terminal::Terminal<TermionBackend<termion::screen::AlternateScreen<termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>>>>;
@@ -46,7 +47,7 @@ use futures::{
 
 static MAX_CONTENT: &str = "100";
 
-struct LogMonitor {
+pub struct LogMonitor {
   index: usize,
   logfile:  String,  
   max_content: usize, // Limit number of lines in content
@@ -101,7 +102,7 @@ impl LogMonitor {
 
 enum DashViewMain {DashHorizontal, DashVertical}
 
-struct DashState {
+pub struct DashState {
   main_view: DashViewMain,
 
   // For DashViewMain::DashVertical
@@ -117,7 +118,7 @@ impl DashState {
   }
 }
 
-struct DashVertical {
+pub struct DashVertical {
   active_view: usize,
 }
 
@@ -216,7 +217,7 @@ pub async fn main() -> std::io::Result<()> {
           }
           
           Ok(Event::Tick) => {
-            draw_dashboard(&mut terminal, &dash_state, &mut monitors).unwrap();
+            terminal.draw(|f| draw_dashboard(f, &dash_state, &mut monitors))?;
           }
   
           Err(error) => {
@@ -249,90 +250,79 @@ async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
   events.next()
 }
 
-fn draw_dashboard(
-  terminal: &mut TuiTerminal, 
+pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>,
   dash_state: &DashState, 
   monitors: &mut HashMap<String, 
-  LogMonitor>)
-  -> std::io::Result<()> {
-
+  LogMonitor>) {
   match dash_state.main_view {
-    DashViewMain::DashHorizontal => draw_dash_horizontal(terminal, dash_state, monitors),
-    DashViewMain::DashVertical => draw_dash_vertical(terminal, dash_state, monitors),
+    DashViewMain::DashHorizontal => draw_dash_horizontal(f, dash_state, monitors),
+    DashViewMain::DashVertical => draw_dash_vertical(f, dash_state, monitors),
   }
 }
 
-fn draw_dash_horizontal(
-  terminal: &mut TuiTerminal, 
+fn draw_dash_horizontal<B: Backend>(f: &mut Frame<B>,
   dash_state: &DashState, 
   monitors: &mut HashMap<String, 
-  LogMonitor>)
-  -> std::io::Result<()> {
-  
+  LogMonitor>) {
+
   let constraints = make_percentage_constraints(monitors.len());
 
-  terminal.draw(|f| {
-    let size = f.size();
-    let chunks = Layout::default()
-      .direction(Direction::Vertical)
-      .constraints(constraints.as_ref())
-      .split(size);
+  let size = f.size();
+  let chunks = Layout::default()
+    .direction(Direction::Vertical)
+    .constraints(constraints.as_ref())
+    .split(size);
 
-    for (logfile, monitor) in monitors.iter_mut() {
-      let len = monitor.content.items.len();
-      if len > 0 {monitor.content.state.select(Some(monitor.content.items.len()-1));}
+  for (logfile, monitor) in monitors.iter_mut() {
+    let len = monitor.content.items.len();
+    if len > 0 {monitor.content.state.select(Some(monitor.content.items.len()-1));}
 
-      let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
+    let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
+      ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
+    })
+    .collect();
+
+    let monitor_widget = List::new(items)
+      .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
+      .highlight_style(
+        Style::default()
+        .bg(Color::LightGreen)
+        .add_modifier(Modifier::BOLD),
+      );
+    f.render_stateful_widget(monitor_widget,chunks[monitor.index], &mut monitor.content.state);
+  }
+}
+
+fn draw_dash_vertical<B: Backend>(f: &mut Frame<B>,
+  dash_state: &DashState, 
+  monitors: &mut HashMap<String, 
+  LogMonitor>) {
+
+  let constraints = make_percentage_constraints(monitors.len());
+  let size = f.size();
+  let chunks = Layout::default()
+    .direction(Direction::Horizontal)
+    .constraints(constraints.as_ref())
+    .split(size);
+
+  for (logfile, monitor) in monitors.iter_mut() {
+    monitor.content.state.select(Some(monitor.content.items.len()-1));
+    let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
         ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
-      })
-      .collect();
+    })
+    .collect();
 
-      let monitor_widget = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
-        .highlight_style(
-          Style::default()
+    let monitor_widget = List::new(items)
+      .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
+      .highlight_style(
+        Style::default()
           .bg(Color::LightGreen)
           .add_modifier(Modifier::BOLD),
-        );
-      f.render_stateful_widget(monitor_widget,chunks[monitor.index], &mut monitor.content.state);
-    }
-  })
+      );
+    f.render_stateful_widget(monitor_widget,chunks[monitor.index], &mut monitor.content.state);
+  }
 }
-
-fn draw_dash_vertical(
-  terminal: &mut TuiTerminal, 
-  dash_state: &DashState, 
-  monitors: &mut HashMap<String, 
-  LogMonitor>)
-  -> std::io::Result<()> {
   
-  let constraints = make_percentage_constraints(monitors.len());
-  terminal.draw(|f| {
-    let size = f.size();
-    let chunks = Layout::default()
-      .direction(Direction::Horizontal)
-      .constraints(constraints.as_ref())
-      .split(size);
-
-    for (logfile, monitor) in monitors.iter_mut() {
-      monitor.content.state.select(Some(monitor.content.items.len()-1));
-      let items: Vec<ListItem> = monitor.content.items.iter().map(|s| {
-          ListItem::new(vec![Spans::from(s.clone())]).style(Style::default().fg(Color::Black).bg(Color::White))
-      })
-      .collect();
-
-      let monitor_widget = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title(logfile.clone()))
-        .highlight_style(
-          Style::default()
-            .bg(Color::LightGreen)
-            .add_modifier(Modifier::BOLD),
-        );
-      f.render_stateful_widget(monitor_widget,chunks[monitor.index], &mut monitor.content.state);
-    }
-  })
-}
-
 fn make_percentage_constraints(count: usize) -> Vec<Constraint> {
   let percent = if count > 0 { 100 / count as u16 } else { 0 };
   let mut constraints = Vec::new();

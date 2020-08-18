@@ -30,11 +30,24 @@ For more information:
 ### Get pre-requisites
 1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-### Build logtail
+### Get code
 ```
 git clone https://github.com/theWebalyst/logtail-dash
 cd logtail-dash
-cargo build
+```
+
+### Build
+
+#### Linux / MacOS
+Note: MacOS is untested
+```
+cargo build --bin logtail --features="termion" --release
+```
+
+#### Windows 10
+NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
+```
+cargo build --bin logtail-crossterm --features="crossterm" --release -- --tick-rate 200
 ```
 
 ### Quick Test
@@ -42,7 +55,7 @@ Here's a couple of useful commands to build and run `logtail` to monitor a coupl
 
 Open two terminals and in one run logtail-dash with:
 ```
-RUSTFLAGS="$RUSTFLAGS -A unused" cargo run /var/log/auth.log /var/log/kern.log
+RUSTFLAGS="$RUSTFLAGS -A unused" cargo run --bin logtail --features="termion"  /var/log/auth.log /var/log/kern.log
 ```
 
 In a second terminal you can affect the first logfile by trying and failing to 'su root':

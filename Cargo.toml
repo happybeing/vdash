@@ -7,23 +7,50 @@ license = "GPL-3.0"
 homepage = "https://github.com/theWebalyst/logtail-dash"
 repository = "https://github.com/theWebalyst/logtail-dash"
 readme = "README.md"
+exclude = [".github"]
 keywords = ["utility", "logfile", "monitor", "cli"]
 categories = ["command-line-utilities"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["termion"]
+
 [dependencies]
 rand = "0.7.3"
 structopt = "~0.3.15"
-termion = "1.5.5"
-tui = "0.10.0"
+tui = { version = "0.10.0", features = ["termion", "crossterm"], default-features = false }
 linemux = "0.1.1"
 tokio = "0.2.22"
 futures = "0.3.5"
+termion = { version = "1.5", optional = true }
+crossterm = { version = "0.17", optional = true }
+#unicode-segmentation = "1.2"
+#unicode-width = "0.1"
+
+[xdependencies]
+rand = "0.7.3"
+structopt = "~0.3.15"
+tui = { version = "0.10.0", features = ["crossterm"], default-features = false }
+linemux = "0.1.1"
+tokio = "0.2.22"
+futures = "0.3.5"
+bitflags = "1.0"
+cassowary = "0.3"
+unicode-segmentation = "1.2"
+unicode-width = "0.1"
+termion = { version = "1.5", optional = true }
+rustbox = { version = "0.11", optional = true }
+crossterm = { version = "0.17", optional = true }
+easycurses = { version = "0.12.2", optional = true }
+pancurses = { version = "0.16.1", optional = true, features = ["win32a"] }
+serde = { version = "1", "optional" = true, features = ["derive"]}
 
 [[bin]]
 name = "logtail"
+required-features = ["termion"]
 
 [[bin]]
 name = "logtail-crossterm"
+required-features = ["crossterm"]
