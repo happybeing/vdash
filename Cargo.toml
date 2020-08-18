@@ -21,3 +21,9 @@ tui = "0.10.0"
 linemux = "0.1.1"
 tokio = "0.2.22"
 futures = "0.3.5"
+
+[[bin]]
+name = "logtail"
+
+[[bin]]
+name = "logtail-crossterm"
