@@ -38,11 +38,11 @@ cd logtail-dash
 
 ### Build
 
-#### Linux / MacOS (logtail-termion)
-Builds logtail-termion which uses the termion backend (see [tui-rs](https://github.com/fdehau/tui-rs)).
+#### Linux / MacOS (logtail)
+Builds logtail which uses the termion backend (see [tui-rs](https://github.com/fdehau/tui-rs)).
 Note: MacOS is untested
 ```
-cargo build --bin logtail-termion --features="termion" --release
+cargo build --bin logtail --features="termion" --release
 ```
 
 #### Windows 10 (logtail-crossterm)
