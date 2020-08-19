@@ -38,16 +38,19 @@ cd logtail-dash
 
 ### Build
 
-#### Linux / MacOS
+#### Linux / MacOS (logtail-termion)
+Builds logtail-termion which uses the termion backend (see [tui-rs](https://github.com/fdehau/tui-rs)).
 Note: MacOS is untested
 ```
-cargo build --bin logtail --features="termion" --release
+cargo build --bin logtail-termion --features="termion" --release
 ```
 
-#### Windows 10
+#### Windows 10 (logtail-crossterm)
+Builds logtail-crossterm which uses the crossterm backend (see [tui-rs](https://github.com/fdehau/tui-rs)), with the intention to support Windows.
+
 NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
 ```
-cargo build --bin logtail-crossterm --features="crossterm" --release -- --tick-rate 200
+cargo build --bin logtail-crossterm --features="crossterm" --release
 ```
 
 ### Quick Test

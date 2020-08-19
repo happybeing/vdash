@@ -1,3 +1,5 @@
+#[cfg(feature = "termion")]
+
 use std::io;
 use std::sync::mpsc;
 use std::sync::{
