@@ -1,38 +1,27 @@
 # Terminal Dashboard for Monitoring Log Files
 
-This repository contains several applications, each on its own branch. The branches and the commands they build are:
-- **logtail-dash** : `logtail` will display one or more log files in the terminal in the manner of `tail -f`.
+`logtail` displays one or more log files in the terminal in the manner of `tail -f`.
 
-- **vault-dash** : `vault-dash` shows a SAFE Network Vault status dashboard in the terminal.
+The command is written in Rust and uses [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI, and [linemux](https://github.com/jmagnuson/linemux) to monitor the logfiles.
 
-The commands are written in Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI and [linemux](https://github.com/jmagnuson/linemux) to monitor the logfiles.
+Note: `vdash` is a fork of `logtail` that provides a dashboard for SAFE Network Vaults (see [vdash](https://github.com/theWebalyst/vdash)).
+
 
 ## Operating Systems
-`logtail`:
 - **Linux:** works on Ubuntu.
 - **MacOS:** may 'just work' but has not been tested - please do!
 - **Windows:** is currently being tested, so feel free to check it out.
 
-`vault-dash`:
--  is work in progress so watch the repo for updates if you would like to try it.
-## How to Install from crates.io
+## Install from crates.io
+1. Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-### Pre-requisite
-Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
+2. Install **logtail:**
 
-Install **logtail:**
+    cargo install logtail
 
-    cargo install --branch logtail-dash logtail
+3. Install (optional) **vdash:**
 
-Install **vault-dash:**
-
-    cargo install --branch vault-dash logtail
-
-## logtail or vault-dash
-The rest of this README relates only to **logtail-dash**, for more information of **vault-dash** switch to the README on that branch.
-
-## Logtail
-**logtail** is a Rust command line program which displays the last few lines of a one or more logfiles in the terminal. It watches for changes and updates the display in the manner of `tail -f`.
+    cargo install vdash
 
 ## Usage
 
@@ -58,19 +47,19 @@ cd logtail-dash
 
 ### Build
 
-#### Linux / MacOS (logtail)
+#### Linux / MacOS
 Builds logtail which uses the termion backend (see [tui-rs](https://github.com/fdehau/tui-rs)).
 Note: MacOS is untested
 ```
 cargo build --bin logtail --features="termion" --release
 ```
 
-#### Windows 10 (logtail-crossterm)
+#### Windows 10
 Builds logtail-crossterm which uses the crossterm backend (see [tui-rs](https://github.com/fdehau/tui-rs)), with the intention to support Windows.
 
 NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
 ```
-cargo build --bin logtail-crossterm --features="crossterm" --release
+cargo build --bin logtail-crossterm --features="crossterm" --features="logterm" --release
 ```
 
 ### Quick Test
@@ -78,7 +67,7 @@ Here's a couple of useful commands to build and run `logtail` to monitor a coupl
 
 Open two terminals and in one run logtail-dash with:
 ```
-RUSTFLAGS="$RUSTFLAGS -A unused" cargo run --bin logtail --features="termion"  /var/log/auth.log /var/log/kern.log
+RUSTFLAGS="$RUSTFLAGS -A unused" cargo run --bin logtail --features="termion" --features="logterm"  /var/log/auth.log /var/log/kern.log
 ```
 
 In a second terminal you can affect the first logfile by trying and failing to 'su root':
