@@ -59,7 +59,7 @@ Builds logtail-crossterm which uses the crossterm backend (see [tui-rs](https://
 
 NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
 ```
-cargo build --bin logtail-crossterm --features="crossterm" --features="logterm" --release
+cargo build --bin logtail-crossterm --features="crossterm logtail" --release
 ```
 
 ### Quick Test
@@ -67,7 +67,7 @@ Here's a couple of useful commands to build and run `logtail` to monitor a coupl
 
 Open two terminals and in one run logtail-dash with:
 ```
-RUSTFLAGS="$RUSTFLAGS -A unused" cargo run --bin logtail --features="termion" --features="logterm"  /var/log/auth.log /var/log/kern.log
+RUSTFLAGS="$RUSTFLAGS -A unused" cargo run --bin logtail --features="termion logtail"  /var/log/auth.log /var/log/kern.log
 ```
 
 In a second terminal you can affect the first logfile by trying and failing to 'su root':

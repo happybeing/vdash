@@ -16,6 +16,7 @@ edition = "2018"
 
 [features]
 default = ["termion"]
+logtail = []
 
 [dependencies]
 rand = "0.7.3"
