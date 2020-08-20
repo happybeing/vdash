@@ -1,14 +1,14 @@
 [package]
-name = "logtail"
-description = "Displays and updates a dashboard based on one or more logfiles"
-version = "0.1.4"
+name = "vdash"
+description = "SAFE Network Vault Dashboard"
+version = "0.1.0"
 authors = ["Mark <git@happybeing.com>"]
 license = "GPL-3.0"
-homepage = "https://github.com/theWebalyst/logtail-dash"
-repository = "https://github.com/theWebalyst/logtail-dash"
+homepage = "https://github.com/theWebalyst/vdash"
+repository = "https://github.com/theWebalyst/vdash"
 readme = "README.md"
 exclude = [".github"]
-keywords = ["utility", "logfile", "monitor", "cli"]
+keywords = ["utility", "logfile", "monitor", "cli", "safenetwork"]
 categories = ["command-line-utilities"]
 edition = "2018"
 
@@ -30,10 +30,12 @@ crossterm = { version = "0.17", optional = true }
 #unicode-width = "0.1"
 
 [[bin]]
-name = "logtail"
-required-features = ["termion"]
+[[bin]]
+name = "vdash"
+required-features = ["termion", "vdash"]
 path = "src/bin/logtail-termion.rs"
 
 [[bin]]
-name = "logtail-crossterm"
-required-features = ["crossterm"]
+name = "vdash-crossterm"
+required-features = ["crossterm", "vdash"]
+path = "src/bin/logtail-crossterm.rs"
