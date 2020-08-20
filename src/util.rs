@@ -1,5 +1,3 @@
-#[cfg(feature = "termion")]
-
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
 use tui::widgets::ListState;
