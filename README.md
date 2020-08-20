@@ -1,18 +1,38 @@
 # Terminal Dashboard for Monitoring Log Files
 
-**logtail** is a Rust command line program which displays the last few lines of a one or more logfiles in the terminal. It watches for changes and updates the display in the manner of `tail -f`. 
+This repository contains several applications, each on its own branch. The branches and the commands they build are:
+- **logtail-dash** : `logtail` will display one or more log files in the terminal in the manner of `tail -f`.
 
-The command is written in Rust and uses [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI, and [linemux](https://github.com/jmagnuson/linemux) to monitor the logfiles.
+- **vault-dash** : `vault-dash` shows a SAFE Network Vault status dashboard in the terminal.
 
-It is not particularly clever and was written as a learning project, but is a useful little utility.
+The commands are written in Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI and [linemux](https://github.com/jmagnuson/linemux) to monitor the logfiles.
 
-Supports **Linux** only as far as I know, but it's worth testing out on **MacOS** and **Windows**. If it doesn't work I don't think it will be hard to get working on those platforms.
+## Operating Systems
+`logtail`:
+- **Linux:** works on Ubuntu.
+- **MacOS:** may 'just work' but has not been tested - please do!
+- **Windows:** is currently being tested, so feel free to check it out.
 
-Starting from **logtail** I'm working on a SAFE Network Vault Dashboard ([vault-dash](https://github.com/theWebalyst/vault-dash)) which will provide metrics based on vault logfiles. In fact **vault-dash** was the original goal but I saw value in splitting out **logtail-dash** as a separate utility.
+`vault-dash`:
+-  is work in progress so watch the repo for updates if you would like to try it.
+## How to Install from crates.io
 
-## Install from crates.io
+### Pre-requisite
+Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-    cargo install logtail
+Install **logtail:**
+
+    cargo install --branch logtail-dash logtail
+
+Install **vault-dash:**
+
+    cargo install --branch vault-dash logtail
+
+## logtail or vault-dash
+The rest of this README relates only to **logtail-dash**, for more information of **vault-dash** switch to the README on that branch.
+
+## Logtail
+**logtail** is a Rust command line program which displays the last few lines of a one or more logfiles in the terminal. It watches for changes and updates the display in the manner of `tail -f`.
 
 ## Usage
 
