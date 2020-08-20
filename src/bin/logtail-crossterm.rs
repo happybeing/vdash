@@ -1,13 +1,13 @@
-//! logtail is a logfile monitoring dashboard in the terminal
+//! This app monitors and logfiles and displays status in the terminal
 //!
-//! Displays and updates a dashboard based on one or more logfiles
-//!
-//! Example:
-//!   logtail /var/log/auth.log /var/log/kern.log
+//! It is based on logtail-dash, which is a basic logfile dashboard
+//! and also a framework for similar apps with customised dahsboard
+//! displays.
 //! 
-//! Press 'v' and 'h' for a vertical or horizontal layout.
+//! Custom apps based on logtail can be created by creating a
+//! fork of logtail-dash and modifying the files in src/custom
 //! 
-//! See README or try `logtail -h` for more information.
+//! See README for more information.
 
 #![recursion_limit="256"] // Prevent select! macro blowing up
 
@@ -15,8 +15,18 @@ use linemux::MuxedLines;
 use tokio::stream::StreamExt;
 use std::collections::HashMap;
 
-use logtail::ui::{draw_dashboard};
-use logtail::app::{DashState, LogMonitor, DashViewMain};
+///! forks of logterm customise the files in src/custom
+#[path = "../custom/mod.rs"]
+pub mod custom;
+use self::custom::app::{DashState, LogMonitor, DashViewMain};
+use self::custom::opt::{Opt};
+use self::custom::ui::{draw_dashboard};
+
+///! logtail and its forks share code in src/
+#[path = "../mod.rs"]
+pub mod shared;
+use crate::shared::util::{StatefulList};
+
 
 use crossterm::{
   event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode},
@@ -53,26 +63,6 @@ enum Event<I> {
 }
 
 use structopt::StructOpt;
-
-#[derive(StructOpt, Debug)]
-#[structopt(about = "Monitor multiple logfiles in the terminal.")]
-struct Opt {
-  /// Maximum number of lines to keep for each logfile
-  #[structopt(short = "l", long, default_value = "100")]
-  lines_max: usize,
-
-  /// Time between ticks in milliseconds
-  #[structopt(short, long, default_value = "200")]
-  tick_rate: u64,
-
-  /// Ignore any existing logfile content
-  #[structopt(short, long)]
-  ignore_existing: bool,
-
-  /// One or more logfiles to monitor
-  #[structopt(name = "LOGFILE")]
-  files: Vec<String>,
-}
 
 // RUSTFLAGS="-A unused" cargo run --bin logtail-crossterm --features="crossterm" /var/log/auth.log /var/log/dmesg
 #[tokio::main]
