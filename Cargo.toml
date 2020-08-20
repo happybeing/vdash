@@ -31,9 +31,9 @@ crossterm = { version = "0.17", optional = true }
 
 [[bin]]
 name = "logtail"
-required-features = ["termion"]
+required-features = ["termion", "logtail"]
 path = "src/bin/logtail-termion.rs"
 
 [[bin]]
 name = "logtail-crossterm"
-required-features = ["crossterm"]
+required-features = ["crossterm", "logtail"]
