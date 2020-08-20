@@ -16,7 +16,6 @@ edition = "2018"
 
 [features]
 default = ["termion"]
-logtail = []
 
 [dependencies]
 rand = "0.7.3"
@@ -32,9 +31,9 @@ crossterm = { version = "0.17", optional = true }
 
 [[bin]]
 name = "logtail"
-required-features = ["termion", "logtail"]
+required-features = ["termion"]
 path = "src/bin/logtail-termion.rs"
 
 [[bin]]
 name = "logtail-crossterm"
-required-features = ["crossterm", "logtail"]
+required-features = ["crossterm"]

@@ -4,9 +4,6 @@
 
 The command is written in Rust and uses [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI, and [linemux](https://github.com/jmagnuson/linemux) to monitor the logfiles.
 
-Note: `vdash` is a fork of `logtail` that provides a dashboard for SAFE Network Vaults (see [vdash](https://github.com/theWebalyst/vdash)).
-
-
 ## Operating Systems
 - **Linux:** works on Ubuntu.
 - **MacOS:** may 'just work' but has not been tested - please do!
@@ -34,6 +31,21 @@ When the dashboard is active, pressing 'v' or 'h' switches between horizontal an
 For more information:
 
     logtail --help
+
+## Customised Logfile Dashboards
+
+If you want to use the core functionality of logtail-dash to create
+a customised terminal display based on real time updates to files
+you can do this by creating a fork, and customising the following
+files in src/custom:
+
+`src/custom/opt.rs`:  command line options and usage
+
+`src/custom/app.rs`:  application logic (e.g. parsing logfiles to `dashboard state)
+
+`src/custom/ui.rs `:    dashboard display and keyboard/mouse interface
+
+Example: `vdash` is a fork of `logtail` that provides a dashboard for SAFE Network Vaults (see [vdash](https://github.com/theWebalyst/vdash)).
 
 ## Build
 ### Get pre-requisites

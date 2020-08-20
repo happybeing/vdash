@@ -1,13 +1,13 @@
-//! logtail is a logfile monitoring dashboard in the terminal
+//! This app monitors and logfiles and displays status in the terminal
 //!
-//! Displays and updates a dashboard based on one or more logfiles
-//!
-//! Example:
-//!   logtail /var/log/auth.log /var/log/kern.log
+//! It is based on logtail-dash, which is a basic logfile dashboard
+//! and also a framework for similar apps with customised dahsboard
+//! displays.
 //! 
-//! Press 'v' and 'h' for a vertical or horizontal layout.
+//! Custom apps based on logtail can be created by creating a
+//! fork of logtail-dash and modifying the files in src/custom
 //! 
-//! See README or try `logtail -h` for more information.
+//! See README for more information.
 
 #![recursion_limit="256"] // Prevent select! macro blowing up
 
@@ -17,10 +17,18 @@ use std::collections::HashMap;
 use linemux::MuxedLines;
 use tokio::stream::StreamExt;
 
-use logtail::ui::{draw_dashboard};
-use logtail::app::{DashState, LogMonitor, DashViewMain};
-use logtail::event::{Event, Events};
-use logtail::util::{StatefulList};
+///! forks of logterm customise the files in src/custom
+#[path = "../custom/mod.rs"]
+pub mod custom;
+use self::custom::app::{DashState, LogMonitor, DashViewMain};
+use self::custom::opt::{Opt};
+use self::custom::ui::{draw_dashboard};
+
+///! logtail and its forks share code in src/
+#[path = "../mod.rs"]
+pub mod shared;
+use shared::event::{Event, Events};
+use crate::shared::util::{StatefulList};
 
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
@@ -37,33 +45,13 @@ type TuiTerminal = tui::terminal::Terminal<TermionBackend<termion::screen::Alter
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use structopt::StructOpt;
 
 use futures::{
   future::FutureExt, // for `.fuse()`
   pin_mut,
   select,
 };
-
-static MAX_CONTENT: &str = "100";
-
-
-use structopt::StructOpt;
-
-#[derive(StructOpt, Debug)]
-#[structopt(about = "Monitor multiple logfiles in the terminal.")]
-struct Opt {
-  /// Maximum number of lines to keep for each logfile
-  #[structopt(short = "l", long, default_value = MAX_CONTENT)]
-  lines_max: usize,
-
-  /// Ignore any existing logfile content
-  #[structopt(short, long)]
-  ignore_existing: bool,
-
-  /// One or more logfiles to monitor
-  #[structopt(name = "LOGFILE")]
-  files: Vec<String>,
-}
 
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
