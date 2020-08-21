@@ -20,11 +20,12 @@ Features of `logtail`:
 2a. **Linux/MacOS** install **logtail:**
 
     cargo install logtail
-    logtail-crossterm --help
+    logtail --help
 
 2b. **Windows** install **logtail-crossterm:**
 
-    cargo install logtail --bin logtail-crossterm --features="crossterm"    logtail-crossterm --help
+    cargo install logtail --bin logtail-crossterm --features="crossterm"
+    logtail-crossterm --help
 
 3a. **Linux/MacOS** (optional) install **vdash:**
 
