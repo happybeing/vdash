@@ -7,7 +7,7 @@
 ## TODO
 Where `vdash` is headed:
 - [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
-- [ ] Implement --features="vdash" / --features="logterm" to select app and UI
+- [ ] Implement --features="vdash" / --features="logtail" to select app and UI
 - [ ] Summary view: all vaults on one page
   - [x] just logfile for each vault (divide vertically)
   - [ ] add a storage summary to the left of each logfile
@@ -29,23 +29,23 @@ Where `vdash` is headed:
   - [ ] get real data into chunk metering
 
 ## Operating Systems
-- **Linux:** builds on Ubuntu.
-- **MacOS:** may 'just work' but has not been tested - please do!
-- **Windows:** is currently being tested, so feel free to check it out.
+- **Linux:** works on Ubuntu.
+- **Windows:** works on Windows 10.
+- **MacOS:** let me know what happens!
 
 ## Install from crates.io
 
 1 Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-2a. **Linux/MacOS** install **logtail:**
+2a. **Linux/MacOS** install **vdash:**
 
-    cargo install logtail
-    logtail --help
+    cargo install vdash
+    vdash --help
 
-2b. **Windows** install **logtail-crossterm:**
+2b. **Windows** install **vdash-crossterm:**
 
-    cargo install logtail --bin logtail-crossterm --features="crossterm"
-    logtail-crossterm --help
+    cargo install vdash --bin logtail-crossterm --features="crossterm"
+    vdash-crossterm --help
 
 3a. **Linux/MacOS** (optional) install **vdash:**
 
