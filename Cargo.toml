@@ -30,12 +30,11 @@ crossterm = { version = "0.17", optional = true }
 #unicode-width = "0.1"
 
 [[bin]]
-[[bin]]
 name = "vdash"
-required-features = ["termion", "vdash"]
+required-features = ["termion"]
 path = "src/bin/logtail-termion.rs"
 
 [[bin]]
 name = "vdash-crossterm"
-required-features = ["crossterm", "vdash"]
+required-features = ["crossterm"]
 path = "src/bin/logtail-crossterm.rs"
