@@ -1,4 +1,8 @@
-use crate::app::{DashState, LogMonitor, DashViewMain};
+///! Terminal based interface and dashboard
+///!
+///! Edit src/custom/ui.rs to create a customised fork of logtail-dash
+
+use super::app::{DashState, LogMonitor, DashViewMain};
 use std::collections::HashMap;
 
 use tui::{

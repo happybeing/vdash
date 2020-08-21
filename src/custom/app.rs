@@ -1,6 +1,10 @@
+///! Application logic
+///!
+///! Edit src/custom/app.rs to create a customised fork of logtail-dash
+
 use std::fs::File;
 
-use crate::util::{StatefulList};  
+use crate::shared::util::{StatefulList};  
 
 pub struct LogMonitor {
   pub index: usize,
