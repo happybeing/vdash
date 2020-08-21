@@ -15,15 +15,26 @@ Features of `logtail`:
 - **MacOS:** let me know what happens!
 
 ## Install from crates.io
-1. Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
+1 Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-2. Install **logtail:**
+2a. **Linux/MacOS** install **logtail:**
 
     cargo install logtail
+    logtail-crossterm --help
 
-3. Install (optional) **vdash:**
+2b. **Windows** install **logtail-crossterm:**
+
+    cargo install logtail --bin logtail-crossterm --features="crossterm"    logtail-crossterm --help
+
+3a. **Linux/MacOS** (optional) install **vdash:**
 
     cargo install vdash
+    vdash --help
+
+3b. **Windows** (optional) install **vdash-crossterm:**
+
+    cargo install vdash --bin vdash-crossterm --features="crossterm"
+    vdash-crossterm --help
 
 Note: `vdash` is a fork of `logtail` that provides a dashboard for SAFE Network Vaults (see [vdash](https://github.com/theWebalyst/vdash)).
 
@@ -77,7 +88,7 @@ Builds logtail-crossterm which uses the crossterm backend (see [tui-rs](https://
 
 NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
 ```
-cargo build --bin logtail-crossterm --features="crossterm logtail" --release
+cargo build --bin logtail-crossterm --features="crossterm" --release
 ```
 
 ### Quick Test
@@ -85,7 +96,7 @@ Here's a couple of useful commands to build and run `logtail` to monitor a coupl
 
 Open two terminals and in one run logtail-dash with:
 ```
-cargo run --bin logtail --features="termion logtail"  /var/log/auth.log /var/log/kern.log
+cargo run --bin logtail --features="termion"  /var/log/auth.log /var/log/kern.log
 ```
 
 In a second terminal you can affect the first logfile by trying and failing to 'su root':
