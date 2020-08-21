@@ -79,7 +79,7 @@ Here's a couple of useful commands to build and run `logtail` to monitor a coupl
 
 Open two terminals and in one run logtail-dash with:
 ```
-RUSTFLAGS="$RUSTFLAGS -A unused" cargo run --bin logtail --features="termion logtail"  /var/log/auth.log /var/log/kern.log
+cargo run --bin logtail --features="termion logtail"  /var/log/auth.log /var/log/kern.log
 ```
 
 In a second terminal you can affect the first logfile by trying and failing to 'su root':
