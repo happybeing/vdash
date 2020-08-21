@@ -34,20 +34,7 @@ Where `vdash` is headed:
 - **Windows:** is currently being tested, so feel free to check it out.
 
 ## Install from crates.io
-<<<<<<< HEAD
 
-1. Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
-
-2. Install **vdash:**
-
-    cargo install vdash # NOT YET PUBLISHED - please see "Build" below.
-
-`vdash` is a fork of `logtail` which monitors one or more logfiles in the terminal.
-
-3. Install (optional) **logtail:**
-
-    cargo install logtail
-=======
 1 Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
 
 2a. **Linux/MacOS** install **logtail:**
@@ -68,7 +55,6 @@ Where `vdash` is headed:
 
     cargo install vdash --bin vdash-crossterm --features="crossterm"
     vdash-crossterm --help
->>>>>>> upstream/master
 
 ## Using vdash - SAFE Network Vault Dashboard
 `vdash` is provides a terminal based graphical dashboard of SAFE Network Vault activity on the local machine. It parses input from one or more vault logfiles to gather live vault metrics which are displayed using terminal graphics.
@@ -137,24 +123,7 @@ Builds `vdash` the crossterm backend (see [tui-rs](https://github.com/fdehau/tui
 
 NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
 ```
-<<<<<<< HEAD
 cargo build --bin logtail-crossterm --features="crossterm" --features="vdash" --release
-=======
-cargo build --bin logtail-crossterm --features="crossterm" --release
-```
-
-### Quick Test
-Here's a couple of useful commands to build and run `logtail` to monitor a couple of Linux logfiles.
-
-Open two terminals and in one run logtail-dash with:
-```
-cargo run --bin logtail --features="termion"  /var/log/auth.log /var/log/kern.log
-```
-
-In a second terminal you can affect the first logfile by trying and failing to 'su root':
-```
-su root </dev/null
->>>>>>> upstream/master
 ```
 
 ## LICENSE
