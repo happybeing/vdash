@@ -397,6 +397,23 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
+=======
+name = "logtail"
+version = "0.2.1"
+dependencies = [
+ "crossterm",
+ "futures",
+ "linemux",
+ "rand",
+ "structopt",
+ "termion",
+ "tokio",
+ "tui",
+]
+
+[[package]]
+>>>>>>> upstream/master
 name = "memchr"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
