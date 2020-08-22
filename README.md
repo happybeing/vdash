@@ -19,6 +19,10 @@ Where `vdash` is headed:
   - [ ] h-band3: Activity over time (full width)
   - [ ] h-band4: Logfile (full width)
 - [ ] investigate removing tokio to just use standard runtime (see linemux [issue #15](https://github.com/jmagnuson/linemux/issues/15))
+- [ ] implement ability to parse logfiles
+  - [ ] add --parse-only to just run the parser and print results
+  - [ ] implement parsing
+    - [ ] try anylog crate
 - [ ] add some charts
   - [ ] add parsing of dummy logfile input to LogMonitor
   - [ ] use to generate a dummy test chart

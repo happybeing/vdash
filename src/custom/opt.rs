@@ -24,5 +24,9 @@ pub struct Opt {
   /// One or more logfiles to monitor
   #[structopt(name = "LOGFILE")]
   pub files: Vec<String>,
+
+  /// Parses first logfile, prints results to second and shows side-by-side (logtail-crossterm only)
+  #[structopt(short, long)]
+  pub debug_parser: bool,
 }
 

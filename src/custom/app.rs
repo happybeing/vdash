@@ -2,15 +2,100 @@
 ///!
 ///! Edit src/custom/app.rs to create a customised fork of logtail-dash
 
-use std::fs::File;
+use linemux::MuxedLines;
+use std::collections::HashMap;
+
+use structopt::StructOpt;
+use std::fs::{File};
+use std::io::{Write, Error, ErrorKind};
+use tempfile::{NamedTempFile};
 
 use crate::shared::util::{StatefulList};  
+use crate::custom::opt::{Opt};
+
+pub struct App {
+  pub opt: Opt,
+  pub dash_state: DashState,
+  pub monitors: HashMap<String, LogMonitor>,
+  pub logfiles: MuxedLines,
+}
+
+impl App {
+  pub async fn new() -> Result<App, std::io::Error> {
+    let mut opt = Opt::from_args();
+
+    if opt.files.is_empty() {
+      println!("{}: no logfile(s) specified.", Opt::clap().get_name());
+      println!("Try '{} --help' for more information.", Opt::clap().get_name());
+      return Err(Error::new(ErrorKind::Other,"missing logfiles"));
+    }
+  
+    let mut dash_state = DashState::new();
+    let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
+    let mut logfiles = MuxedLines::new()?;
+  
+    use tempfile::NamedTempFile;
+    let mut parser_output: Option<NamedTempFile> = None;
+    if opt.debug_parser {
+      dash_state.main_view = DashViewMain::DashVertical;
+      opt.files = opt.files[0..1].to_vec();
+      let named_file = NamedTempFile::new()?;
+      let path = named_file.path();
+      let path_str = path.to_str().unwrap();
+      opt.files.push(String::from(path_str));
+      parser_output = Some(named_file);
+    }
+  
+    println!("Loading {} files...", opt.files.len());
+    for f in &opt.files {
+      println!("file: {}", f);
+      let mut monitor = LogMonitor::new(f.to_string(), opt.lines_max);
+      if opt.debug_parser && monitor.index == 0 {
+        match parser_output {
+          Some(named_file) => {
+            monitor.parser_logfile = Some(named_file);
+            parser_output = None;
+          },
+          None => {}
+        }
+      }
+  
+      if opt.ignore_existing {
+          monitors.insert(f.to_string(), monitor);
+      } else {
+          match monitor.load_logfile() {
+          Ok(()) => {monitors.insert(f.to_string(), monitor);},
+          Err(e) => {
+            println!("...failed: {}", e);
+            return Err(e);
+          },
+        }
+      }
+      match logfiles.add_file(&f).await {
+        Ok(_) => {},
+        Err(e) => {
+          println!("ERROR: {}", e);
+          println!("Note: it is ok for the file not to exist, but the file's parent directory must exist.");
+          return Err(e);
+        }
+      }
+    }
+
+    Ok(App {
+      opt,
+      dash_state,
+      monitors,
+      logfiles,
+    })
+  }
+}
 
 pub struct LogMonitor {
   pub index: usize,
   pub content: StatefulList<String>,
-  pub logfile:  String,  
-
+  pub logfile:  String,
+  pub parser_logfile: Option<NamedTempFile>,
+  
   max_content: usize, // Limit number of lines in content
 }
 
@@ -24,6 +109,7 @@ impl LogMonitor {
       index,
       logfile: f,
       max_content: max_lines,
+      parser_logfile: None,
       content: StatefulList::with_items(vec![]),
     }
   }
@@ -47,16 +133,30 @@ impl LogMonitor {
     Ok(())
   }
 
-  pub fn process_line(&mut self, text: &str) {
+  pub fn process_line(&mut self, text: &str) -> Result<(), std::io::Error> {
     // TODO parse and update metrics
-    self.append_to_content(text);
+
+    // Activated for first monitor with --debug-parser 
+    match &self.parser_logfile {
+      Some(f) => {
+        use std::io::Seek;
+        let mut file = f.reopen()?;
+        file.seek(std::io::SeekFrom::End(0))?;
+        writeln!(file, "{}", text.len())
+      },
+      None => Ok(())
+    };
+
+    // Show in TUI
+    self.append_to_content(text)
   }
 
-  pub fn append_to_content(&mut self, text: &str) {
+  pub fn append_to_content(&mut self, text: &str) -> Result<(), std::io::Error> {
     self.content.items.push(text.to_string());
     if self.content.items.len() > self.max_content {
       self.content.items = self.content.items.split_off(self.content.items.len() - self.max_content);
     }
+    return Ok(())
   }
 
   fn _reset_metrics(&mut self) {}

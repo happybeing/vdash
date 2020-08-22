@@ -11,22 +11,16 @@
 
 #![recursion_limit="256"] // Prevent select! macro blowing up
 
-use linemux::MuxedLines;
-use tokio::stream::StreamExt;
-use std::collections::HashMap;
-
 ///! forks of logterm customise the files in src/custom
 #[path = "../custom/mod.rs"]
 pub mod custom;
-use self::custom::app::{DashState, LogMonitor, DashViewMain};
+use self::custom::app::{App, DashViewMain};
 use self::custom::opt::{Opt};
 use self::custom::ui::{draw_dashboard};
 
 ///! logtail and its forks share code in src/
 #[path = "../mod.rs"]
 pub mod shared;
-use crate::shared::util::{StatefulList};
-
 
 use crossterm::{
   event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode},
@@ -62,48 +56,15 @@ enum Event<I> {
   Tick,
 }
 
-use structopt::StructOpt;
+use tokio::stream::StreamExt;
 
 // RUSTFLAGS="-A unused" cargo run --bin logtail-crossterm --features="crossterm" /var/log/auth.log /var/log/dmesg
 #[tokio::main]
   pub async fn main() -> Result<(), Box<dyn Error>> {
-  // pub async fn main() -> std::io::Result<()> {
-  let opt = Opt::from_args();
-
-  if opt.files.is_empty() {
-    println!("{}: no logfile(s) specified.", Opt::clap().get_name());
-    println!("Try '{} --help' for more information.", Opt::clap().get_name());
-    return Ok(());
-  }
-
-  let mut dash_state = DashState::new();
-  let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
-  let mut logfiles = MuxedLines::new()?;
-
-  println!("Loading...");
-  for f in opt.files {
-    let mut monitor = LogMonitor::new(f.to_string(), opt.lines_max);
-    println!("{}", monitor.logfile);
-    if opt.ignore_existing {
-        monitors.insert(f.to_string(), monitor);
-    } else {
-        match monitor.load_logfile() {
-        Ok(()) => {monitors.insert(f.to_string(), monitor);},
-        Err(e) => {
-          println!("...failed: {}", e);
-          return Ok(());
-        },
-      }
-    }
-    match logfiles.add_file(&f).await {
-      Ok(_) => {},
-      Err(e) => {
-        println!("ERROR: {}", e);
-        println!("Note: it is ok for the file not to exist, but the file's parent directory must exist.");
-        return Ok(());
-      }
-    }
-  }
+  let mut app = match App::new().await {
+    Ok(app) => app,
+    Err(e) => return Ok(()),
+  };
 
   // Terminal initialization
   enable_raw_mode()?;
@@ -111,14 +72,14 @@ use structopt::StructOpt;
   execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
   let backend = CrosstermBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
-  let rx = initialise_events(opt.tick_rate);
+  let rx = initialise_events(app.opt.tick_rate);
   terminal.clear()?;
 
   // Use futures of async functions to handle events
   // concurrently with logfile changes.
   loop {
-    terminal.draw(|f| draw_dashboard(f, &dash_state, &mut monitors))?;
-    let logfiles_future = logfiles.next().fuse();
+    terminal.draw(|f| draw_dashboard(f, &app.dash_state, &mut app.monitors))?;
+    let logfiles_future = app.logfiles.next().fuse();
     let events_future = next_event(&rx).fuse();
     pin_mut!(logfiles_future, events_future);
   
@@ -138,9 +99,9 @@ use structopt::StructOpt;
               break Ok(());
             },
             KeyCode::Char('h')|
-            KeyCode::Char('H') => dash_state.main_view = DashViewMain::DashHorizontal,
+            KeyCode::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
             KeyCode::Char('v')|
-            KeyCode::Char('V') => dash_state.main_view = DashViewMain::DashVertical,
+            KeyCode::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
             _ => {},
           }
           
@@ -161,9 +122,9 @@ use structopt::StructOpt;
             let source_str = line.source().to_str().unwrap();
             let source = String::from(source_str);
       
-            match monitors.get_mut(&source) {
+            match app.monitors.get_mut(&source) {
+              Some(monitor) => monitor.append_to_content(line.line())?,
               None => (),
-              Some(monitor) => monitor.append_to_content(line.line())
             }
           },
           Some(Err(e)) => panic!("{}", e),
