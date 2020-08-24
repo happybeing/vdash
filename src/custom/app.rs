@@ -50,12 +50,9 @@ impl App {
       println!("file: {}", f);
       let mut monitor = LogMonitor::new(f.to_string(), opt.lines_max);
       if opt.debug_parser && monitor.index == 0 {
-        match parser_output {
-          Some(named_file) => {
-            monitor.parser_logfile = Some(named_file);
-            parser_output = None;
-          }
-          None => {}
+        if let Some(named_file) = parser_output {
+          monitor.parser_logfile = Some(named_file);
+          parser_output = None;
         }
       }
       if opt.ignore_existing {
@@ -128,7 +125,7 @@ impl LogMonitor {
 
     for line in f.lines() {
       let line = line.expect("Unable to read line");
-      self.process_line(&line);
+      self.process_line(&line)?
     }
 
     Ok(())
@@ -143,9 +140,9 @@ impl LogMonitor {
         use std::io::Seek;
         let mut file = f.reopen()?;
         file.seek(std::io::SeekFrom::End(0))?;
-        writeln!(file, "{}", text.len())
+        writeln!(file, "{}", text.len())?
       }
-      None => Ok(()),
+      None => (),
     };
 
     // Show in TUI
