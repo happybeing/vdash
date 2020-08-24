@@ -34,17 +34,15 @@ impl App {
     let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
     let mut logfiles = MuxedLines::new()?;
   
-    use tempfile::NamedTempFile;
-    let mut parser_output: Option<NamedTempFile> = None;
-    if opt.debug_parser {
+    let mut parser_output: Option<tempfile::NamedTempFile> = if opt.debug_parser {
       dash_state.main_view = DashViewMain::DashVertical;
       opt.files = opt.files[0..1].to_vec();
       let named_file = NamedTempFile::new()?;
       let path = named_file.path();
       let path_str = path.to_str().unwrap();
       opt.files.push(String::from(path_str));
-      parser_output = Some(named_file);
-    }
+      Some(named_file)
+    } else { None };
   
     println!("Loading {} files...", opt.files.len());
     for f in &opt.files {
@@ -156,7 +154,7 @@ impl LogMonitor {
     if self.content.items.len() > self.max_content {
       self.content.items = self.content.items.split_off(self.content.items.len() - self.max_content);
     }
-    return Ok(())
+    Ok(())
   }
 
   fn _reset_metrics(&mut self) {}
