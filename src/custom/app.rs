@@ -94,6 +94,7 @@ pub struct LogMonitor {
   pub content: StatefulList<String>,
   pub logfile: String,
   pub parser_logfile: Option<NamedTempFile>,
+  pub metrics: VaultMetrics,
   max_content: usize, // Limit number of lines in content
 }
 
@@ -108,6 +109,7 @@ impl LogMonitor {
       logfile: f,
       max_content: max_lines,
       parser_logfile: None,
+      metrics: VaultMetrics::new(),
       content: StatefulList::with_items(vec![]),
     }
   }
@@ -132,15 +134,19 @@ impl LogMonitor {
   }
 
   pub fn process_line(&mut self, text: &str) -> Result<(), std::io::Error> {
-    // TODO parse and update metrics
+    self.metrics.update_counts(text);
+    self.metrics.capture_states(text);
+    self.metrics.capture_timeline(text);
+    let parser_result = self.metrics.get_debug_parser_text();
 
-    // Activated for first monitor with --debug-parser
+    // --debug-parser - prints parser results for a single logfile
+    // to a temp logfile which is displayed in the adjacent window.
     match &self.parser_logfile {
       Some(f) => {
         use std::io::Seek;
         let mut file = f.reopen()?;
         file.seek(std::io::SeekFrom::End(0))?;
-        writeln!(file, "{}", text.len())?
+        writeln!(file, "{}", &parser_result)?
       }
       None => (),
     };
@@ -161,6 +167,24 @@ impl LogMonitor {
   }
 
   fn _reset_metrics(&mut self) {}
+}
+
+pub struct VaultMetrics {
+  pub dummy_count: u64,
+}
+
+impl VaultMetrics {
+  fn new() -> VaultMetrics {
+    VaultMetrics { dummy_count: 1234 }
+  }
+
+  pub fn update_counts(&self, text: &str) {}
+  pub fn capture_states(&self, text: &str) {}
+  pub fn capture_timeline(&self, text: &str) {}
+
+  pub fn get_debug_parser_text(&self) -> &str {
+    "dummy text"
+  }
 }
 
 pub enum DashViewMain {
