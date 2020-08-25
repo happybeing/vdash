@@ -134,9 +134,10 @@ impl LogMonitor {
   }
 
   pub fn process_line(&mut self, text: &str) -> Result<(), std::io::Error> {
-    self.metrics.update_counts(text);
-    self.metrics.capture_states(text);
-    self.metrics.capture_timeline(text);
+    self.metrics.parse_start(text);
+    self.metrics.parse_counts(text);
+    self.metrics.parse_states(text);
+    self.metrics.parse_timeline(text);
     let parser_result = self.metrics.get_debug_parser_text();
 
     // --debug-parser - prints parser results for a single logfile
@@ -169,21 +170,62 @@ impl LogMonitor {
   fn _reset_metrics(&mut self) {}
 }
 
+use time::Time;
 pub struct VaultMetrics {
-  pub dummy_count: u64,
+  pub vault_started: Option<Time>,
+  pub running_message: Option<String>,
+  pub running_version: Option<String>,
 }
 
 impl VaultMetrics {
   fn new() -> VaultMetrics {
-    VaultMetrics { dummy_count: 1234 }
+    VaultMetrics {
+      // Start
+      vault_started: None,
+      running_message: None,
+      running_version: None,
+      // Timeline
+
+      // Counts
+
+      // State
+    }
   }
 
-  pub fn update_counts(&self, text: &str) {}
-  pub fn capture_states(&self, text: &str) {}
-  pub fn capture_timeline(&self, text: &str) {}
+  ///! Start is found when we capture a line beginning with 'Running' such as:
+  ///!    'Running safe-vault v0.24.0'
+  pub fn parse_start(&mut self, text: &str) {
+    match self.running_message.as_ref().and(self.vault_started) {
+      Some(_) => return,
+      None => {
+        let running_prefix = String::from("Running safe-vault ");
+        if text.starts_with(&running_prefix) {
+          self.running_message = Some(text.to_string());
+          self.running_version = Some(text[running_prefix.len()..].to_string());
+        }
+      }
+    }
+    ()
+  }
+  pub fn parse_counts(&mut self, text: &str) {}
+  pub fn parse_states(&mut self, text: &str) {}
 
-  pub fn get_debug_parser_text(&self) -> &str {
-    "dummy text"
+  ///! Captures latest log time from lines like:
+  ///!    INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
+  ///!    WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
+  ///!
+  ///! Captures 'features' for timeline displays in an vector of VaultFeature
+  pub fn parse_timeline(&mut self, text: &str) {}
+
+  pub fn get_debug_parser_text(&mut self) -> String {
+    match self
+      .running_message
+      .as_ref()
+      .and(self.running_version.as_ref())
+    {
+      Some(v) => format!("Vault Version: {}", v),
+      None => String::from("-"),
+    }
   }
 }
 
