@@ -69,7 +69,7 @@ impl App {
         }
       }
       match logfiles.add_file(&f).await {
-        Ok(_) => {}
+        Ok(_) => (),
         Err(e) => {
           println!("ERROR: {}", e);
           println!(
@@ -133,12 +133,16 @@ impl LogMonitor {
     Ok(())
   }
 
-  pub fn process_line(&mut self, text: &str) -> Result<(), std::io::Error> {
-    self.metrics.parse_start(text);
-    self.metrics.parse_counts(text);
-    self.metrics.parse_states(text);
-    self.metrics.parse_timeline(text);
-    let parser_result = self.metrics.get_debug_parser_text();
+  pub fn process_line(&mut self, line: &str) -> Result<(), std::io::Error> {
+    // For debugging LogEntry::decode()
+    let mut parser_result = String::from("");
+    if self.metrics.parse_timeline(line) {
+      if let Some(log_entry) = self.metrics.timeline.last() {
+        parser_result = log_entry.parser_debug.clone()
+      }
+    }
+    // For debugging the metric code
+    // let parser_result = self.metrics.get_debug_parser_text();
 
     // --debug-parser - prints parser results for a single logfile
     // to a temp logfile which is displayed in the adjacent window.
@@ -153,7 +157,7 @@ impl LogMonitor {
     };
 
     // Show in TUI
-    self.append_to_content(text)
+    self.append_to_content(line)
   }
 
   pub fn append_to_content(&mut self, text: &str) -> Result<(), std::io::Error> {
@@ -170,11 +174,84 @@ impl LogMonitor {
   fn _reset_metrics(&mut self) {}
 }
 
+use regex::Regex;
 use time::Time;
+
+lazy_static::lazy_static! {
+  static ref LOG_LINE_PATTERN: Regex =
+    Regex::new(r"(?P<category>^[A-Z]{4}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
+}
+
+///! Decoded logfile entries for a vault timeline metric
+pub struct LogEntry {
+  pub logstring: String,
+  pub category: String, // First word, "Running", "INFO", "WARN" etc
+  pub time: Option<Time>,
+  pub source: String,
+  pub message: String,
+
+  parser_debug: String,
+}
+
+impl LogEntry {
+  ///! Decode vault logfile lines of the form:
+  ///!    Running safe-vault v2.2.23
+  ///!    INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
+  ///!    WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
+  ///!
+  pub fn decode(line: &str) -> Option<LogEntry> {
+    let mut test_entry = LogEntry {
+      logstring: String::from(line),
+      category: String::from("test"),
+      time: None,
+      source: String::from(""),
+      message: String::from(""),
+      parser_debug: String::from("decode()..."),
+    };
+
+    if line.is_empty() {
+      return None;
+    }
+
+    LogEntry::parse_info_line(line)
+  }
+
+  ///! Parse a line of the form:
+  ///!    INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
+  ///!    WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
+  fn parse_info_line(line: &str) -> Option<LogEntry> {
+    let captures = LOG_LINE_PATTERN.captures(line)?;
+
+    let category = captures.name("category").map_or("", |m| m.as_str());
+    let time_string = captures.name("time_string").map_or("", |m| m.as_str());
+    let source = captures.name("source").map_or("", |m| m.as_str());
+    let message = captures.name("message").map_or("", |m| m.as_str());
+
+    let parser_debug = format!(
+      "c: {}, t: {}, s: {}, m: {}",
+      category, time_string, source, message
+    );
+
+    Some(LogEntry {
+      logstring: String::from(line),
+      category: String::from(category),
+      time: None,
+      source: String::from(source),
+      message: String::from(message),
+      parser_debug,
+    })
+  }
+}
+
 pub struct VaultMetrics {
   pub vault_started: Option<Time>,
   pub running_message: Option<String>,
   pub running_version: Option<String>,
+  pub category_count: HashMap<String, usize>,
+  pub timeline: Vec<LogEntry>,
+  pub most_recent: Option<Time>,
+
+  parser_debug: String,
 }
 
 impl VaultMetrics {
@@ -184,48 +261,79 @@ impl VaultMetrics {
       vault_started: None,
       running_message: None,
       running_version: None,
+
       // Timeline
+      timeline: Vec::<LogEntry>::new(),
+      most_recent: None,
 
       // Counts
-
+      category_count: HashMap::new(),
       // State
+
+      // Debug
+      parser_debug: String::from("-"),
     }
   }
 
   ///! Start is found when we capture a line beginning with 'Running' such as:
   ///!    'Running safe-vault v0.24.0'
-  pub fn parse_start(&mut self, text: &str) {
-    match self.running_message.as_ref().and(self.vault_started) {
-      Some(_) => return,
-      None => {
-        let running_prefix = String::from("Running safe-vault ");
-        if text.starts_with(&running_prefix) {
-          self.running_message = Some(text.to_string());
-          self.running_version = Some(text[running_prefix.len()..].to_string());
-        }
-      }
-    }
-    ()
-  }
+  // pub fn parse_start(&mut self, text: &str) {
+  //   match self
+  //     .running_message
+  //     .as_ref()
+  //     .and(self.running_version.as_ref())
+  //   {
+  //     Some(_) => return,
+  //     None => {
+  //       let running_prefix = String::from("Running safe-vault ");
+  //       if text.starts_with(&running_prefix) {
+  //         self.running_message = Some(text.to_string());
+  //         self.running_version = Some(text[running_prefix.len()..].to_string());
+  //         self.vault_started = Some(self.most_recent);
+  //       }
+  //     }
+  //   }
+  //   ()
+  // }
   pub fn parse_counts(&mut self, text: &str) {}
   pub fn parse_states(&mut self, text: &str) {}
 
-  ///! Captures latest log time from lines like:
-  ///!    INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
-  ///!    WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
-  ///!
-  ///! Captures 'features' for timeline displays in an vector of VaultFeature
-  pub fn parse_timeline(&mut self, text: &str) {}
+  ///! Captures entries for timeline displays as Vec<LogEntry>
+  ///! Captures most_recent log entry time
+  ///! Returns true if an entry was added to self.timeline[]
+  pub fn parse_timeline(&mut self, text: &str) -> bool {
+    match LogEntry::decode(text) {
+      Some(mut entry) => {
+        if entry.time.is_none() {
+          entry.time = self.most_recent;
+        }
 
-  pub fn get_debug_parser_text(&mut self) -> String {
-    match self
-      .running_message
-      .as_ref()
-      .and(self.running_version.as_ref())
-    {
-      Some(v) => format!("Vault Version: {}", v),
-      None => String::from("-"),
+        match entry.time {
+          Some(t) => self.most_recent = Some(t),
+          None => {}
+        };
+
+        self.timeline.push(entry);
+
+        // TODO Trim timeline
+
+        true
+      }
+      None => false,
     }
+  }
+
+  pub fn get_debug_parser_text(&mut self) -> &String {
+    //   match self
+    //     .running_message
+    //     .as_ref()
+    //     .and(self.running_version.as_ref())
+    //   {
+    //     Some(v) => format!("Vault Version: {}", v),
+    //     None => String::from("-"),
+    //   }
+    // }
+    &self.parser_debug
   }
 }
 
