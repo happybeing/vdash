@@ -40,7 +40,9 @@ impl App {
       opt.files = opt.files[0..1].to_vec();
       let named_file = NamedTempFile::new()?;
       let path = named_file.path();
-      let path_str = path.to_str().unwrap();
+      let path_str = path
+        .to_str()
+        .ok_or_else(|| Error::new(ErrorKind::Other, "invalid path"))?;
       opt.files.push(String::from(path_str));
       Some(named_file)
     } else {
@@ -346,16 +348,23 @@ impl LogEntry {
     let time_string = captures.name("time_string").map_or("", |m| m.as_str());
     let source = captures.name("source").map_or("", |m| m.as_str());
     let message = captures.name("message").map_or("", |m| m.as_str());
-    let time = DateTime::<FixedOffset>::parse_from_rfc3339(time_string).unwrap();
+    let mut time_str = String::from("None");
+    let time = match DateTime::<FixedOffset>::parse_from_rfc3339(time_string) {
+      Ok(time) => {
+        time_str = format!("{}", time);
+        Some(time)
+      }
+      Err(e) => None,
+    };
     let parser_output = format!(
       "c: {}, t: {}, s: {}, m: {}",
-      category, time, source, message
+      category, time_str, source, message
     );
 
     Some(LogEntry {
       logstring: String::from(line),
       category: String::from(category),
-      time: Some(time),
+      time: time,
       source: String::from(source),
       message: String::from(message),
       parser_output,
