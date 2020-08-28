@@ -168,6 +168,13 @@ lazy_static::lazy_static! {
 	// Regex::new(r"vault.rs .*No. of Adults: (?P<elders>\d+)").expect(REGEX_ERROR);
 }
 
+enum VaultAgebracket {
+	Unknown,
+	Child,
+	Adult,
+	Elder,
+}
+
 pub struct VaultMetrics {
 	pub vault_started: Option<DateTime<FixedOffset>>,
 	pub running_message: Option<String>,
@@ -175,6 +182,7 @@ pub struct VaultMetrics {
 	pub category_count: HashMap<String, usize>,
 	pub timeline: Vec<LogEntry>,
 	pub most_recent: Option<DateTime<FixedOffset>>,
+	agebracket: VaultAgebracket,
 	adults: usize,
 	elders: usize,
 
@@ -197,7 +205,10 @@ impl VaultMetrics {
 			// Counts
 			category_count: HashMap::new(),
 
-			// State
+			// State (vault)
+			agebracket: VaultAgebracket::Child,
+
+			// State (network)
 			adults: 0,
 			elders: 0,
 
@@ -208,6 +219,7 @@ impl VaultMetrics {
 	}
 
 	fn reset_metrics(&mut self) {
+		self.agebracket = VaultAgebracket::Child;
 		self.adults = 0;
 		self.elders = 0;
 	}
@@ -258,7 +270,8 @@ impl VaultMetrics {
 			self.vault_started = self.most_recent;
 			let parser_output = format!(
 				"START at {}",
-				self.most_recent
+				self
+					.most_recent
 					.map_or(String::from("None"), |m| format!("{}", m))
 			);
 
@@ -280,7 +293,9 @@ impl VaultMetrics {
 		let mut updated = false;
 		let re = Regex::new(
 			r"^.*vault\.rs.*No. of Elders: (?P<elders>\d+)|(?x)
-      (?-x)^.*vault\.rs.*No. of Adults: (?P<adults>\d+)(?x)",
+      (?-x)^.*vault\.rs.*No. of Adults: (?P<adults>\d+)|(?x)
+      (?-x)^.*vault\.rs.*Initializing new Vault as (?P<initas>[[:alpha:]]+)|(?x)
+      (?-x)^.*vault\.rs.*Vault promoted to (?P<promoteto>[[:alpha:]]+)(?x)",
 		)
 		.expect("Woops");
 
@@ -294,6 +309,22 @@ impl VaultMetrics {
 				if !adults.is_empty() {
 					self.parser_output = format!("ADULTS: {}", adults);
 					updated = true
+				} else {
+					let agebracket = captures
+						.name("initas")
+						.or(captures.name("promoteto"))
+						.map_or("", |m| m.as_str());
+					self.parser_output = format!("Vault agebracket: {}", agebracket);
+					if !agebracket.is_empty() {
+						self.parser_output = format!("Vault agebracket: {}", agebracket);
+						self.agebracket = match agebracket {
+							"Child" => VaultAgebracket::Child,
+							"Adult" => VaultAgebracket::Adult,
+							"Elder" => VaultAgebracket::Elder,
+							_ => VaultAgebracket::Unknown,
+						};
+						updated = true
+					}
 				}
 			}
 		}
