@@ -21,15 +21,18 @@ Where `vdash` is headed:
 - [ ] investigate removing tokio to just use standard runtime (see linemux [issue #15](https://github.com/jmagnuson/linemux/issues/15))
 - [x] implement ability to parse logfiles
   - [x] add --debug-parser to show results in second logfile
-  - [x] implement parsing
+  - [x] implement parsing log file for simple metrics and timeline
+  - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
 - [ ] add some charts
-  - [ ] add parsing of dummy logfile input to LogMonitor
-  - [ ] use to generate a dummy test chart
-  - [ ] update parser to work on real vault log (keeping test logfile as an option)
+  - [x] add parsing of dummy logfile input to LogMonitor
+  - [ ] add a vault status summary
+  - [ ] add a simple timeline
+  - [ ] add a dummy test chart
   - [ ] mock storage chart: horizontal bar chart (vault storage limit/used)
   - [ ] mock chunk metering: vertical bar chart (total, immutable, sequence etc chunks)
   - [ ] get real data into storage chart (poll disk)
   - [ ] get real data into chunk metering
+- [ ] trim VaultMetrics timeline
 
 ## Operating Systems
 - **Linux:** works on Ubuntu.
