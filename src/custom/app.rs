@@ -406,6 +406,7 @@ impl LogEntry {
 pub enum DashViewMain {
 	DashHorizontal,
 	DashVertical,
+	DashDebug,
 }
 
 pub struct DashState {

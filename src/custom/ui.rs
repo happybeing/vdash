@@ -19,12 +19,16 @@ pub fn draw_dashboard<B: Backend>(
 	dash_state: &DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
-	if (dash_state.debug_ui) {
-		return debug_draw_dashboard(f, dash_state, monitors);
-	}
 	match dash_state.main_view {
 		DashViewMain::DashHorizontal => draw_dash_horizontal(f, dash_state, monitors),
 		DashViewMain::DashVertical => draw_dash_vertical(f, dash_state, monitors),
+		DashViewMain::DashDebug => {
+			if (dash_state.debug_ui) {
+				debug_draw_dashboard(f, dash_state, monitors);
+			} else {
+				draw_dash_vertical(f, dash_state, monitors)
+			}
+		}
 	}
 }
 

@@ -84,53 +84,54 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 		pin_mut!(logfiles_future, events_future);
 
 		select! {
-		  (e) = events_future => {
+			(e) = events_future => {
 			match e {
-			  Ok(Event::Input(event)) => match event.code {
+				Ok(Event::Input(event)) => match event.code {
 				KeyCode::Char('q')|
 				KeyCode::Char('Q') => {
-				  disable_raw_mode()?;
-				  execute!(
-					  terminal.backend_mut(),
-					  LeaveAlternateScreen,
-					  DisableMouseCapture
-				  )?;
-				  terminal.show_cursor()?;
-				  break Ok(());
+					disable_raw_mode()?;
+					execute!(
+						terminal.backend_mut(),
+						LeaveAlternateScreen,
+						DisableMouseCapture
+					)?;
+					terminal.show_cursor()?;
+					break Ok(());
 				},
 				KeyCode::Char('h')|
 				KeyCode::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
 				KeyCode::Char('v')|
 				KeyCode::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
+				Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
 				_ => {},
-			  }
+				}
 
-			  Ok(Event::Tick) => {
+				Ok(Event::Tick) => {
 				// draw_dashboard(&mut f, &dash_state, &mut monitors).unwrap();
 				// draw_dashboard(f, &dash_state, &mut monitors)?;
-			  }
+				}
 
-			  Err(error) => {
+				Err(error) => {
 				println!("{}", error);
-			  }
+				}
 			}
-		  },
+			},
 
-		  (line) = logfiles_future => {
+			(line) = logfiles_future => {
 			match line {
-			  Some(Ok(line)) => {
+				Some(Ok(line)) => {
 				let source_str = line.source().to_str().unwrap();
 				let source = String::from(source_str);
 
 				match app.monitors.get_mut(&source) {
-				  Some(monitor) => monitor.append_to_content(line.line())?,
-				  None => (),
+					Some(monitor) => monitor.append_to_content(line.line())?,
+					None => (),
 				}
-			  },
-			  Some(Err(e)) => panic!("{}", e),
-			  None => (),
+				},
+				Some(Err(e)) => panic!("{}", e),
+				None => (),
 			}
-		  },
+			},
 		}
 	}
 }

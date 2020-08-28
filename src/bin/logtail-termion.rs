@@ -81,44 +81,45 @@ pub async fn main() -> std::io::Result<()> {
 		pin_mut!(events_future, logfiles_future);
 
 		select! {
-		  (e) = events_future => {
+			(e) = events_future => {
 			match e {
-			  Ok(Event::Input(input)) => {
-				  match input {
+				Ok(Event::Input(input)) => {
+					match input {
 					Key::Char('q')|
 					Key::Char('Q') => return Ok(()),
 					Key::Char('h')|
 					Key::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
 					Key::Char('v')|
 					Key::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
-				  _ => {},
-				  }
-			  }
+					Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
+					_ => {},
+					}
+				}
 
-			  Ok(Event::Tick) => {
+				Ok(Event::Tick) => {
 				terminal.draw(|f| draw_dashboard(f, &app.dash_state, &mut app.monitors))?;
-			  }
+				}
 
-			  Err(error) => {
+				Err(error) => {
 				println!("{}", error);
-			  }
+				}
 			}
-		  },
-		  (line) = logfiles_future => {
+			},
+			(line) = logfiles_future => {
 			match line {
-			  Some(Ok(line)) => {
+				Some(Ok(line)) => {
 				let source_str = line.source().to_str().unwrap();
 				let source = String::from(source_str);
 
 				match app.monitors.get_mut(&source) {
-				  Some(monitor) => monitor.append_to_content(line.line())?,
-				  None => (),
+					Some(monitor) => monitor.append_to_content(line.line())?,
+					None => (),
 				}
-			  },
-			  Some(Err(e)) => panic!("{}", e),
-			  None => (),
+				},
+				Some(Err(e)) => panic!("{}", e),
+				None => (),
 			}
-		  },
+			},
 		}
 	}
 }
