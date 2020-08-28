@@ -297,7 +297,7 @@ impl VaultMetrics {
       (?-x)^.*vault\.rs.*Initializing new Vault as (?P<initas>[[:alpha:]]+)|(?x)
       (?-x)^.*vault\.rs.*Vault promoted to (?P<promoteto>[[:alpha:]]+)(?x)",
 		)
-		.expect("Woops");
+		.expect("Woops"); // TODO: make the expression a static (see LOG_LINE_PATTERN)
 
 		if let Some(captures) = re.captures(entry.logstring.as_str()) {
 			let elders = captures.name("elders").map_or("", |m| m.as_str());
