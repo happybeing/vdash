@@ -4,6 +4,7 @@
 use linemux::MuxedLines;
 use std::collections::HashMap;
 
+use chrono::{DateTime, FixedOffset};
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use structopt::StructOpt;
@@ -149,13 +150,31 @@ impl LogMonitor {
 
   fn _reset_metrics(&mut self) {}
 }
+
+use regex::Regex;
+
+lazy_static::lazy_static! {
+  // static ref REGEX_ERROR = "The regex failed to compile. This is a bug.";
+  static ref LOG_LINE_PATTERN: Regex =
+    Regex::new(r"(?P<category>^[A-Z]{4}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
+
+  // static ref STATE_PATTERN: Regex =
+  //   Regex::new(r"vault.rs .*No. of Elders: (?P<elders>\d+)").expect(REGEX_ERROR);
+
+  // static ref COUNTS_PATTERN: Regex =215
+
+  // Regex::new(r"vault.rs .*No. of Adults: (?P<elders>\d+)").expect(REGEX_ERROR);
+}
+
 pub struct VaultMetrics {
-  pub vault_started: Option<Time>,
+  pub vault_started: Option<DateTime<FixedOffset>>,
   pub running_message: Option<String>,
   pub running_version: Option<String>,
   pub category_count: HashMap<String, usize>,
   pub timeline: Vec<LogEntry>,
-  pub most_recent: Option<Time>,
+  pub most_recent: Option<DateTime<FixedOffset>>,
+  adults: usize,
+  elders: usize,
 
   pub debug_logfile: Option<NamedTempFile>,
   parser_output: String,
@@ -175,12 +194,20 @@ impl VaultMetrics {
 
       // Counts
       category_count: HashMap::new(),
+
       // State
+      adults: 0,
+      elders: 0,
 
       // Debug
       debug_logfile: None,
       parser_output: String::from("-"),
     }
+  }
+
+  fn reset_metrics(&mut self) {
+    self.adults = 0;
+    self.elders = 0;
   }
 
   ///! Process a line from a SAFE Vault logfile.
@@ -196,14 +223,13 @@ impl VaultMetrics {
         self.most_recent = entry.time;
       }
 
-      parser_result = entry.parser_output.clone();
+      self.parser_output = entry.parser_output.clone();
+      self.parse_states(&entry); // May overwrite self.parser_output
+      parser_result = self.parser_output.clone();
       self.timeline.push(entry);
 
       // TODO Trim timeline
     }
-
-    // For debugging the metric code
-    // let parser_result = self.metrics.get_debug_parser_text();
 
     // --debug-parser - prints parser results for a single logfile
     // to a temp logfile which is displayed in the adjacent window.
@@ -219,26 +245,26 @@ impl VaultMetrics {
     Ok(())
   }
 
-  pub fn parse_counts(&mut self, entry: &LogEntry) {}
-  pub fn parse_states(&mut self, entry: &LogEntry) {}
-
   ///! Returm a LogEntry and capture metadata for logfile vault start:
   ///!    'Running safe-vault v0.24.0'
   pub fn parse_start(&mut self, line: &str) -> Option<LogEntry> {
-    let mut category = String::from("----");
-    let mut time = None;
     let running_prefix = String::from("Running safe-vault ");
 
     if line.starts_with(&running_prefix) {
       self.running_message = Some(line.to_string());
       self.running_version = Some(line[running_prefix.len()..].to_string());
       self.vault_started = self.most_recent;
-      let parser_output = String::from("START entry");
+      let parser_output = format!(
+        "START at {}",
+        self
+          .most_recent
+          .map_or(String::from("None"), |m| format!("{}", m))
+      );
 
       return Some(LogEntry {
         logstring: String::from(line),
         category: String::from("START"),
-        time,
+        time: self.most_recent,
         source: String::from(""),
         message: line.to_string(),
         parser_output,
@@ -248,33 +274,40 @@ impl VaultMetrics {
     None
   }
 
-  pub fn get_debug_parser_text(&mut self) -> &String {
-    //   match self
-    //     .running_message
-    //     .as_ref()
-    //     .and(self.running_version.as_ref())
-    //   {
-    //     Some(v) => format!("Vault Version: {}", v),
-    //     None => String::from("-"),
-    //   }
-    // }
-    &self.parser_output
+  ///! Capture state updates and return true if metrics were updated
+  pub fn parse_states(&mut self, entry: &LogEntry) -> bool {
+    let mut updated = false;
+    let re = Regex::new(
+      r"^.*vault\.rs.*No. of Elders: (?P<elders>\d+)|(?x)
+      (?-x)^.*vault\.rs.*No. of Adults: (?P<adults>\d+)(?x)",
+    )
+    .expect("Woops");
+
+    if let Some(captures) = re.captures(entry.logstring.as_str()) {
+      let elders = captures.name("elders").map_or("", |m| m.as_str());
+      if !elders.is_empty() {
+        self.parser_output = format!("ELDERS: {}", elders);
+        updated = true
+      } else {
+        let adults = captures.name("adults").map_or("", |m| m.as_str());
+        if !adults.is_empty() {
+          self.parser_output = format!("ADULTS: {}", adults);
+          updated = true
+        }
+      }
+    }
+    updated
   }
-}
 
-use regex::Regex;
-use time::Time;
-
-lazy_static::lazy_static! {
-  static ref LOG_LINE_PATTERN: Regex =
-    Regex::new(r"(?P<category>^[A-Z]{4}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
+  ///! TODO
+  pub fn parse_counts(&mut self, entry: &LogEntry) {}
 }
 
 ///! Decoded logfile entries for a vault timeline metric
 pub struct LogEntry {
   pub logstring: String,
   pub category: String, // First word, "Running", "INFO", "WARN" etc
-  pub time: Option<Time>,
+  pub time: Option<DateTime<FixedOffset>>,
   pub source: String,
   pub message: String,
 
@@ -313,16 +346,16 @@ impl LogEntry {
     let time_string = captures.name("time_string").map_or("", |m| m.as_str());
     let source = captures.name("source").map_or("", |m| m.as_str());
     let message = captures.name("message").map_or("", |m| m.as_str());
-
+    let time = DateTime::<FixedOffset>::parse_from_rfc3339(time_string).unwrap();
     let parser_output = format!(
       "c: {}, t: {}, s: {}, m: {}",
-      category, time_string, source, message
+      category, time, source, message
     );
 
     Some(LogEntry {
       logstring: String::from(line),
       category: String::from(category),
-      time: None,
+      time: Some(time),
       source: String::from(source),
       message: String::from(message),
       parser_output,
