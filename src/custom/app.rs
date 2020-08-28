@@ -312,7 +312,7 @@ impl VaultMetrics {
 				} else {
 					let agebracket = captures
 						.name("initas")
-						.or(captures.name("promoteto"))
+						.or_else(|| captures.name("promoteto"))
 						.map_or("", |m| m.as_str());
 					self.parser_output = format!("Vault agebracket: {}", agebracket);
 					if !agebracket.is_empty() {
