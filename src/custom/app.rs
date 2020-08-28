@@ -56,6 +56,7 @@ impl App {
 				if let Some(named_file) = parser_output {
 					monitor.metrics.debug_logfile = Some(named_file);
 					parser_output = None;
+					dash_state.debug_ui = true;
 				}
 			}
 			if opt.ignore_existing {
@@ -409,6 +410,7 @@ pub enum DashViewMain {
 
 pub struct DashState {
 	pub main_view: DashViewMain,
+	pub debug_ui: bool,
 
 	// For DashViewMain::DashVertical
 	dash_vertical: DashVertical,
@@ -419,6 +421,7 @@ impl DashState {
 		DashState {
 			main_view: DashViewMain::DashHorizontal,
 			dash_vertical: DashVertical::new(),
+			debug_ui: false,
 		}
 	}
 }
