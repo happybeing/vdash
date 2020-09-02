@@ -276,6 +276,7 @@ impl VaultMetrics {
 					.map_or(String::from("None"), |m| format!("{}", m))
 			);
 
+			self.reset_metrics();
 			return Some(LogEntry {
 				logstring: String::from(line),
 				category: String::from("START"),
@@ -293,47 +294,79 @@ impl VaultMetrics {
 	pub fn parse_states(&mut self, entry: &LogEntry) -> bool {
 		let mut updated = false;
 		let re = Regex::new(
-			r"^.*vault\.rs.*No. of Elders: (?P<elders>\d+)|(?x)
-      (?-x)^.*vault\.rs.*No. of Adults: (?P<adults>\d+)|(?x)
-      (?-x)^.*vault\.rs.*Initializing new Vault as (?P<initas>[[:alpha:]]+)|(?x)
-      (?-x)^.*vault\.rs.*Vault promoted to (?P<promoteto>[[:alpha:]]+)(?x)",
+			r"(?x)
+			 ^.*vault\.rs.*No.\ of\ Elders:\ (?P<elders>\d+)
+			|^.*vault\.rs.*No.\ of\ Adults:\ (?P<adults>\d+)
+			|^.*vault\.rs.*Initializing\ new\ Vault\ as\ (?P<initas>[[:alpha:]]+)
+			|^.*vault\.rs.*Vault\ promoted\ to\ (?P<promoteto>[[:alpha:]]+)",
 		)
 		.expect("Woops"); // TODO: make the expression a static (see LOG_LINE_PATTERN)
 
-		if let Some(captures) = re.captures(entry.logstring.as_str()) {
-			let elders = captures.name("elders").map_or("", |m| m.as_str());
-			if !elders.is_empty() {
-				self.parser_output = format!("ELDERS: {}", elders);
-				updated = true
-			} else {
-				let adults = captures.name("adults").map_or("", |m| m.as_str());
-				if !adults.is_empty() {
-					self.parser_output = format!("ADULTS: {}", adults);
-					updated = true
-				} else {
-					let agebracket = captures
-						.name("initas")
-						.or_else(|| captures.name("promoteto"))
-						.map_or("", |m| m.as_str());
-					self.parser_output = format!("Vault agebracket: {}", agebracket);
-					if !agebracket.is_empty() {
-						self.parser_output = format!("Vault agebracket: {}", agebracket);
-						self.agebracket = match agebracket {
-							"Child" => VaultAgebracket::Child,
-							"Adult" => VaultAgebracket::Adult,
-							"Elder" => VaultAgebracket::Elder,
-							_ => VaultAgebracket::Unknown,
-						};
-						updated = true
-					}
+		let captures = match re.captures(entry.logstring.as_str()) {
+			Some(captures) => captures,
+			None => return false,
+		};
+
+		if let Some(elders_str) = captures.name("elders").map(|m| m.as_str()) {
+			self.parser_output = format!("ELDERS: {}", elders_str);
+			match elders_str.parse::<usize>() {
+				Ok(elders) => {
+					self.elders = elders;
+					return true;
+				}
+				Err(e) => {
+					self.parser_output = format!("Error, invalid elders value '{}'", elders_str);
+					return false;
 				}
 			}
 		}
-		updated
+
+		if let Some(adults_str) = captures.name("adults").map(|m| m.as_str()) {
+			self.parser_output = format!("ADULTS: {}", adults_str);
+			match adults_str.parse::<usize>() {
+				Ok(adults) => {
+					self.adults = adults;
+					return true;
+				}
+				Err(e) => {
+					self.parser_output = format!("Error, invalid adults value '{}'", adults_str);
+					return false;
+				}
+			}
+		}
+
+		if let Some(agebracket) = captures
+			.name("initas")
+			.or_else(|| captures.name("promoteto"))
+			.map(|m| m.as_str())
+		{
+			self.parser_output = format!("Vault agebracket: {}", agebracket);
+			self.agebracket = match agebracket {
+				"Child" => VaultAgebracket::Child,
+				"Adult" => VaultAgebracket::Adult,
+				"Elder" => VaultAgebracket::Elder,
+				_ => {
+					self.parser_output = format!("Error, unkown vault agedbracket '{}'", agebracket);
+					VaultAgebracket::Unknown
+				}
+			};
+			return true;
+		}
+
+		false
 	}
 
 	///! TODO
-	pub fn parse_counts(&mut self, entry: &LogEntry) {}
+	pub fn parse_counts(&mut self, entry: &LogEntry) {
+		// Categories ('INFO', 'WARN' etc)
+		if !entry.category.is_empty() {
+			let count = match self.category_count.get(&entry.category) {
+				Some(count) => count + 1,
+				None => 1,
+			};
+			self.category_count.insert(entry.category.clone(), count);
+		}
+	}
 }
 
 ///! Decoded logfile entries for a vault timeline metric
