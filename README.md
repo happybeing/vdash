@@ -8,17 +8,6 @@
 Where `vdash` is headed:
 - [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
 - [ ] Implement --features="vdash" / --features="logtail" to select app and UI
-- [ ] Summary view: all vaults on one page
-  - [x] just logfile for each vault (divide vertically)
-  - [ ] add a storage summary to the left of each logfile
-- [ ] Detail view: tab for each vault
-  - [ ] Indicate the current logfile (default to the first)
-  - [ ] Create empty bands ready for..
-  - [ ] h-band1: Heading of logfile and space for some metrics (e.g. size MB)
-  - [ ] h-band2: Storage chart / Data Types chart h-bar
-  - [ ] h-band3: Activity over time (full width)
-  - [ ] h-band4: Logfile (full width)
-- [ ] investigate removing tokio to just use standard runtime (see linemux [issue #15](https://github.com/jmagnuson/linemux/issues/15))
 - [x] implement ability to parse logfiles
   - [x] add --debug-parser to show results in second logfile
   - [x] implement parsing log file for simple metrics and timeline
@@ -32,6 +21,17 @@ Where `vdash` is headed:
   - [ ] mock chunk metering: vertical bar chart (total, immutable, sequence etc chunks)
   - [ ] get real data into storage chart (poll disk)
   - [ ] get real data into chunk metering
+- [ ] Summary view: all vaults on one page
+  - [x] just logfile for each vault (divide vertically)
+  - [ ] add a storage summary to the left of each logfile
+- [ ] Detail view: tab for each vault
+  - [ ] Indicate the current logfile (default to the first)
+  - [ ] Create empty bands ready for..
+  - [ ] h-band1: Heading of logfile and space for some metrics (e.g. size MB)
+  - [ ] h-band2: Storage chart / Data Types chart h-bar
+  - [ ] h-band3: Activity over time (full width)
+  - [ ] h-band4: Logfile (full width)
+- [ ] investigate removing tokio to just use standard runtime (see linemux [issue #15](https://github.com/jmagnuson/linemux/issues/15))
 - [ ] trim VaultMetrics timeline
 
 ## Operating Systems

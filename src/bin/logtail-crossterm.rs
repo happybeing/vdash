@@ -102,7 +102,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 				KeyCode::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
 				KeyCode::Char('v')|
 				KeyCode::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
-				Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
+				KeyCode::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
 				_ => {},
 				}
 
