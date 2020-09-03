@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use tui::{
 	backend::Backend,
-	layout::{Constraint, Corner, Direction, Layout},
+	layout::{Constraint, Corner, Direction, Layout, Rect},
 	style::{Color, Modifier, Style},
 	text::{Span, Spans, Text},
 	widgets::{Block, BorderType, Borders, List, ListItem, Widget},
@@ -20,8 +20,8 @@ pub fn draw_dashboard<B: Backend>(
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
 	match dash_state.main_view {
-		DashViewMain::DashHorizontal => draw_dash_horizontal(f, dash_state, monitors),
-		DashViewMain::DashVertical => draw_dash_vertical(f, dash_state, monitors),
+		DashViewMain::DashHorizontal => draw_vault_dash(f, dash_state, monitors),
+		DashViewMain::DashVertical => draw_vault_dash(f, dash_state, monitors),
 		DashViewMain::DashDebug => {
 			if (dash_state.debug_ui) {
 				debug_draw_dashboard(f, dash_state, monitors);
@@ -30,6 +30,190 @@ pub fn draw_dashboard<B: Backend>(
 			}
 		}
 	}
+}
+
+fn draw_vault_dash<B: Backend>(
+	f: &mut Frame<B>,
+	dash_state: &DashState,
+	monitors: &mut HashMap<String, LogMonitor>,
+) {
+	// Horizonatal bands:
+	let constraints = [
+		Constraint::Length(12), // Stats summary and graphs
+		Constraint::Length(12), // Timeline
+		Constraint::Min(0),     // Logfile tail
+	];
+
+	let size = f.size();
+	let chunks = Layout::default()
+		.direction(Direction::Vertical)
+		.constraints(constraints.as_ref())
+		.split(size);
+
+	let entry = match monitors.into_iter().next() {
+		None => return,
+		Some(entry) => entry,
+	};
+
+	let (logfile, mut monitor) = entry;
+
+	// Stats and Graphs / Timeline / Logfile
+	draw_vault(f, chunks[0], &logfile, &mut monitor);
+	draw_timeline(f, chunks[1], &logfile, &mut monitor);
+	draw_logfile(f, chunks[2], &logfile, &mut monitor);
+}
+
+fn draw_vault<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	logfile: &String,
+	monitor: &mut LogMonitor,
+) {
+	// Columns:
+	let constraints = [
+		Constraint::Length(40), // Stats summary
+		Constraint::Min(10),    // Graphs
+	];
+
+	let chunks = Layout::default()
+		.direction(Direction::Horizontal)
+		.constraints(constraints.as_ref())
+		.split(area);
+
+	draw_vault_stats(f, chunks[0], logfile, monitor);
+	draw_vault_graphs(f, chunks[1], logfile, monitor);
+}
+
+fn draw_vault_stats<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	logfile: &String,
+	monitor: &mut LogMonitor,
+) {
+	let mut items = Vec::<ListItem>::new();
+	push_subheading(&mut items, &"Vault".to_string());
+	push_metric(
+		&mut items,
+		&"Agebracket".to_string(),
+		&monitor.metrics.agebracket_string(),
+	);
+
+	push_subheading(&mut items, &"".to_string());
+	push_subheading(&mut items, &"Network".to_string());
+	push_metric(
+		&mut items,
+		&"Elders".to_string(),
+		&monitor.metrics.elders.to_string(),
+	);
+	push_metric(
+		&mut items,
+		&"Adults".to_string(),
+		&monitor.metrics.elders.to_string(),
+	);
+
+	let monitor_widget = List::new(items)
+		.block(
+			Block::default()
+				.borders(Borders::ALL)
+				.title("Vault Status".to_string()),
+		)
+		.highlight_style(
+			Style::default()
+				.bg(Color::LightGreen)
+				.add_modifier(Modifier::BOLD),
+		);
+	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
+}
+
+fn push_subheading(items: &mut Vec<ListItem>, subheading: &String) {
+	items.push(
+		ListItem::new(vec![Spans::from(subheading.clone())])
+			.style(Style::default().fg(Color::Yellow).bg(Color::Black)),
+	);
+}
+
+fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
+	let s = format!("{:<12}: {:>12}", metric, value);
+	items.push(
+		ListItem::new(vec![Spans::from(s.clone())])
+			.style(Style::default().fg(Color::Green).bg(Color::Black)),
+	);
+}
+
+fn draw_vault_graphs<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	logfile: &String,
+	monitor: &mut LogMonitor,
+) {
+	// TODO draw some graphs!
+
+	let monitor_widget = List::new(Vec::<ListItem>::new())
+		.block(
+			Block::default()
+				.borders(Borders::ALL)
+				.title("Vault Metrics (TODO)".to_string()),
+		)
+		.highlight_style(
+			Style::default()
+				.bg(Color::LightGreen)
+				.add_modifier(Modifier::BOLD),
+		);
+	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
+}
+
+fn draw_timeline<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	logfile: &String,
+	monitor: &mut LogMonitor,
+) {
+	// TODO draw the timeline!
+
+	let monitor_widget = List::new(Vec::<ListItem>::new())
+		.block(
+			Block::default()
+				.borders(Borders::ALL)
+				.title("Timeline (TODO)".to_string()),
+		)
+		.highlight_style(
+			Style::default()
+				.bg(Color::LightGreen)
+				.add_modifier(Modifier::BOLD),
+		);
+	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
+}
+
+fn draw_logfile<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	logfile: &String,
+	monitor: &mut LogMonitor,
+) {
+	let items: Vec<ListItem> = monitor
+		.content
+		.items
+		.iter()
+		.map(|s| {
+			ListItem::new(vec![Spans::from(s.clone())])
+				.style(Style::default().fg(Color::Black).bg(Color::White))
+		})
+		.collect();
+
+	let vault_log_title = format!("Vault Log ({})", logfile);
+
+	let logfile_widget = List::new(items)
+		.block(
+			Block::default()
+				.borders(Borders::ALL)
+				.title(vault_log_title.clone()),
+		)
+		.highlight_style(
+			Style::default()
+				.bg(Color::LightGreen)
+				.add_modifier(Modifier::BOLD),
+		);
+	f.render_stateful_widget(logfile_widget, area, &mut monitor.content.state);
 }
 
 fn draw_dash_horizontal<B: Backend>(

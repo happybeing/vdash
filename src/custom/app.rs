@@ -169,7 +169,7 @@ lazy_static::lazy_static! {
 	// Regex::new(r"vault.rs .*No. of Adults: (?P<elders>\d+)").expect(REGEX_ERROR);
 }
 
-enum VaultAgebracket {
+pub enum VaultAgebracket {
 	Unknown,
 	Child,
 	Adult,
@@ -183,9 +183,9 @@ pub struct VaultMetrics {
 	pub category_count: HashMap<String, usize>,
 	pub timeline: Vec<LogEntry>,
 	pub most_recent: Option<DateTime<FixedOffset>>,
-	agebracket: VaultAgebracket,
-	adults: usize,
-	elders: usize,
+	pub agebracket: VaultAgebracket,
+	pub adults: usize,
+	pub elders: usize,
 
 	pub debug_logfile: Option<NamedTempFile>,
 	parser_output: String,
@@ -216,6 +216,15 @@ impl VaultMetrics {
 			// Debug
 			debug_logfile: None,
 			parser_output: String::from("-"),
+		}
+	}
+
+	pub fn agebracket_string(&self) -> String {
+		match self.agebracket {
+			VaultAgebracket::Child => "Child".to_string(),
+			VaultAgebracket::Adult => "Adult".to_string(),
+			VaultAgebracket::Elder => "Elder".to_string(),
+			VaultAgebracket::Unknown => "Unknown".to_string(),
 		}
 	}
 
