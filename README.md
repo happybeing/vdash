@@ -12,9 +12,8 @@ Where `vdash` is headed:
   - [x] add --debug-parser to show results in second logfile
   - [x] implement parsing log file for simple metrics and timeline
   - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
-- [ ] add some charts
-  - [x] add parsing of dummy logfile input to LogMonitor
-  - [ ] add a vault status summary
+- [ ] implement vault dashboard (single vault)
+  - [x] add a vault status summary
   - [ ] add a simple timeline
   - [ ] add a dummy test chart
   - [ ] mock storage chart: horizontal bar chart (vault storage limit/used)
