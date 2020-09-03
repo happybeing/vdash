@@ -9,7 +9,7 @@
 //!
 //! See README for more information.
 
-#![recursion_limit = "256"] // Prevent select! macro blowing up
+#![recursion_limit = "512"] // Prevent select! macro blowing up
 
 use std::io;
 
@@ -45,9 +45,7 @@ type TuiTerminal = tui::terminal::Terminal<
 	>,
 >;
 
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use structopt::StructOpt;
+use std::io::{Error, ErrorKind};
 
 use futures::{
 	future::FutureExt, // for `.fuse()`
@@ -59,9 +57,19 @@ use tokio::stream::StreamExt;
 
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
+	match terminal_main().await {
+		Ok(()) => (),
+		Err(e) => println!("{}", e),
+	}
+	Ok(())
+}
+
+async fn terminal_main() -> std::io::Result<()> {
 	let mut app = match App::new().await {
 		Ok(app) => app,
-		Err(e) => return Ok(()),
+		Err(e) => {
+			return Err(e);
+		}
 	};
 
 	let events = Events::new();
@@ -82,41 +90,44 @@ pub async fn main() -> std::io::Result<()> {
 
 		select! {
 			(e) = events_future => {
-			match e {
-				Ok(Event::Input(input)) => {
-					match input {
-					Key::Char('q')|
-					Key::Char('Q') => return Ok(()),
-					Key::Char('h')|
-					Key::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
-					Key::Char('v')|
-					Key::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
-					Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
-					_ => {},
+				match e {
+					Ok(Event::Input(input)) => {
+						match input {
+						Key::Char('q')|
+						Key::Char('Q') => return Ok(()),
+						Key::Char('h')|
+						Key::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
+						Key::Char('v')|
+						Key::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
+						Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
+						_ => {},
+						}
+					}
+
+					Ok(Event::Tick) => {
+						match terminal.draw(|f| draw_dashboard(f, &app.dash_state, &mut app.monitors)) {
+							Ok(_) => {},
+							Err(e) => return Err(e),
+						};
+					}
+
+					Err(e) => {
+						return Err(Error::new(ErrorKind::Other, "receive error"));
 					}
 				}
-
-				Ok(Event::Tick) => {
-				terminal.draw(|f| draw_dashboard(f, &app.dash_state, &mut app.monitors))?;
-				}
-
-				Err(error) => {
-				println!("{}", error);
-				}
-			}
 			},
 			(line) = logfiles_future => {
 			match line {
 				Some(Ok(line)) => {
-				let source_str = line.source().to_str().unwrap();
-				let source = String::from(source_str);
+					let source_str = line.source().to_str().unwrap();
+					let source = String::from(source_str);
 
-				match app.monitors.get_mut(&source) {
-					Some(monitor) => monitor.append_to_content(line.line())?,
-					None => (),
-				}
+					match app.monitors.get_mut(&source) {
+						Some(monitor) => monitor.append_to_content(line.line())?,
+						None => (),
+					}
 				},
-				Some(Err(e)) => panic!("{}", e),
+				Some(Err(e)) => return Err(e),
 				None => (),
 			}
 			},
