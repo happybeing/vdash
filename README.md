@@ -4,6 +4,8 @@
 
 **Status:** work in progress - not useful yet unless you want to help with testing.
 
+## Specification
+Feature requests and discussion are currently summarised in the opening post of the Safe Network forum topic: [Vault Dashboard ideas please!](https://safenetforum.org/t/vault-dashboard-ideas-please/32572?u=happybeing) 
 ## TODO
 Where `vdash` is headed:
 - [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
