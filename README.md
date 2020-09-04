@@ -98,7 +98,7 @@ You can control vault logging level by setting the environment variable `RUST_LO
 
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/safe-api/tree/master/safe-cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
-    safe vault -t run-baby-fleming
+    safe vault run-baby-fleming -t
     ```
 2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
     ```
