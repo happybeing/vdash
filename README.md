@@ -89,14 +89,22 @@ For more information:
 
     vdash --help
 
-### Vault Test
-When there is a live test network you will be able to use `vdash` with that, but pre-beta those test networks are only available intermittently. The following therefore shows how to run a local test network and use `vdash` with this.
+### Vault Setup
+When there is a live test network you will be able to use `vdash` with that, but pre-beta those test networks are only available intermittently. The following therefore shows how to run a local test network and use `vdash` with this. 
+
+**IMPORTANT:** You must ensure the vault logfile includes the telemetry information used by vdash. What's needed is expected to change as things progress, so for now I recommend using a logging level of 'debug' or 'trace'. If they affect performance you could try 'info', but some metrics will no longer be accurate. See next.
+
+You can control vault logging level by setting the environment variable `RUST_LOG` to one of 'warn', 'info', 'debug', or 'trace'. Or you can specify the log level on the the command line when starting the vault with `safe vault join`, using one of the options: -v (warn), -vv (info), -vvv (debug), or -vvvv (trace). 
 
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/safe-api/tree/master/safe-cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
     safe vault -t run-baby-fleming
     ```
 2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
+    ```
+    vdash ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
+    ```
+    Or with a live network:
     ```
     vdash ~/.safe/vault/local-vault/safe_vault.log
     ```
