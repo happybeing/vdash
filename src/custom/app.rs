@@ -129,18 +129,21 @@ impl LogMonitor {
 
 		for line in f.lines() {
 			let line = line.expect("Unable to read line");
-			self.process_line(&line)?
+			self.append_to_content(&line)?
 		}
 
 		Ok(())
 	}
 
-	pub fn process_line(&mut self, line: &str) -> Result<(), std::io::Error> {
-		self.metrics.gather_metrics(&line)?;
-		self.append_to_content(line) // Show in TUI
+	pub fn append_to_content(&mut self, text: &str) -> Result<(), std::io::Error> {
+		if self.line_filter(&text) {
+			self.metrics.gather_metrics(&text)?;
+			self._append_to_content(text)?; // Show in TUI
+		}
+		Ok(())
 	}
 
-	pub fn append_to_content(&mut self, text: &str) -> Result<(), std::io::Error> {
+	pub fn _append_to_content(&mut self, text: &str) -> Result<(), std::io::Error> {
 		self.content.items.push(text.to_string());
 		if self.content.items.len() > self.max_content {
 			self.content.items = self
@@ -151,7 +154,14 @@ impl LogMonitor {
 		Ok(())
 	}
 
-	fn _reset_metrics(&mut self) {}
+	// Some logfile lines are too numerous to include so we ignore them
+	// Returns true if the line is to be processed
+	fn line_filter(&mut self, line: &str) -> bool {
+		if line.contains("quinn-") && line.contains("connection.rs:") {
+			return false;
+		}
+		true
+	}
 }
 
 use regex::Regex;
