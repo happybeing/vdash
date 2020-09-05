@@ -90,11 +90,24 @@ For more information:
     vdash --help
 
 ### Vault Setup
-When there is a live test network you will be able to use `vdash` with that, but pre-beta those test networks are only available intermittently. The following therefore shows how to run a local test network and use `vdash` with this. 
+**IMPORTANT:** You must ensure the vault logfile includes the telemetry information used by vdash by setting the required logging level (e.g. 'info', or 'debug' etc).
 
-**IMPORTANT:** You must ensure the vault logfile includes the telemetry information used by vdash. What's needed is expected to change as things progress, so for now I recommend using a logging level of 'info' as the logfile is very large and takes a long time to read if you use 'debug' or 'trace'. See next.
+The required level may change as things progress, so for now I recommend using a logging level of 'info' to keep resources minimal. The logfile will be larger and **vdash** become slower, but may have access to more metrics if you increase the logging level to 'debug', or even 'trace'.
 
-You can control vault logging level by setting the environment variable `RUST_LOG` to one of 'warn', 'info', 'debug', or 'trace'. Or you can specify the log level on the the command line when starting the vault with `safe vault join`, using one of the options: -v (warn), -vv (info), -vvv (debug), or -vvvv (trace). 
+You control the vault logging level by setting the environment variable `RUST_LOG` but be aware that setting this to one of  to one of 'warn', 'info', 'debug', or 'trace' will apply this to *all* modules used by `safe_vault` code, not just the `safe_vault` module. You can though set the default to one level and different levels for other modules.
+
+For example, to set the default level to 'debug' for everything, except for the `quinn` module which generates a lot of unnecessary INFO log messages, module use:
+
+```sh
+RUST_LOG=debug,quinn=error safe vault join
+```
+Or
+```sh
+RUST_LOG=debug,quinn=error safe vault run-baby-fleming -t
+```
+When there is a live test network you will be able to use `vdash` with that, but pre-beta those test networks are only available intermittently. The following therefore shows how to run a local test network and use `vdash` with this.
+
+For clarity, RUST_LOG is not shown in subsequent examples, so don't forget to include it!
 
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/safe-api/tree/master/safe-cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
