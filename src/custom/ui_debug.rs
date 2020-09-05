@@ -2,6 +2,7 @@
 ///!
 ///! Edit src/custom/ui.rs to create a customised fork of logtail-dash
 use super::app::{DashState, DashViewMain, LogMonitor};
+use log;
 use std::collections::HashMap;
 
 use tui::{
@@ -18,6 +19,8 @@ pub fn draw_dashboard<B: Backend>(
 	dash_state: &DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
+	trace!("ui_debug.rs draw_dashboard()");
+
 	match dash_state.main_view {
 		DashViewMain::DashHorizontal => {}
 		DashViewMain::DashVertical => {}
