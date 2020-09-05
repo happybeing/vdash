@@ -20,6 +20,10 @@ use self::custom::app::{App, DashViewMain};
 use self::custom::opt::Opt;
 use self::custom::ui::draw_dashboard;
 
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+
 ///! logtail and its forks share code in src/
 #[path = "../mod.rs"]
 pub mod shared;
@@ -57,6 +61,9 @@ use tokio::stream::StreamExt;
 
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
+	env_logger::init();
+	info!("Started");
+
 	match terminal_main().await {
 		Ok(()) => (),
 		Err(e) => println!("{}", e),
@@ -75,6 +82,7 @@ async fn terminal_main() -> std::io::Result<()> {
 	let events = Events::new();
 
 	// Terminal initialization
+	info!("Intialising terminal (termion backend)");
 	let stdout = io::stdout().into_raw_mode()?;
 	let stdout = MouseTerminal::from(stdout);
 	let stdout = AlternateScreen::from(stdout);
@@ -83,6 +91,7 @@ async fn terminal_main() -> std::io::Result<()> {
 
 	// Use futures of async functions to handle events
 	// concurrently with logfile changes.
+	info!("Processing started");
 	loop {
 		let events_future = next_event(&events).fuse();
 		let logfiles_future = app.logfiles.next().fuse();
@@ -92,6 +101,7 @@ async fn terminal_main() -> std::io::Result<()> {
 			(e) = events_future => {
 				match e {
 					Ok(Event::Input(input)) => {
+						debug!("Event::Input({:#?})", input);
 						match input {
 						Key::Char('q')|
 						Key::Char('Q') => return Ok(()),
@@ -105,31 +115,44 @@ async fn terminal_main() -> std::io::Result<()> {
 					}
 
 					Ok(Event::Tick) => {
+						trace!("Event::Tick");
 						match terminal.draw(|f| draw_dashboard(f, &app.dash_state, &mut app.monitors)) {
 							Ok(_) => {},
-							Err(e) => return Err(e),
+							Err(e) => {
+								error!("terminal.draw() '{:#?}'", e);
+								return Err(e);
+							}
 						};
+						trace!("Event::Tick DONE");
 					}
 
 					Err(e) => {
+						error!("receive error '{:#?}'", e);
 						return Err(Error::new(ErrorKind::Other, "receive error"));
 					}
 				}
 			},
 			(line) = logfiles_future => {
-			match line {
-				Some(Ok(line)) => {
-					let source_str = line.source().to_str().unwrap();
-					let source = String::from(source_str);
+				trace!("logfiles_future line");
+				match line {
+					Some(Ok(line)) => {
+						let source_str = line.source().to_str().unwrap();
+						let source = String::from(source_str);
 
-					match app.monitors.get_mut(&source) {
-						Some(monitor) => monitor.append_to_content(line.line())?,
-						None => (),
-					}
-				},
-				Some(Err(e)) => return Err(e),
-				None => (),
-			}
+						match app.monitors.get_mut(&source) {
+							Some(monitor) => {
+								trace!("APPENDING: {}", line.line());
+								monitor.append_to_content(line.line())?
+							},
+							None => (),
+						}
+					},
+					Some(Err(e)) => {
+						error!("logfiles error '{:#?}'", e);
+						return Err(e)
+					},
+					None => (),
+				}
 			},
 		}
 	}

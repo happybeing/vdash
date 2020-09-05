@@ -18,6 +18,10 @@ use self::custom::app::{App, DashViewMain};
 use self::custom::opt::Opt;
 use self::custom::ui::draw_dashboard;
 
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+
 ///! logtail and its forks share code in src/
 #[path = "../mod.rs"]
 pub mod shared;
@@ -61,6 +65,9 @@ use tokio::stream::StreamExt;
 // RUSTFLAGS="-A unused" cargo run --bin logtail-crossterm --features="crossterm" /var/log/auth.log /var/log/dmesg
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
+	env_logger::init();
+	info!("Started");
+
 	let mut app = match App::new().await {
 		Ok(app) => app,
 		Err(e) => return Ok(()),
