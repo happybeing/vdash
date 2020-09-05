@@ -5,6 +5,8 @@ use super::app::{DashState, DashViewMain, LogMonitor};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
 use std::collections::HashMap;
 
+use log;
+
 use tui::{
 	backend::Backend,
 	layout::{Constraint, Corner, Direction, Layout, Rect},
@@ -90,6 +92,7 @@ fn draw_vault_stats<B: Backend>(
 	logfile: &String,
 	monitor: &mut LogMonitor,
 ) {
+	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
 	push_subheading(&mut items, &"Vault".to_string());
 	push_metric(
@@ -122,7 +125,7 @@ fn draw_vault_stats<B: Backend>(
 				.bg(Color::LightGreen)
 				.add_modifier(Modifier::BOLD),
 		);
-	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
+	f.render_stateful_widget(monitor_widget, area, &mut monitor.metrics_status.state);
 }
 
 fn push_subheading(items: &mut Vec<ListItem>, subheading: &String) {

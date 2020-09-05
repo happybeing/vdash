@@ -98,6 +98,7 @@ pub struct LogMonitor {
 	pub content: StatefulList<String>,
 	pub logfile: String,
 	pub metrics: VaultMetrics,
+	pub metrics_status: StatefulList<String>,
 	max_content: usize, // Limit number of lines in content
 }
 
@@ -113,6 +114,7 @@ impl LogMonitor {
 			max_content: max_lines,
 			metrics: VaultMetrics::new(),
 			content: StatefulList::with_items(vec![]),
+			metrics_status: StatefulList::with_items(vec![]),
 		}
 	}
 
