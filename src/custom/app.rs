@@ -183,7 +183,7 @@ lazy_static::lazy_static! {
 
 pub enum VaultAgebracket {
 	Unknown,
-	Child,
+	Infant,
 	Adult,
 	Elder,
 }
@@ -219,7 +219,7 @@ impl VaultMetrics {
 			category_count: HashMap::new(),
 
 			// State (vault)
-			agebracket: VaultAgebracket::Child,
+			agebracket: VaultAgebracket::Infant,
 
 			// State (network)
 			adults: 0,
@@ -233,7 +233,7 @@ impl VaultMetrics {
 
 	pub fn agebracket_string(&self) -> String {
 		match self.agebracket {
-			VaultAgebracket::Child => "Child".to_string(),
+			VaultAgebracket::Infant => "Infant".to_string(),
 			VaultAgebracket::Adult => "Adult".to_string(),
 			VaultAgebracket::Elder => "Elder".to_string(),
 			VaultAgebracket::Unknown => "Unknown".to_string(),
@@ -241,7 +241,7 @@ impl VaultMetrics {
 	}
 
 	fn reset_metrics(&mut self) {
-		self.agebracket = VaultAgebracket::Child;
+		self.agebracket = VaultAgebracket::Infant;
 		self.adults = 0;
 		self.elders = 0;
 	}
@@ -363,7 +363,7 @@ impl VaultMetrics {
 		{
 			self.parser_output = format!("Vault agebracket: {}", agebracket);
 			self.agebracket = match agebracket {
-				"Child" => VaultAgebracket::Child,
+				"Infant" => VaultAgebracket::Infant,
 				"Adult" => VaultAgebracket::Adult,
 				"Elder" => VaultAgebracket::Elder,
 				_ => {
