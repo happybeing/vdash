@@ -36,7 +36,7 @@ impl App {
 		let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
 		let mut logfiles = MuxedLines::new()?;
 		let mut parser_output: Option<tempfile::NamedTempFile> = if opt.debug_parser {
-			dash_state.main_view = DashViewMain::DashVertical;
+			dash_state.main_view = DashViewMain::DashDebug;
 			opt.files = opt.files[0..1].to_vec();
 			let named_file = NamedTempFile::new()?;
 			let path = named_file.path();
