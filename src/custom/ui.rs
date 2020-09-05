@@ -190,6 +190,12 @@ fn draw_logfile<B: Backend>(
 	logfile: &String,
 	monitor: &mut LogMonitor,
 ) {
+	if monitor.content.items.len() > 0 {
+		monitor
+			.content
+			.state
+			.select(Some(monitor.content.items.len() - 1));
+	}
 	let items: Vec<ListItem> = monitor
 		.content
 		.items
