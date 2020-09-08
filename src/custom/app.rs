@@ -193,7 +193,8 @@ pub struct VaultMetrics {
 	pub running_message: Option<String>,
 	pub running_version: Option<String>,
 	pub category_count: HashMap<String, usize>,
-	pub timeline: Vec<LogEntry>,
+	pub activity_history: Vec<ActivityEntry>,
+	pub log_history: Vec<LogEntry>,
 	pub most_recent: Option<DateTime<FixedOffset>>,
 	pub agebracket: VaultAgebracket,
 	pub adults: usize,
@@ -211,8 +212,9 @@ impl VaultMetrics {
 			running_message: None,
 			running_version: None,
 
-			// Timeline
-			timeline: Vec::<LogEntry>::new(),
+			// Timelines
+			activity_history: Vec::<ActivityEntry>::new(),
+			log_history: Vec::<LogEntry>::new(),
 			most_recent: None,
 
 			// Counts
@@ -247,11 +249,11 @@ impl VaultMetrics {
 	}
 
 	///! Process a line from a SAFE Vault logfile.
-	///! May add a LogEntry to the VaultMetrics::timeline vector.
+	///! May add a LogEntry to the VaultMetrics::log_history vector.
 	///! Use a created LogEntry to update metrics.
 	pub fn gather_metrics(&mut self, line: &str) -> Result<(), std::io::Error> {
 		// For debugging LogEntry::decode()
-		let mut parser_result = String::from("");
+		let mut parser_result = format!("LogEntry::decode() failed on: {}", line);
 		if let Some(mut entry) = LogEntry::decode(line).or_else(|| self.parse_start(line)) {
 			if entry.time.is_none() {
 				entry.time = self.most_recent;
@@ -260,11 +262,11 @@ impl VaultMetrics {
 			}
 
 			self.parser_output = entry.parser_output.clone();
-			self.parse_states(&entry); // May overwrite self.parser_output
+			self.process_logfile_entry(&entry); // May overwrite self.parser_output
 			parser_result = self.parser_output.clone();
-			self.timeline.push(entry);
+			self.log_history.push(entry);
 
-			// TODO Trim timeline
+			// TODO Trim log_history
 		}
 
 		// --debug-parser - prints parser results for a single logfile
@@ -311,8 +313,43 @@ impl VaultMetrics {
 		None
 	}
 
-	///! Capture state updates and return true if metrics were updated
-	pub fn parse_states(&mut self, entry: &LogEntry) -> bool {
+	///! Process a logfile entry
+	///! Returns true if the line has been processed and can be discarded
+	pub fn process_logfile_entry(&mut self, entry: &LogEntry) -> bool {
+		return self.parse_data_response(
+			&entry,
+			"Responded to our data handlers with: Response { response: Response::",
+		) || self.parse_states(&entry);
+	}
+
+	///! Update data metrics from a handler response logfile entry
+	///! Returns true if the line has been processed and can be discarded
+	fn parse_data_response(&mut self, entry: &LogEntry, pattern: &str) -> bool {
+		if let Some(mut response_start) = entry.logstring.find(pattern) {
+			response_start += pattern.len();
+			let mut response = "";
+
+			if let Some(response_end) = entry.logstring[response_start..].find(",") {
+				response = entry.logstring.as_str()[response_start..response_start + response_end].as_ref();
+				if !response.is_empty() {
+					self
+						.activity_history
+						.push(ActivityEntry::new(entry, response));
+					self.parser_output = format!("vault activity: {}", response);
+				}
+			}
+			if response.is_empty() {
+				self.parser_output = format!("failed to parse_data_response: {}", entry.logstring);
+			};
+
+			return true;
+		};
+		return false;
+	}
+
+	///! Capture state updates from a logfile entry
+	///! Returns true if the line has been processed and can be discarded
+	fn parse_states(&mut self, entry: &LogEntry) -> bool {
 		let mut updated = false;
 		let re = Regex::new(
 			r"(?x)
@@ -390,7 +427,32 @@ impl VaultMetrics {
 	}
 }
 
-///! Decoded logfile entries for a vault timeline metric
+///! Vault activity for vault activity_history
+pub struct ActivityEntry {
+	pub activity: String,
+	pub logstring: String,
+	pub category: String, // First word, "Running", "INFO", "WARN" etc
+	pub time: Option<DateTime<FixedOffset>>,
+	pub source: String,
+
+	pub parser_output: String,
+}
+
+impl ActivityEntry {
+	pub fn new(entry: &LogEntry, activity: &str) -> ActivityEntry {
+		ActivityEntry {
+			activity: activity.to_string(),
+			logstring: entry.logstring.clone(),
+			category: entry.category.clone(),
+			time: entry.time,
+			source: entry.source.clone(),
+
+			parser_output: String::from(""),
+		}
+	}
+}
+
+///! Decoded logfile entries for a vault log history
 pub struct LogEntry {
 	pub logstring: String,
 	pub category: String, // First word, "Running", "INFO", "WARN" etc
@@ -420,13 +482,13 @@ impl LogEntry {
 			return None;
 		}
 
-		LogEntry::parse_info_line(line)
+		LogEntry::parse_logfile_line(line)
 	}
 
 	///! Parse a line of the form:
 	///!    INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
 	///!    WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
-	fn parse_info_line(line: &str) -> Option<LogEntry> {
+	fn parse_logfile_line(line: &str) -> Option<LogEntry> {
 		let captures = LOG_LINE_PATTERN.captures(line)?;
 
 		let category = captures.name("category").map_or("", |m| m.as_str());
