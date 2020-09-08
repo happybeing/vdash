@@ -127,11 +127,12 @@ fn draw_vault_stats<B: Backend>(
 		&"Elders".to_string(),
 		&monitor.metrics.elders.to_string(),
 	);
-	push_metric(
-		&mut items,
-		&"Adults".to_string(),
-		&monitor.metrics.elders.to_string(),
-	);
+	// TODO re-instate when available
+	// push_metric(
+	// 	&mut items,
+	// 	&"Adults".to_string(),
+	// 	&monitor.metrics.elders.to_string(),
+	// );
 
 	let monitor_widget = List::new(items)
 		.block(

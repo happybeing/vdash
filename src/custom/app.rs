@@ -360,10 +360,10 @@ impl VaultMetrics {
 	///! Returns true if the line has been processed and can be discarded
 	fn parse_states(&mut self, entry: &LogEntry) -> bool {
 		let mut updated = false;
+		// TODO re-instate if can count adults using "|^.*vault\.rs.*No.\ of\ Adults:\ (?P<adults>\d+)"
 		let re = Regex::new(
 			r"(?x)
-			 ^.*vault\.rs.*No.\ of\ Elders:\ (?P<elders>\d+)
-			|^.*vault\.rs.*No.\ of\ Adults:\ (?P<adults>\d+)
+			 ^.*network_stats\.rs.*Known\ elders:\ *(?P<elders>\d+)
 			|^.*vault\.rs.*Initializing\ new\ Vault\ as\ (?P<initas>[[:alpha:]]+)
 			|^.*vault\.rs.*Vault\ promoted\ to\ (?P<promoteto>[[:alpha:]]+)",
 		)
