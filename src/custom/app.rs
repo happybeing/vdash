@@ -199,6 +199,9 @@ pub struct VaultMetrics {
 	pub agebracket: VaultAgebracket,
 	pub adults: usize,
 	pub elders: usize,
+	pub activity_gets: u64,
+	pub activity_muts: u64,
+	pub activity_other: u64,
 
 	pub debug_logfile: Option<NamedTempFile>,
 	parser_output: String,
@@ -219,6 +222,9 @@ impl VaultMetrics {
 
 			// Counts
 			category_count: HashMap::new(),
+			activity_gets: 0,
+			activity_muts: 0,
+			activity_other: 0,
 
 			// State (vault)
 			agebracket: VaultAgebracket::Infant,
@@ -246,6 +252,9 @@ impl VaultMetrics {
 		self.agebracket = VaultAgebracket::Infant;
 		self.adults = 0;
 		self.elders = 0;
+		self.activity_gets = 0;
+		self.activity_muts = 0;
+		self.activity_other = 0;
 	}
 
 	///! Process a line from a SAFE Vault logfile.
@@ -332,9 +341,9 @@ impl VaultMetrics {
 			if let Some(response_end) = entry.logstring[response_start..].find(",") {
 				response = entry.logstring.as_str()[response_start..response_start + response_end].as_ref();
 				if !response.is_empty() {
-					self
-						.activity_history
-						.push(ActivityEntry::new(entry, response));
+					let activity_entry = ActivityEntry::new(entry, response);
+					self.parse_activity_counts(&activity_entry);
+					self.activity_history.push(activity_entry);
 					self.parser_output = format!("vault activity: {}", response);
 				}
 			}
@@ -414,8 +423,19 @@ impl VaultMetrics {
 		false
 	}
 
+	///! Counts vault activity in categories GET, PUT and other
+	pub fn parse_activity_counts(&mut self, entry: &ActivityEntry) {
+		if entry.activity.starts_with("Get") {
+			self.activity_gets += 1;
+		} else if entry.activity.starts_with("Mut") {
+			self.activity_muts += 1;
+		} else {
+			self.activity_other += 1;
+		}
+	}
+
 	///! TODO
-	pub fn parse_counts(&mut self, entry: &LogEntry) {
+	pub fn parse_logentry_counts(&mut self, entry: &LogEntry) {
 		// Categories ('INFO', 'WARN' etc)
 		if !entry.category.is_empty() {
 			let count = match self.category_count.get(&entry.category) {

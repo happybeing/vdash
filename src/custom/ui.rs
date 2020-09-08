@@ -102,6 +102,25 @@ fn draw_vault_stats<B: Backend>(
 	);
 
 	push_subheading(&mut items, &"".to_string());
+	push_metric(
+		&mut items,
+		&"GETS".to_string(),
+		&monitor.metrics.activity_gets.to_string(),
+	);
+
+	push_metric(
+		&mut items,
+		&"PUTS".to_string(),
+		&monitor.metrics.activity_muts.to_string(),
+	);
+
+	push_metric(
+		&mut items,
+		&"Other".to_string(),
+		&monitor.metrics.activity_other.to_string(),
+	);
+
+	push_subheading(&mut items, &"".to_string());
 	push_subheading(&mut items, &"Network".to_string());
 	push_metric(
 		&mut items,
