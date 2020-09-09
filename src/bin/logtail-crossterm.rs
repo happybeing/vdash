@@ -134,14 +134,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 			(line) = logfiles_future => {
 			match line {
 				Some(Ok(line)) => {
+					trace!("logfiles_future line");
 					app.dash_state._debug_window(format!("logfile: {}", line.line()).as_str());
 					let source_str = line.source().to_str().unwrap();
-				let source = String::from(source_str);
+					let source = String::from(source_str);
 
-				match app.monitors.get_mut(&source) {
-					Some(monitor) => monitor.append_to_content(line.line())?,
-					None => (),
-				}
+					match app.monitors.get_mut(&source) {
+						Some(monitor) => monitor.append_to_content(line.line())?,
+						None => (),
+					}
 				},
 				Some(Err(e)) => {
 					app.dash_state._debug_window(format!("logfile error: {:#?}", e).as_str());
