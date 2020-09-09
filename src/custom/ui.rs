@@ -18,7 +18,7 @@ use tui::{
 
 pub fn draw_dashboard<B: Backend>(
 	f: &mut Frame<B>,
-	dash_state: &DashState,
+	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
 	match dash_state.main_view {
@@ -36,7 +36,7 @@ pub fn draw_dashboard<B: Backend>(
 
 fn draw_vault_dash<B: Backend>(
 	f: &mut Frame<B>,
-	dash_state: &DashState,
+	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
 	// Horizonatal bands:
@@ -62,13 +62,13 @@ fn draw_vault_dash<B: Backend>(
 	// Stats and Graphs / Timeline / Logfile
 	draw_vault(f, chunks[0], &mut monitor);
 	draw_timeline(f, chunks[1], &mut monitor);
-	draw_bottom_panel(f, chunks[2], &dash_state, &logfile, &mut monitor);
+	draw_bottom_panel(f, chunks[2], dash_state, &logfile, &mut monitor);
 }
 
 fn draw_bottom_panel<B: Backend>(
 	f: &mut Frame<B>,
 	area: Rect,
-	dash_state: &DashState,
+	dash_state: &mut DashState,
 	logfile: &String,
 	monitor: &mut LogMonitor,
 ) {
@@ -85,7 +85,7 @@ fn draw_bottom_panel<B: Backend>(
 			.split(area);
 
 		draw_logfile(f, chunks[0], &logfile, monitor);
-		draw_logfile(f, chunks[1], &logfile, monitor);
+		draw_debug_window(f, chunks[1], dash_state, monitor);
 	} else {
 		draw_logfile(f, area, &logfile, monitor);
 	}
@@ -251,9 +251,49 @@ fn draw_logfile<B: Backend>(
 	f.render_stateful_widget(logfile_widget, area, &mut monitor.content.state);
 }
 
+fn draw_debug_window<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	dash_state: &mut DashState,
+	monitor: &mut LogMonitor,
+) {
+	if dash_state.debug_window_list.items.len() > 0 {
+		dash_state
+			.debug_window_list
+			.state
+			.select(Some(dash_state.debug_window_list.items.len() - 1));
+	}
+	let items: Vec<ListItem> = dash_state
+		.debug_window_list
+		.items
+		.iter()
+		.map(|s| {
+			ListItem::new(vec![Spans::from(s.clone())])
+				.style(Style::default().fg(Color::Black).bg(Color::White))
+		})
+		.collect();
+
+	let debug_window_widget = List::new(items)
+		.block(
+			Block::default()
+				.borders(Borders::ALL)
+				.title(String::from("Debug Window")),
+		)
+		.highlight_style(
+			Style::default()
+				.bg(Color::LightGreen)
+				.add_modifier(Modifier::BOLD),
+		);
+	f.render_stateful_widget(
+		debug_window_widget,
+		area,
+		&mut dash_state.debug_window_list.state,
+	);
+}
+
 fn draw_dash_horizontal<B: Backend>(
 	f: &mut Frame<B>,
-	dash_state: &DashState,
+	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
 	let constraints = make_percentage_constraints(monitors.len());
@@ -304,7 +344,7 @@ fn draw_dash_horizontal<B: Backend>(
 
 fn draw_dash_vertical<B: Backend>(
 	f: &mut Frame<B>,
-	dash_state: &DashState,
+	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
 	let constraints = make_percentage_constraints(monitors.len());

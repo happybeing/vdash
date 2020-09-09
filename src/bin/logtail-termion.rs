@@ -116,7 +116,7 @@ async fn terminal_main() -> std::io::Result<()> {
 
 					Ok(Event::Tick) => {
 						trace!("Event::Tick");
-						match terminal.draw(|f| draw_dashboard(f, &app.dash_state, &mut app.monitors)) {
+						match terminal.draw(|f| draw_dashboard(f, &mut app.dash_state, &mut app.monitors)) {
 							Ok(_) => {},
 							Err(e) => {
 								error!("terminal.draw() '{:#?}'", e);

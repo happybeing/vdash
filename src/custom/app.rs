@@ -550,6 +550,10 @@ pub struct DashState {
 	pub main_view: DashViewMain,
 	pub debug_window: bool,
 	pub debug_dashboard: bool,
+	max_debug_window: usize,
+
+	// For --debug-window option
+	pub debug_window_list: StatefulList<String>,
 
 	// For DashViewMain::DashVertical
 	dash_vertical: DashVertical,
@@ -562,6 +566,18 @@ impl DashState {
 			dash_vertical: DashVertical::new(),
 			debug_dashboard: false,
 			debug_window: false,
+			debug_window_list: StatefulList::new(),
+			max_debug_window: 100,
+		}
+	}
+
+	pub fn _debug_window(&mut self, text: &str) {
+		self.debug_window_list.items.push(text.to_string());
+		if self.debug_window_list.items.len() > self.max_debug_window {
+			self.debug_window_list.items = self
+				.debug_window_list
+				.items
+				.split_off(self.debug_window_list.items.len() - self.max_debug_window);
 		}
 	}
 }
