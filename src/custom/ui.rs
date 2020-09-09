@@ -25,7 +25,7 @@ pub fn draw_dashboard<B: Backend>(
 		DashViewMain::DashHorizontal => draw_vault_dash(f, dash_state, monitors),
 		DashViewMain::DashVertical => draw_vault_dash(f, dash_state, monitors),
 		DashViewMain::DashDebug => {
-			if (dash_state.debug_ui) {
+			if (dash_state.debug_dashboard) {
 				debug_draw_dashboard(f, dash_state, monitors);
 			} else {
 				draw_dash_vertical(f, dash_state, monitors)
@@ -43,7 +43,7 @@ fn draw_vault_dash<B: Backend>(
 	let constraints = [
 		Constraint::Length(12), // Stats summary and graphs
 		Constraint::Length(12), // Timeline
-		Constraint::Min(0),     // Logfile tail
+		Constraint::Min(0),     // Bottom panel
 	];
 
 	let size = f.size();
@@ -60,17 +60,38 @@ fn draw_vault_dash<B: Backend>(
 	let (logfile, mut monitor) = entry;
 
 	// Stats and Graphs / Timeline / Logfile
-	draw_vault(f, chunks[0], &logfile, &mut monitor);
-	draw_timeline(f, chunks[1], &logfile, &mut monitor);
-	draw_logfile(f, chunks[2], &logfile, &mut monitor);
+	draw_vault(f, chunks[0], &mut monitor);
+	draw_timeline(f, chunks[1], &mut monitor);
+	draw_bottom_panel(f, chunks[2], &dash_state, &logfile, &mut monitor);
 }
 
-fn draw_vault<B: Backend>(
+fn draw_bottom_panel<B: Backend>(
 	f: &mut Frame<B>,
 	area: Rect,
+	dash_state: &DashState,
 	logfile: &String,
 	monitor: &mut LogMonitor,
 ) {
+	if dash_state.debug_window {
+		// Vertical split:
+		let constraints = [
+			Constraint::Percentage(50), // Logfile
+			Constraint::Percentage(50), // Debug window
+		];
+
+		let chunks = Layout::default()
+			.direction(Direction::Horizontal)
+			.constraints(constraints.as_ref())
+			.split(area);
+
+		draw_logfile(f, chunks[0], &logfile, monitor);
+		draw_logfile(f, chunks[1], &logfile, monitor);
+	} else {
+		draw_logfile(f, area, &logfile, monitor);
+	}
+}
+
+fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// Columns:
 	let constraints = [
 		Constraint::Length(40), // Stats summary
@@ -82,16 +103,11 @@ fn draw_vault<B: Backend>(
 		.constraints(constraints.as_ref())
 		.split(area);
 
-	draw_vault_stats(f, chunks[0], logfile, monitor);
-	draw_vault_graphs(f, chunks[1], logfile, monitor);
+	draw_vault_stats(f, chunks[0], monitor);
+	draw_vault_graphs(f, chunks[1], monitor);
 }
 
-fn draw_vault_stats<B: Backend>(
-	f: &mut Frame<B>,
-	area: Rect,
-	logfile: &String,
-	monitor: &mut LogMonitor,
-) {
+fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
 	push_subheading(&mut items, &"Vault".to_string());
@@ -163,12 +179,7 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	);
 }
 
-fn draw_vault_graphs<B: Backend>(
-	f: &mut Frame<B>,
-	area: Rect,
-	logfile: &String,
-	monitor: &mut LogMonitor,
-) {
+fn draw_vault_graphs<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO draw some graphs!
 
 	let monitor_widget = List::new(Vec::<ListItem>::new())
@@ -185,12 +196,7 @@ fn draw_vault_graphs<B: Backend>(
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
 }
 
-fn draw_timeline<B: Backend>(
-	f: &mut Frame<B>,
-	area: Rect,
-	logfile: &String,
-	monitor: &mut LogMonitor,
-) {
+fn draw_timeline<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO draw the timeline!
 
 	let monitor_widget = List::new(Vec::<ListItem>::new())

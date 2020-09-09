@@ -33,9 +33,10 @@ impl App {
 			return Err(Error::new(ErrorKind::Other, "missing logfiles"));
 		}
 		let mut dash_state = DashState::new();
+		dash_state.debug_window = opt.debug_window;
 		let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
 		let mut logfiles = MuxedLines::new()?;
-		let mut parser_output: Option<tempfile::NamedTempFile> = if opt.debug_parser {
+		let mut parser_output: Option<tempfile::NamedTempFile> = if opt.debug_dashboard {
 			dash_state.main_view = DashViewMain::DashDebug;
 			opt.files = opt.files[0..1].to_vec();
 			let named_file = NamedTempFile::new()?;
@@ -52,11 +53,11 @@ impl App {
 		for f in &opt.files {
 			println!("file: {}", f);
 			let mut monitor = LogMonitor::new(f.to_string(), opt.lines_max);
-			if opt.debug_parser && monitor.index == 0 {
+			if opt.debug_dashboard && monitor.index == 0 {
 				if let Some(named_file) = parser_output {
 					monitor.metrics.debug_logfile = Some(named_file);
 					parser_output = None;
-					dash_state.debug_ui = true;
+					dash_state.debug_dashboard = true;
 				}
 			}
 			if opt.ignore_existing {
@@ -547,7 +548,8 @@ pub enum DashViewMain {
 
 pub struct DashState {
 	pub main_view: DashViewMain,
-	pub debug_ui: bool,
+	pub debug_window: bool,
+	pub debug_dashboard: bool,
 
 	// For DashViewMain::DashVertical
 	dash_vertical: DashVertical,
@@ -558,7 +560,8 @@ impl DashState {
 		DashState {
 			main_view: DashViewMain::DashHorizontal,
 			dash_vertical: DashVertical::new(),
-			debug_ui: false,
+			debug_dashboard: false,
+			debug_window: false,
 		}
 	}
 }

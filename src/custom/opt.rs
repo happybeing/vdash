@@ -25,7 +25,11 @@ pub struct Opt {
 	#[structopt(name = "LOGFILE")]
 	pub files: Vec<String>,
 
-	/// Parses first logfile, prints results to second and shows side-by-side (logtail-crossterm only)
+	/// Show a debug window to the right of the logfile view in main dashboard
 	#[structopt(short, long)]
-	pub debug_parser: bool,
+	pub debug_window: bool,
+
+	/// Parses first logfile, prints results to second and shows side-by-side (logtail-crossterm only)
+	#[structopt(long)]
+	pub debug_dashboard: bool,
 }
