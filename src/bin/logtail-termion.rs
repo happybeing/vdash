@@ -101,7 +101,7 @@ async fn terminal_main() -> std::io::Result<()> {
 			(e) = events_future => {
 				match e {
 					Ok(Event::Input(input)) => {
-						debug!("Event::Input({:#?})", input);
+						app.dash_state._debug_window(format!("Event::Input({:#?})", input).as_str());
 						match input {
 						Key::Char('q')|
 						Key::Char('Q') => return Ok(()),
@@ -136,6 +136,7 @@ async fn terminal_main() -> std::io::Result<()> {
 				trace!("logfiles_future line");
 				match line {
 					Some(Ok(line)) => {
+						app.dash_state._debug_window(format!("logfile: {}", line.line()).as_str());
 						let source_str = line.source().to_str().unwrap();
 						let source = String::from(source_str);
 
@@ -148,10 +149,14 @@ async fn terminal_main() -> std::io::Result<()> {
 						}
 					},
 					Some(Err(e)) => {
+						app.dash_state._debug_window(format!("logfile error: {:#?}", e).as_str());
 						error!("logfiles error '{:#?}'", e);
 						return Err(e)
 					},
-					None => (),
+					None => {
+						app.dash_state._debug_window(format!("logfile error: None").as_str());
+						()
+					}
 				}
 			},
 		}
