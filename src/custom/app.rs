@@ -92,6 +92,47 @@ impl App {
 			logfiles,
 		})
 	}
+
+	pub fn get_vault_with_focus(&mut self) -> Option<(&String, &mut LogMonitor)> {
+		(&mut self.monitors).into_iter().next() // Use first vault until user can select focus
+	}
+
+	pub fn handle_arrow_up(&mut self) {
+		if !self.opt.debug_window {
+			if let Some(vault) = self.get_vault_with_focus() {
+				do_bracketed_next_previous(&mut vault.1.content, false);
+			}
+		} else {
+			do_bracketed_next_previous(&mut self.dash_state.debug_window_list, false);
+		}
+	}
+
+	pub fn handle_arrow_down(&mut self) {
+		if !self.opt.debug_window {
+			if let Some(vault) = self.get_vault_with_focus() {
+				do_bracketed_next_previous(&mut vault.1.content, true);
+			}
+		} else {
+			do_bracketed_next_previous(&mut self.dash_state.debug_window_list, true);
+		}
+	}
+}
+
+/// Move selection forward or back without wrapping at start or end
+fn do_bracketed_next_previous(list: &mut StatefulList<String>, next: bool) {
+	if (next) {
+		if let Some(selected) = list.state.selected() {
+			if selected != list.items.len() - 1 {
+				list.next();
+			}
+		}
+	} else {
+		if let Some(selected) = list.state.selected() {
+			if selected != 0 {
+				list.previous();
+			}
+		}
+	}
 }
 
 pub struct LogMonitor {
@@ -133,6 +174,13 @@ impl LogMonitor {
 		for line in f.lines() {
 			let line = line.expect("Unable to read line");
 			self.append_to_content(&line)?
+		}
+
+		if self.content.items.len() > 0 {
+			self
+				.content
+				.state
+				.select(Some(self.content.items.len() - 1));
 		}
 
 		Ok(())

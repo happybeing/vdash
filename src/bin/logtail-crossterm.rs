@@ -9,7 +9,7 @@
 //!
 //! See README for more information.
 
-#![recursion_limit = "256"] // Prevent select! macro blowing up
+#![recursion_limit = "512"] // Prevent select! macro blowing up
 
 ///! forks of logterm customise the files in src/custom
 #[path = "../custom/mod.rs"]
@@ -85,7 +85,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 	// Use futures of async functions to handle events
 	// concurrently with logfile changes.
 	loop {
-		terminal.draw(|f| draw_dashboard(f, &app.dash_state, &mut app.monitors))?;
+		terminal.draw(|f| draw_dashboard(f, &mut app.dash_state, &mut app.monitors))?;
 		let logfiles_future = app.logfiles.next().fuse();
 		let events_future = next_event(&rx).fuse();
 		pin_mut!(logfiles_future, events_future);
@@ -93,24 +93,31 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 		select! {
 			(e) = events_future => {
 			match e {
-				Ok(Event::Input(event)) => match event.code {
-				KeyCode::Char('q')|
-				KeyCode::Char('Q') => {
-					disable_raw_mode()?;
-					execute!(
-						terminal.backend_mut(),
-						LeaveAlternateScreen,
-						DisableMouseCapture
-					)?;
-					terminal.show_cursor()?;
-					break Ok(());
-				},
-				KeyCode::Char('h')|
-				KeyCode::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
-				KeyCode::Char('v')|
-				KeyCode::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
-				KeyCode::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
-				_ => {},
+				Ok(Event::Input(event)) => {
+					match event.code {
+						// For debugging, ~ sends a line to the debug_window
+						KeyCode::Char('~') => app.dash_state._debug_window(format!("Event::Input({:#?})", event).as_str()),
+
+						KeyCode::Char('q')|
+						KeyCode::Char('Q') => {
+							disable_raw_mode()?;
+							execute!(
+								terminal.backend_mut(),
+								LeaveAlternateScreen,
+								DisableMouseCapture
+							)?;
+							terminal.show_cursor()?;
+							break Ok(());
+						},
+						KeyCode::Char('h')|
+						KeyCode::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
+						KeyCode::Char('v')|
+						KeyCode::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
+						KeyCode::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
+						KeyCode::Down => app.handle_arrow_down(),
+						KeyCode::Up => app.handle_arrow_up(),
+						_ => {}
+					}
 				}
 
 				Ok(Event::Tick) => {
@@ -127,7 +134,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 			(line) = logfiles_future => {
 			match line {
 				Some(Ok(line)) => {
-				let source_str = line.source().to_str().unwrap();
+					app.dash_state._debug_window(format!("logfile: {}", line.line()).as_str());
+					let source_str = line.source().to_str().unwrap();
 				let source = String::from(source_str);
 
 				match app.monitors.get_mut(&source) {
@@ -135,7 +143,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 					None => (),
 				}
 				},
-				Some(Err(e)) => panic!("{}", e),
+				Some(Err(e)) => {
+					app.dash_state._debug_window(format!("logfile error: {:#?}", e).as_str());
+					panic!("{}", e)
+				}
 				None => (),
 			}
 			},

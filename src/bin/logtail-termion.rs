@@ -101,16 +101,20 @@ async fn terminal_main() -> std::io::Result<()> {
 			(e) = events_future => {
 				match e {
 					Ok(Event::Input(input)) => {
-						app.dash_state._debug_window(format!("Event::Input({:#?})", input).as_str());
 						match input {
-						Key::Char('q')|
-						Key::Char('Q') => return Ok(()),
-						Key::Char('h')|
-						Key::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
-						Key::Char('v')|
-						Key::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
-						Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
-						_ => {},
+							// For debugging, ~ sends a line to the debug_window
+							Key::Char('~') => app.dash_state._debug_window(format!("Event::Input({:#?})", input).as_str()),
+
+							Key::Char('q')|
+							Key::Char('Q') => return Ok(()),
+							Key::Char('h')|
+							Key::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
+							Key::Char('v')|
+							Key::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
+							Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
+							Key::Down => app.handle_arrow_down(),
+							Key::Up => app.handle_arrow_up(),
+							_ => {},
 						}
 					}
 

@@ -219,12 +219,6 @@ fn draw_logfile<B: Backend>(
 	logfile: &String,
 	monitor: &mut LogMonitor,
 ) {
-	if monitor.content.items.len() > 0 {
-		monitor
-			.content
-			.state
-			.select(Some(monitor.content.items.len() - 1));
-	}
 	let items: Vec<ListItem> = monitor
 		.content
 		.items
@@ -257,11 +251,8 @@ fn draw_debug_window<B: Backend>(
 	dash_state: &mut DashState,
 	monitor: &mut LogMonitor,
 ) {
-	if dash_state.debug_window_list.items.len() > 0 {
-		dash_state
-			.debug_window_list
-			.state
-			.select(Some(dash_state.debug_window_list.items.len() - 1));
+	if dash_state.debug_window_list.items.len() == 1 {
+		dash_state.debug_window_list.state.select(Some(0));
 	}
 	let items: Vec<ListItem> = dash_state
 		.debug_window_list
