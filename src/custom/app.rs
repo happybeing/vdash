@@ -286,11 +286,11 @@ impl LogMonitor {
 
 	pub fn _append_to_content(&mut self, text: &str) -> Result<(), std::io::Error> {
 		self.content.items.push(text.to_string());
-		if self.content.items.len() > self.max_content {
-			self.content.items = self
-				.content
-				.items
-				.split_off(self.content.items.len() - self.max_content);
+		let len = self.content.items.len();
+		if len > self.max_content {
+			self.content.items = self.content.items.split_off(len - self.max_content);
+		} else {
+			self.content.state.select(Some(len - 1));
 		}
 		Ok(())
 	}
@@ -710,11 +710,15 @@ impl DashState {
 
 	pub fn _debug_window(&mut self, text: &str) {
 		self.debug_window_list.items.push(text.to_string());
-		if self.debug_window_list.items.len() > self.max_debug_window {
+		let len = self.debug_window_list.items.len();
+
+		if len > self.max_debug_window {
 			self.debug_window_list.items = self
 				.debug_window_list
 				.items
-				.split_off(self.debug_window_list.items.len() - self.max_debug_window);
+				.split_off(len - self.max_debug_window);
+		} else {
+			self.debug_window_list.state.select(Some(len - 1));
 		}
 	}
 }

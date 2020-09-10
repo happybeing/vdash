@@ -255,10 +255,6 @@ fn draw_debug_window<B: Backend>(
 	dash_state: &mut DashState,
 	monitor: &mut LogMonitor,
 ) {
-	if dash_state.debug_window_list.items.len() == 1 {
-		dash_state.debug_window_list.state.select(Some(0));
-	}
-
 	let highlight_style = match dash_state.debug_window_has_focus {
 		true => Style::default()
 			.bg(Color::LightGreen)
