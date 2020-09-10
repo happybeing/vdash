@@ -114,7 +114,9 @@ async fn terminal_main() -> std::io::Result<()> {
 							Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
 							Key::Down => app.handle_arrow_down(),
 							Key::Up => app.handle_arrow_up(),
-							_ => {},
+							Key::Right => app.change_focus_next(),
+							Key::Left => app.change_focus_previous(),
+								_ => {},
 						}
 					}
 

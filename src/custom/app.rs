@@ -13,11 +13,15 @@ use tempfile::NamedTempFile;
 use crate::custom::opt::Opt;
 use crate::shared::util::StatefulList;
 
+pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
+
 pub struct App {
 	pub opt: Opt,
 	pub dash_state: DashState,
 	pub monitors: HashMap<String, LogMonitor>,
+	pub logfile_with_focus: String,
 	pub logfiles: MuxedLines,
+	pub logfile_names: Vec<String>,
 }
 
 impl App {
@@ -36,6 +40,9 @@ impl App {
 		dash_state.debug_window = opt.debug_window;
 		let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
 		let mut logfiles = MuxedLines::new()?;
+		let mut name_for_focus = String::new();
+		let mut logfile_names = Vec::<String>::new();
+
 		let mut parser_output: Option<tempfile::NamedTempFile> = if opt.debug_dashboard {
 			dash_state.main_view = DashViewMain::DashDebug;
 			opt.files = opt.files[0..1].to_vec();
@@ -61,10 +68,12 @@ impl App {
 				}
 			}
 			if opt.ignore_existing {
+				logfile_names.push(f.to_string());
 				monitors.insert(f.to_string(), monitor);
 			} else {
 				match monitor.load_logfile() {
 					Ok(()) => {
+						logfile_names.push(f.to_string());
 						monitors.insert(f.to_string(), monitor);
 					}
 					Err(e) => {
@@ -73,6 +82,11 @@ impl App {
 					}
 				}
 			}
+
+			if name_for_focus.is_empty() {
+				name_for_focus = f.to_string();
+			}
+
 			match logfiles.add_file(&f).await {
 				Ok(_) => (),
 				Err(e) => {
@@ -85,34 +99,104 @@ impl App {
 			}
 		}
 
-		Ok(App {
+		let mut app = App {
 			opt,
 			dash_state,
 			monitors,
+			logfile_with_focus: name_for_focus.clone(),
 			logfiles,
-		})
+			logfile_names,
+		};
+		app.set_logfile_focus(&name_for_focus);
+		Ok(app)
 	}
 
-	pub fn get_vault_with_focus(&mut self) -> Option<(&String, &mut LogMonitor)> {
-		(&mut self.monitors).into_iter().next() // Use first vault until user can select focus
+	pub fn get_monitor_with_focus(&mut self) -> Option<(&mut LogMonitor)> {
+		match (&mut self.monitors).get_mut(&self.logfile_with_focus) {
+			Some(mut monitor) => Some(monitor),
+			None => None,
+		}
+	}
+
+	pub fn set_logfile_focus(&mut self, logfile_name: &String) {
+		match self.get_monitor_with_focus() {
+			Some(fading_monitor) => {
+				fading_monitor.has_focus = false;
+				self.logfile_with_focus = String::new();
+			}
+			None => (),
+		}
+
+		if (logfile_name == DEBUG_WINDOW_NAME) {
+			self.dash_state.debug_window_has_focus = true;
+			self.logfile_with_focus = logfile_name.clone();
+			return;
+		} else {
+			self.dash_state.debug_window_has_focus = false;
+		}
+
+		if let Some(focus_monitor) = (&mut self.monitors).get_mut(logfile_name) {
+			focus_monitor.has_focus = true;
+			self.logfile_with_focus = logfile_name.clone();
+		} else {
+			error!("Unable to focus UI on: {}", logfile_name);
+		};
+	}
+
+	pub fn change_focus_next(&mut self) {
+		let mut next_i = 0;
+		for (i, name) in self.logfile_names.iter().enumerate() {
+			if name == &self.logfile_with_focus {
+				if i < self.logfile_names.len() - 1 {
+					next_i = i + 1;
+				}
+				break;
+			}
+		}
+
+		if next_i == 0 && self.opt.debug_window && self.logfile_with_focus != DEBUG_WINDOW_NAME {
+			self.set_logfile_focus(&DEBUG_WINDOW_NAME.to_string());
+			return;
+		}
+
+		let new_focus_name = &self.logfile_names[next_i].to_string();
+		self.set_logfile_focus(&new_focus_name);
+	}
+
+	pub fn change_focus_previous(&mut self) {
+		let mut previous_i = self.logfile_names.len() - 1;
+		for (i, name) in self.logfile_names.iter().rev().enumerate() {
+			if name == &self.logfile_with_focus {
+				if i > 0 {
+					previous_i = i - 1;
+				}
+				break;
+			}
+		}
+
+		if self.opt.debug_window {
+			if previous_i == self.logfile_names.len() - 1 && self.logfile_with_focus != DEBUG_WINDOW_NAME
+			{
+				self.set_logfile_focus(&DEBUG_WINDOW_NAME.to_string());
+				return;
+			}
+		}
+		let new_focus_name = &self.logfile_names[previous_i].to_string();
+		self.set_logfile_focus(new_focus_name);
 	}
 
 	pub fn handle_arrow_up(&mut self) {
-		if !self.opt.debug_window {
-			if let Some(vault) = self.get_vault_with_focus() {
-				do_bracketed_next_previous(&mut vault.1.content, false);
-			}
-		} else {
+		if let Some(monitor) = self.get_monitor_with_focus() {
+			do_bracketed_next_previous(&mut monitor.content, false);
+		} else if self.opt.debug_window {
 			do_bracketed_next_previous(&mut self.dash_state.debug_window_list, false);
 		}
 	}
 
 	pub fn handle_arrow_down(&mut self) {
-		if !self.opt.debug_window {
-			if let Some(vault) = self.get_vault_with_focus() {
-				do_bracketed_next_previous(&mut vault.1.content, true);
-			}
-		} else {
+		if let Some(monitor) = self.get_monitor_with_focus() {
+			do_bracketed_next_previous(&mut monitor.content, true);
+		} else if self.opt.debug_window {
 			do_bracketed_next_previous(&mut self.dash_state.debug_window_list, true);
 		}
 	}
@@ -125,12 +209,16 @@ fn do_bracketed_next_previous(list: &mut StatefulList<String>, next: bool) {
 			if selected != list.items.len() - 1 {
 				list.next();
 			}
+		} else {
+			list.previous();
 		}
 	} else {
 		if let Some(selected) = list.state.selected() {
 			if selected != 0 {
 				list.previous();
 			}
+		} else {
+			list.previous();
 		}
 	}
 }
@@ -138,6 +226,7 @@ fn do_bracketed_next_previous(list: &mut StatefulList<String>, next: bool) {
 pub struct LogMonitor {
 	pub index: usize,
 	pub content: StatefulList<String>,
+	pub has_focus: bool,
 	pub logfile: String,
 	pub metrics: VaultMetrics,
 	pub metrics_status: StatefulList<String>,
@@ -156,6 +245,7 @@ impl LogMonitor {
 			max_content: max_lines,
 			metrics: VaultMetrics::new(),
 			content: StatefulList::with_items(vec![]),
+			has_focus: false,
 			metrics_status: StatefulList::with_items(vec![]),
 		}
 	}
@@ -597,6 +687,7 @@ pub enum DashViewMain {
 pub struct DashState {
 	pub main_view: DashViewMain,
 	pub debug_window: bool,
+	pub debug_window_has_focus: bool,
 	pub debug_dashboard: bool,
 	max_debug_window: usize,
 
@@ -614,6 +705,7 @@ impl DashState {
 			dash_vertical: DashVertical::new(),
 			debug_dashboard: false,
 			debug_window: false,
+			debug_window_has_focus: false,
 			debug_window_list: StatefulList::new(),
 			max_debug_window: 100,
 		}

@@ -1,7 +1,7 @@
 ///! Terminal based interface and dashboard
 ///!
 ///! Edit src/custom/ui.rs to create a customised fork of logtail-dash
-use super::app::{DashState, DashViewMain, LogMonitor};
+use super::app::{DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
 use std::collections::HashMap;
 
@@ -219,6 +219,13 @@ fn draw_logfile<B: Backend>(
 	logfile: &String,
 	monitor: &mut LogMonitor,
 ) {
+	let highlight_style = match monitor.has_focus {
+		true => Style::default()
+			.bg(Color::LightGreen)
+			.add_modifier(Modifier::BOLD),
+		false => Style::default().add_modifier(Modifier::BOLD),
+	};
+
 	let items: Vec<ListItem> = monitor
 		.content
 		.items
@@ -237,11 +244,7 @@ fn draw_logfile<B: Backend>(
 				.borders(Borders::ALL)
 				.title(vault_log_title.clone()),
 		)
-		.highlight_style(
-			Style::default()
-				.bg(Color::LightGreen)
-				.add_modifier(Modifier::BOLD),
-		);
+		.highlight_style(highlight_style);
 	f.render_stateful_widget(logfile_widget, area, &mut monitor.content.state);
 }
 
@@ -254,6 +257,14 @@ fn draw_debug_window<B: Backend>(
 	if dash_state.debug_window_list.items.len() == 1 {
 		dash_state.debug_window_list.state.select(Some(0));
 	}
+
+	let highlight_style = match dash_state.debug_window_has_focus {
+		true => Style::default()
+			.bg(Color::LightGreen)
+			.add_modifier(Modifier::BOLD),
+		false => Style::default().add_modifier(Modifier::BOLD),
+	};
+
 	let items: Vec<ListItem> = dash_state
 		.debug_window_list
 		.items
@@ -268,13 +279,9 @@ fn draw_debug_window<B: Backend>(
 		.block(
 			Block::default()
 				.borders(Borders::ALL)
-				.title(String::from("Debug Window")),
+				.title(String::from(DEBUG_WINDOW_NAME)),
 		)
-		.highlight_style(
-			Style::default()
-				.bg(Color::LightGreen)
-				.add_modifier(Modifier::BOLD),
-		);
+		.highlight_style(highlight_style);
 	f.render_stateful_widget(
 		debug_window_widget,
 		area,
