@@ -298,9 +298,6 @@ impl LogMonitor {
 	// Some logfile lines are too numerous to include so we ignore them
 	// Returns true if the line is to be processed
 	fn line_filter(&mut self, line: &str) -> bool {
-		if line.contains("quinn-") && line.contains("connection.rs:") {
-			return false;
-		}
 		true
 	}
 }

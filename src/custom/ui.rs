@@ -245,6 +245,7 @@ fn draw_logfile<B: Backend>(
 				.title(vault_log_title.clone()),
 		)
 		.highlight_style(highlight_style);
+
 	f.render_stateful_widget(logfile_widget, area, &mut monitor.content.state);
 }
 
@@ -282,6 +283,7 @@ fn draw_debug_window<B: Backend>(
 				.title(String::from(DEBUG_WINDOW_NAME)),
 		)
 		.highlight_style(highlight_style);
+
 	f.render_stateful_widget(
 		debug_window_widget,
 		area,
