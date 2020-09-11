@@ -7,7 +7,9 @@ static MAX_CONTENT: &str = "100";
 pub use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(about = "Monitor multiple logfiles in the terminal.")]
+#[structopt(
+	about = "Monitor Safe Network vaults in the terminal.\nNavigate using tab and arrow keys."
+)]
 pub struct Opt {
 	/// Maximum number of lines to keep for each logfile
 	#[structopt(short = "l", long, default_value = "100")]
