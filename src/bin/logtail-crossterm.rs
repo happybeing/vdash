@@ -116,8 +116,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
 						KeyCode::Down => app.handle_arrow_down(),
 						KeyCode::Up => app.handle_arrow_up(),
-
-						KeyCode::Right => app.change_focus_next(),
+						KeyCode::Right|
+						KeyCode::Tab => app.change_focus_next(),
 						KeyCode::Left => app.change_focus_previous(),
 						_ => {}
 					}
