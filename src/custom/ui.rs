@@ -52,17 +52,18 @@ fn draw_vault_dash<B: Backend>(
 		.constraints(constraints.as_ref())
 		.split(size);
 
-	let entry = match monitors.into_iter().next() {
-		None => return,
-		Some(entry) => entry,
-	};
+	for mut entry in monitors.into_iter() {
+		let (logfile, mut monitor) = entry;
+		if monitor.has_focus {
+			// Stats and Graphs / Timeline / Logfile
+			draw_vault(f, chunks[0], &mut monitor);
+			draw_timeline(f, chunks[1], &mut monitor);
+			draw_bottom_panel(f, chunks[2], dash_state, &logfile, &mut monitor);
+			return;
+		}
+	}
 
-	let (logfile, mut monitor) = entry;
-
-	// Stats and Graphs / Timeline / Logfile
-	draw_vault(f, chunks[0], &mut monitor);
-	draw_timeline(f, chunks[1], &mut monitor);
-	draw_bottom_panel(f, chunks[2], dash_state, &logfile, &mut monitor);
+	draw_debug_window(f, size, dash_state);
 }
 
 fn draw_bottom_panel<B: Backend>(
@@ -85,7 +86,7 @@ fn draw_bottom_panel<B: Backend>(
 			.split(area);
 
 		draw_logfile(f, chunks[0], &logfile, monitor);
-		draw_debug_window(f, chunks[1], dash_state, monitor);
+		draw_debug_window(f, chunks[1], dash_state);
 	} else {
 		draw_logfile(f, area, &logfile, monitor);
 	}
@@ -249,12 +250,7 @@ fn draw_logfile<B: Backend>(
 	f.render_stateful_widget(logfile_widget, area, &mut monitor.content.state);
 }
 
-fn draw_debug_window<B: Backend>(
-	f: &mut Frame<B>,
-	area: Rect,
-	dash_state: &mut DashState,
-	monitor: &mut LogMonitor,
-) {
+fn draw_debug_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState) {
 	let highlight_style = match dash_state.debug_window_has_focus {
 		true => Style::default()
 			.bg(Color::LightGreen)

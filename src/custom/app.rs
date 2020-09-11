@@ -164,8 +164,9 @@ impl App {
 	}
 
 	pub fn change_focus_previous(&mut self) {
-		let mut previous_i = self.logfile_names.len() - 1;
-		for (i, name) in self.logfile_names.iter().rev().enumerate() {
+		let len = self.logfile_names.len();
+		let mut previous_i = len - 1;
+		for (i, name) in self.logfile_names.iter().enumerate() {
 			if name == &self.logfile_with_focus {
 				if i > 0 {
 					previous_i = i - 1;
@@ -174,12 +175,12 @@ impl App {
 			}
 		}
 
-		if self.opt.debug_window {
-			if previous_i == self.logfile_names.len() - 1 && self.logfile_with_focus != DEBUG_WINDOW_NAME
-			{
-				self.set_logfile_focus(&DEBUG_WINDOW_NAME.to_string());
-				return;
-			}
+		if self.opt.debug_window
+			&& previous_i == len - 1
+			&& self.logfile_with_focus != DEBUG_WINDOW_NAME
+		{
+			self.set_logfile_focus(&DEBUG_WINDOW_NAME.to_string());
+			return;
 		}
 		let new_focus_name = &self.logfile_names[previous_i].to_string();
 		self.set_logfile_focus(new_focus_name);
