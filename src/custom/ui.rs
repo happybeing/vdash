@@ -109,7 +109,8 @@ fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor
 fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
-	push_subheading(&mut items, &"Vault".to_string());
+	let heading = format!("Vault {:>2}", monitor.index + 1);
+	push_subheading(&mut items, &heading);
 	push_metric(
 		&mut items,
 		&"Agebracket".to_string(),
