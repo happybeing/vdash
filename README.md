@@ -12,8 +12,8 @@ Where `vdash` is headed:
   - [x] add --debug-parser to show results in second logfile
   - [x] implement parsing log file for simple metrics and timeline
   - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
-- [ ] change events to use tokio mpsc (unbounded) channel
-  - [ ] does it fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
+- [x] change events to use tokio mpsc (unbounded) channel
+- [ ] does tokio mpsc fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
 - [ ] implement vault dashboard
   - [x] vault status summary page (single vault)
   - [x] debug window (--debug-window)
