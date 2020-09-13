@@ -77,9 +77,9 @@ Where `vdash` is headed:
 ## Get SAFE Network pre-requisites
 1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-2. **Get the SAFE CLI:** either download using an install script or build the SAFE CLI locally. Instructions for both options are [here](https://github.com/maidsafe/safe-api/tree/master/safe-cli#safe-cli).
+2. **Get the SAFE CLI:** either download using an install script or build the SAFE CLI locally. Instructions for both options are [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#safe-network-cli).
 
-3. **Get the SAFE Vault:** when you have the SAFE CLI working you can install the vault software with the command ` safe vault install` (details [here](https://github.com/maidsafe/safe-api/tree/master/safe-cli#vault-install)).
+3. **Get the SAFE Vault:** when you have the SAFE CLI working you can install the vault software with the command ` safe vault install` (details [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#vault-install)).
 
 You are now ready to install `vdash` and can test it by running a local test network.
 
@@ -114,7 +114,7 @@ When there is a live test network you will be able to use `vdash` with that, but
 
 For clarity, RUST_LOG is not shown in subsequent examples, so don't forget to include it!
 
-1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/safe-api/tree/master/safe-cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
+1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
     safe vault run-baby-fleming -t
     ```
@@ -126,7 +126,7 @@ For clarity, RUST_LOG is not shown in subsequent examples, so don't forget to in
     ```
     vdash ~/.safe/vault/local-vault/safe_vault.log
     ```
-3. **Upload files using SAFE CLI:** in the SAFE CLI window you can perform operations on the local test network that will affect the vault and the effects will be shown in `vdash`. For example, to [use the SAFE CLI to upload files](https://github.com/maidsafe/safe-api/tree/master/safe-cli#files):
+3. **Upload files using SAFE CLI:** in the SAFE CLI window you can perform operations on the local test network that will affect the vault and the effects will be shown in `vdash`. For example, to [use the SAFE CLI to upload files](https://github.com/maidsafe/sn_api/tree/master/sn_cli#files):
     ```
     safe files put ./<some-directory>/ --recursive
     ```
