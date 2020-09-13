@@ -4,7 +4,7 @@
 use linemux::MuxedLines;
 use std::collections::HashMap;
 
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, Duration, FixedOffset, TimeZone};
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use structopt::StructOpt;
@@ -227,11 +227,11 @@ fn do_bracketed_next_previous(list: &mut StatefulList<String>, next: bool) {
 pub struct LogMonitor {
 	pub index: usize,
 	pub content: StatefulList<String>,
+	max_content: usize, // Limit number of lines in content
 	pub has_focus: bool,
 	pub logfile: String,
 	pub metrics: VaultMetrics,
 	pub metrics_status: StatefulList<String>,
-	max_content: usize, // Limit number of lines in content
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -332,12 +332,18 @@ pub struct VaultMetrics {
 	pub category_count: HashMap<String, usize>,
 	pub activity_history: Vec<ActivityEntry>,
 	pub log_history: Vec<LogEntry>,
+	pub sparkline_bucket_time: Option<DateTime<FixedOffset>>,
+	pub sparkline_width: Duration,
+	pub sparkline_bucket_width: Duration,
+	pub sparkline_buckets: usize,
+	pub puts_sparkline: Vec<u64>,
+	pub gets_sparkline: Vec<u64>,
 	pub most_recent: Option<DateTime<FixedOffset>>,
 	pub agebracket: VaultAgebracket,
 	pub adults: usize,
 	pub elders: usize,
 	pub activity_gets: u64,
-	pub activity_muts: u64,
+	pub activity_puts: u64,
 	pub activity_other: u64,
 
 	pub debug_logfile: Option<NamedTempFile>,
@@ -352,15 +358,23 @@ impl VaultMetrics {
 			running_message: None,
 			running_version: None,
 
-			// Timelines
+			// Logfile entries
 			activity_history: Vec::<ActivityEntry>::new(),
 			log_history: Vec::<LogEntry>::new(),
 			most_recent: None,
 
+			// Timeline / Sparklines
+			sparkline_bucket_time: None,
+			sparkline_width: Duration::minutes(1),
+			sparkline_bucket_width: Duration::seconds(1),
+			sparkline_buckets: 60,
+			puts_sparkline: vec![0],
+			gets_sparkline: vec![0],
+
 			// Counts
 			category_count: HashMap::new(),
 			activity_gets: 0,
-			activity_muts: 0,
+			activity_puts: 0,
 			activity_other: 0,
 
 			// State (vault)
@@ -390,7 +404,7 @@ impl VaultMetrics {
 		self.adults = 0;
 		self.elders = 0;
 		self.activity_gets = 0;
-		self.activity_muts = 0;
+		self.activity_puts = 0;
 		self.activity_other = 0;
 	}
 
@@ -479,6 +493,7 @@ impl VaultMetrics {
 				response = entry.logstring.as_str()[response_start..response_start + response_end].as_ref();
 				if !response.is_empty() {
 					let activity_entry = ActivityEntry::new(entry, response);
+					self.update_buckets();
 					self.parse_activity_counts(&activity_entry);
 					self.activity_history.push(activity_entry);
 					self.parser_output = format!("vault activity: {}", response);
@@ -563,12 +578,48 @@ impl VaultMetrics {
 	///! Counts vault activity in categories GET, PUT and other
 	pub fn parse_activity_counts(&mut self, entry: &ActivityEntry) {
 		if entry.activity.starts_with("Get") {
-			self.activity_gets += 1;
+			self.count_get();
 		} else if entry.activity.starts_with("Mut") {
-			self.activity_muts += 1;
+			self.count_put();
 		} else {
 			self.activity_other += 1;
 		}
+	}
+
+	fn update_buckets(&mut self) {
+		if let Some(mut bucket_time) = self.sparkline_bucket_time {
+			if let Some(most_recent) = self.most_recent {
+				let mut end_time = bucket_time + self.sparkline_bucket_width;
+
+				while end_time.lt(&most_recent) {
+					// Start new bucket
+					self.sparkline_bucket_time = Some(end_time);
+					bucket_time = end_time;
+					end_time = bucket_time + self.sparkline_bucket_width;
+
+					self.gets_sparkline.push(0);
+					self.puts_sparkline.push(0);
+					if self.gets_sparkline.len() > self.sparkline_buckets {
+						self.gets_sparkline.remove(0);
+						self.puts_sparkline.remove(0);
+					}
+				}
+			}
+		} else {
+			self.sparkline_bucket_time = self.most_recent;
+		}
+	}
+
+	fn count_get(&mut self) {
+		self.activity_gets += 1;
+		let index = self.gets_sparkline.len() - 1;
+		self.gets_sparkline[index] += 1;
+	}
+
+	fn count_put(&mut self) {
+		self.activity_puts += 1;
+		let index = self.puts_sparkline.len() - 1;
+		self.puts_sparkline[index] += 1;
 	}
 
 	///! TODO

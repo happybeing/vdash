@@ -12,7 +12,7 @@ use tui::{
 	layout::{Constraint, Corner, Direction, Layout, Rect},
 	style::{Color, Modifier, Style},
 	text::{Span, Spans, Text},
-	widgets::{Block, BorderType, Borders, List, ListItem, Widget},
+	widgets::{Block, BorderType, Borders, List, ListItem, Sparkline, Widget},
 	Frame, Terminal,
 };
 
@@ -55,7 +55,7 @@ fn draw_vault_dash<B: Backend>(
 		if monitor.has_focus {
 			// Stats and Graphs / Timeline / Logfile
 			draw_vault(f, chunks[0], &mut monitor);
-			draw_timeline(f, chunks[1], &mut monitor);
+			draw_timeline(f, chunks[1], dash_state, &mut monitor);
 			draw_bottom_panel(f, chunks[2], dash_state, &logfile, &mut monitor);
 			return;
 		}
@@ -127,7 +127,7 @@ fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogM
 	push_metric(
 		&mut items,
 		&"PUTS".to_string(),
-		&monitor.metrics.activity_muts.to_string(),
+		&monitor.metrics.activity_puts.to_string(),
 	);
 
 	push_metric(
@@ -196,21 +196,59 @@ fn draw_vault_graphs<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut Log
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
 }
 
-fn draw_timeline<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
-	// TODO draw the timeline!
+fn draw_timeline<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	dash_state: &mut DashState,
+	monitor: &mut LogMonitor,
+) {
+	let window_widget = Block::default()
+		.borders(Borders::ALL)
+		.title("Timeline".to_string());
+	f.render_widget(window_widget, area);
 
-	let monitor_widget = List::new(Vec::<ListItem>::new())
-		.block(
-			Block::default()
-				.borders(Borders::ALL)
-				.title("Timeline (TODO)".to_string()),
-		)
-		.highlight_style(
-			Style::default()
-				.bg(Color::LightGreen)
-				.add_modifier(Modifier::BOLD),
-		);
-	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
+	// For debugging the bucket state
+	//
+	// if let Some(b_time) = monitor.metrics.sparkline_bucket_time {
+	// 	dash_state._debug_window(format!("sparkline_b_time: {}", b_time).as_str());
+	// 	dash_state._debug_window(
+	// 		format!(
+	// 			"sparkline_b_width: {}",
+	// 			monitor.metrics.sparkline_bucket_width
+	// 		)
+	// 		.as_str(),
+	// 	);
+	// }
+
+	// let mut i = 0;
+	// while i < monitor.metrics.puts_sparkline.len() {
+	// 	dash_state._debug_window(
+	// 		format!(
+	// 			"{:>2}: {:>2} puts, {:>2} gets",
+	// 			i, monitor.metrics.puts_sparkline[i], monitor.metrics.gets_sparkline[i]
+	// 		)
+	// 		.as_str(),
+	// 	);
+	// 	i += 1;
+	// }
+
+	let chunks = Layout::default()
+		.direction(Direction::Vertical)
+		.margin(1)
+		.constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+		.split(area);
+
+	let sparkline = Sparkline::default()
+		.block(Block::default().title("PUTS"))
+		.data(&monitor.metrics.puts_sparkline)
+		.style(Style::default().fg(Color::Yellow));
+	f.render_widget(sparkline, chunks[0]);
+
+	let sparkline = Sparkline::default()
+		.block(Block::default().title("GETS"))
+		.data(&monitor.metrics.gets_sparkline)
+		.style(Style::default().fg(Color::Green));
+	f.render_widget(sparkline, chunks[1]);
 }
 
 fn draw_logfile<B: Backend>(
