@@ -12,30 +12,25 @@ Where `vdash` is headed:
   - [x] add --debug-parser to show results in second logfile
   - [x] implement parsing log file for simple metrics and timeline
   - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
+- [ ] change events to use tokio mpsc (unbounded) channel
+  - [ ] does it fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
 - [ ] implement vault dashboard
   - [x] vault status summary page (single vault)
   - [x] debug window (--debug-window)
   - [x] add basic vault stats (age/PUTs/GETs)
   - [x] scroll vault logfile (arrow keys)
   - [x] multiple vaults (navigate with tab and arrow keys)
-  - [ ] add a simple timeline
+  - [ ] add a timeline
+    - [x] simple timeline with PUTS and GETS 
+    - [ ] mod sparkline widget so can anchor 'now' to right border
+    - [ ] more scales: minute, hour, day etc (bucket set for each)
+  - [ ] reduce lag in processing logfile changes
   - [ ] add a dummy test chart
   - [ ] mock storage chart: horizontal bar chart (vault storage limit/used)
   - [ ] mock chunk metering: vertical bar chart (total, immutable, sequence etc chunks)
   - [ ] get real data into storage chart (poll disk)
   - [ ] get real data into chunk metering
-- [ ] fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
 - [ ] Summary view: all vaults on one page
-  - [x] just logfile for each vault (divide vertically)
-  - [ ] add a storage summary to the left of each logfile
-- [ ] Detail view: tab for each vault
-  - [ ] Indicate the current logfile (default to the first)
-  - [ ] Create empty bands ready for..
-  - [ ] h-band1: Heading of logfile and space for some metrics (e.g. size MB)
-  - [ ] h-band2: Storage chart / Data Types chart h-bar
-  - [ ] h-band3: Activity over time (full width)
-  - [ ] h-band4: Logfile (full width)
-- [ ] investigate removing tokio to just use standard runtime (see linemux [issue #15](https://github.com/jmagnuson/linemux/issues/15))
 - [ ] trim VaultMetrics timeline
 - [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
 - [ ] Implement --features="vdash" / --features="logtail" to select app and UI
