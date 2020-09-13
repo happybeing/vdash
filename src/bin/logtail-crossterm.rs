@@ -35,7 +35,6 @@ use crossterm::{
 use std::{
 	error::Error,
 	io::{stdout, Write},
-	sync::mpsc,
 	thread,
 	time::{Duration, Instant},
 };
@@ -61,6 +60,7 @@ enum Event<I> {
 }
 
 use tokio::stream::StreamExt;
+use tokio::sync::mpsc;
 
 // RUSTFLAGS="-A unused" cargo run --bin logtail-crossterm --features="crossterm" /var/log/auth.log /var/log/dmesg
 #[tokio::main]
@@ -79,7 +79,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 	execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
 	let backend = CrosstermBackend::new(stdout);
 	let mut terminal = Terminal::new(backend)?;
-	let rx = initialise_events(app.opt.tick_rate);
+	let mut rx = initialise_events(app.opt.tick_rate);
 	terminal.clear()?;
 
 	// Use futures of async functions to handle events
@@ -87,13 +87,13 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 	loop {
 		terminal.draw(|f| draw_dashboard(f, &mut app.dash_state, &mut app.monitors))?;
 		let logfiles_future = app.logfiles.next().fuse();
-		let events_future = next_event(&rx).fuse();
+		let events_future = rx.recv().fuse();
 		pin_mut!(logfiles_future, events_future);
 
 		select! {
 			(e) = events_future => {
 			match e {
-				Ok(Event::Input(event)) => {
+				Some(Event::Input(event)) => {
 					match event.code {
 						// For debugging, ~ sends a line to the debug_window
 						KeyCode::Char('~') => app.dash_state._debug_window(format!("Event::Input({:#?})", event).as_str()),
@@ -123,14 +123,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 					}
 				}
 
-				Ok(Event::Tick) => {
+				Some(Event::Tick) => {
 				// draw_dashboard(&mut f, &dash_state, &mut monitors).unwrap();
 				// draw_dashboard(f, &dash_state, &mut monitors)?;
 				}
 
-				Err(error) => {
-				println!("{}", error);
-				}
+				None => {},
 			}
 			},
 
@@ -157,12 +155,11 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 		}
 	}
 }
-// type Tx = std::sync::mpsc::Sender<Event<crossterm::event::KeyEvent>>;
-type Rx = std::sync::mpsc::Receiver<Event<crossterm::event::KeyEvent>>;
+type Rx = tokio::sync::mpsc::UnboundedReceiver<Event<crossterm::event::KeyEvent>>;
 
 fn initialise_events(tick_rate: u64) -> Rx {
 	let tick_rate = Duration::from_millis(tick_rate);
-	let (tx, rx) = mpsc::channel(); // Setup input handling
+	let (tx, rx) = mpsc::unbounded_channel(); // Setup input handling
 
 	thread::spawn(move || {
 		let mut last_tick = Instant::now();
@@ -170,11 +167,11 @@ fn initialise_events(tick_rate: u64) -> Rx {
 			// poll for tick rate duration, if no events, sent tick event.
 			if event::poll(tick_rate - last_tick.elapsed()).unwrap() {
 				if let CEvent::Key(key) = event::read().unwrap() {
-					tx.send(Event::Input(key)).unwrap();
+					tx.send(Event::Input(key));
 				}
 			}
 			if last_tick.elapsed() >= tick_rate {
-				tx.send(Event::Tick).unwrap(); // <-- PANICS HERE
+				tx.send(Event::Tick);
 				last_tick = Instant::now();
 			}
 
@@ -187,8 +184,4 @@ fn initialise_events(tick_rate: u64) -> Rx {
 		}
 	});
 	rx
-}
-
-async fn next_event(rx: &Rx) -> Result<Event<crossterm::event::KeyEvent>, mpsc::RecvError> {
-	rx.recv()
 }

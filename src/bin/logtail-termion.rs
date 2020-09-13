@@ -79,7 +79,7 @@ async fn terminal_main() -> std::io::Result<()> {
 		}
 	};
 
-	let events = Events::new();
+	let mut events = Events::new();
 
 	// Terminal initialization
 	info!("Intialising terminal (termion backend)");
@@ -93,14 +93,14 @@ async fn terminal_main() -> std::io::Result<()> {
 	// concurrently with logfile changes.
 	info!("Processing started");
 	loop {
-		let events_future = next_event(&events).fuse();
+		let events_future = events.rx.recv().fuse();
 		let logfiles_future = app.logfiles.next().fuse();
 		pin_mut!(events_future, logfiles_future);
 
 		select! {
 			(e) = events_future => {
 				match e {
-					Ok(Event::Input(input)) => {
+					Some(Event::Input(input)) => {
 						match input {
 							// For debugging, ~ sends a line to the debug_window
 							Key::Char('~') => app.dash_state._debug_window(format!("Event::Input({:#?})", input).as_str()),
@@ -121,7 +121,7 @@ async fn terminal_main() -> std::io::Result<()> {
 						}
 					}
 
-					Ok(Event::Tick) => {
+					Some(Event::Tick) => {
 						trace!("Event::Tick");
 						match terminal.draw(|f| draw_dashboard(f, &mut app.dash_state, &mut app.monitors)) {
 							Ok(_) => {},
@@ -133,10 +133,7 @@ async fn terminal_main() -> std::io::Result<()> {
 						trace!("Event::Tick DONE");
 					}
 
-					Err(e) => {
-						error!("receive error '{:#?}'", e);
-						return Err(Error::new(ErrorKind::Other, "receive error"));
-					}
+					None => (),
 				}
 			},
 			(line) = logfiles_future => {
@@ -168,10 +165,4 @@ async fn terminal_main() -> std::io::Result<()> {
 			},
 		}
 	}
-}
-
-use std::sync::mpsc;
-
-async fn next_event(events: &Events) -> Result<Event<Key>, mpsc::RecvError> {
-	events.next()
 }
