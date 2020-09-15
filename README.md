@@ -99,19 +99,27 @@ You control the vault logging level by setting the environment variable `RUST_LO
 For example, to set the default level to 'debug' for everything, except for the `quinn` module which generates a lot of unnecessary INFO log messages, module use:
 
 ```sh
+safe vault killall
+rm -f ~/.safe/vault/local-vault/safe_vault.log
 RUST_LOG=debug,quinn=error safe vault join
 ```
 Or
 ```sh
+safe vault killall
+rm -f ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
 RUST_LOG=debug,quinn=error safe vault run-baby-fleming -t
 ```
+Note:
+- `save vault killall` makes sure no existing vaults are still running, and deleting existing logfiles prevents you picking up statistics from previous activity. If you leave the logfile in place then `vdash` will waste time processing that, although you can skip that process using a command line option.
+- setting RUST_LOG ensures the logfiles contain the data which vdash needs, and excludes some that gets in the way.
 When there is a live test network you will be able to use `vdash` with that, but pre-beta those test networks are only available intermittently. The following therefore shows how to run a local test network and use `vdash` with this.
 
-For clarity, RUST_LOG is not shown in subsequent examples, so don't forget to include it!
-
+### Using vdash With a Local Test Network
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
-    safe vault run-baby-fleming -t
+    safe vault killall
+    rm -f ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
+    RUST_LOG=debug,quinn=error safe vault run-baby-fleming -t
     ```
 2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
     ```
