@@ -336,6 +336,7 @@ lazy_static::lazy_static! {
 	// Regex::new(r"vault.rs .*No. of Adults: (?P<elders>\d+)").expect(REGEX_ERROR);
 }
 
+#[derive(PartialEq)]
 pub enum VaultAgebracket {
 	Unknown,
 	Infant,
@@ -671,56 +672,24 @@ impl VaultMetrics {
 	///! Capture state updates from a logfile entry
 	///! Returns true if the line has been processed and can be discarded
 	fn parse_states(&mut self, entry: &LogEntry) -> bool {
-		let mut updated = false;
-		// TODO re-instate if can count adults using "|^.*vault\.rs.*No.\ of\ Adults:\ (?P<adults>\d+)"
-		let re = Regex::new(
-			r"(?x)
-			 ^.*network_stats\.rs.*Known\ elders:\ *(?P<elders>\d+)
-			|^.*vault\.rs.*Initializing\ new\ Vault\ as\ (?P<initas>[[:alpha:]]+)
-			|^.*vault\.rs.*Vault\ promoted\ to\ (?P<promoteto>[[:alpha:]]+)",
-		)
-		.expect("Woops"); // TODO: make the expression a static (see LOG_LINE_PATTERN)
-
-		let captures = match re.captures(entry.logstring.as_str()) {
-			Some(captures) => captures,
-			None => return false,
+		let &content = &entry.logstring.as_str();
+		if let Some(elders) = self.parse_usize("No. of Elders:", content) {
+			self.elders = elders;
+			self.parser_output = format!("ELDERS: {}", elders);
+			return true;
 		};
 
-		if let Some(elders_str) = captures.name("elders").map(|m| m.as_str()) {
-			self.parser_output = format!("ELDERS: {}", elders_str);
-			match elders_str.parse::<usize>() {
-				Ok(elders) => {
-					self.elders = elders;
-					return true;
-				}
-				Err(e) => {
-					self.parser_output = format!("Error, invalid elders value '{}'", elders_str);
-					return false;
-				}
-			}
-		}
+		if let Some(adults) = self.parse_usize("No. of Adults:", &entry.logstring) {
+			self.adults = adults;
+			self.parser_output = format!("ADULTS: {}", adults);
+			return true;
+		};
 
-		if let Some(adults_str) = captures.name("adults").map(|m| m.as_str()) {
-			self.parser_output = format!("ADULTS: {}", adults_str);
-			match adults_str.parse::<usize>() {
-				Ok(adults) => {
-					self.adults = adults;
-					return true;
-				}
-				Err(e) => {
-					self.parser_output = format!("Error, invalid adults value '{}'", adults_str);
-					return false;
-				}
-			}
-		}
-
-		if let Some(agebracket) = captures
-			.name("initas")
-			.or_else(|| captures.name("promoteto"))
-			.map(|m| m.as_str())
+		if let Some(agebracket) = self
+			.parse_word("Vault promoted to ", &entry.logstring)
+			.or(self.parse_word("Initializing new Vault as ", &entry.logstring))
 		{
-			self.parser_output = format!("Vault agebracket: {}", agebracket);
-			self.agebracket = match agebracket {
+			self.agebracket = match agebracket.as_str() {
 				"Infant" => VaultAgebracket::Infant,
 				"Adult" => VaultAgebracket::Adult,
 				"Elder" => VaultAgebracket::Elder,
@@ -729,10 +698,37 @@ impl VaultMetrics {
 					VaultAgebracket::Unknown
 				}
 			};
+			if self.agebracket == VaultAgebracket::Unknown {
+				self.parser_output = format!("Vault agebracket: {}", agebracket);
+			} else {
+				self.parser_output = format!("FAILED to parse agebracket in: {}", &entry.logstring);
+			}
 			return true;
-		}
+		};
 
 		false
+	}
+
+	fn parse_usize(&mut self, prefix: &str, content: &str) -> Option<usize> {
+		if let Some(position) = content.find(prefix) {
+			match content[position + prefix.len()..].parse::<usize>() {
+				Ok(value) => return Some(value),
+				Err(e) => self.parser_output = format!("failed to parse usize from: '{}'", content),
+			}
+		}
+		None
+	}
+
+	fn parse_word(&mut self, prefix: &str, content: &str) -> Option<String> {
+		if let Some(mut start) = content.find(prefix) {
+			let word: Vec<&str> = content.trim_start().splitn(1, " ").collect();
+			if word.len() == 1 {
+				return Some(word[0].to_string());
+			} else {
+				self.parser_output = format!("failed to parse word at: '{}'", &content[start..]);
+			}
+		}
+		None
 	}
 
 	///! Counts vault activity in categories GET, PUT and other
