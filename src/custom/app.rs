@@ -324,16 +324,8 @@ impl LogMonitor {
 
 use regex::Regex;
 lazy_static::lazy_static! {
-	// static ref REGEX_ERROR = "The regex failed to compile. This is a bug.";
 	static ref LOG_LINE_PATTERN: Regex =
 		Regex::new(r"(?P<category>^[A-Z]{4}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
-
-	// static ref STATE_PATTERN: Regex =
-	//   Regex::new(r"vault.rs .*No. of Elders: (?P<elders>\d+)").expect(REGEX_ERROR);
-
-	// static ref COUNTS_PATTERN: Regex =215
-
-	// Regex::new(r"vault.rs .*No. of Adults: (?P<elders>\d+)").expect(REGEX_ERROR);
 }
 
 #[derive(PartialEq)]
