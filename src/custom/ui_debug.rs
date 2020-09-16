@@ -22,8 +22,8 @@ pub fn draw_dashboard<B: Backend>(
 	trace!("ui_debug.rs draw_dashboard()");
 
 	match dash_state.main_view {
-		DashViewMain::DashHorizontal => {}
-		DashViewMain::DashVertical => {}
+		DashViewMain::DashSummary => {}
+		DashViewMain::DashVault => {}
 		DashViewMain::DashDebug => draw_dash_vertical(f, dash_state, monitors),
 	}
 }

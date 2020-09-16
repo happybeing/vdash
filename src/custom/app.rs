@@ -10,10 +10,16 @@ use std::io::{Error, ErrorKind, Write};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
 
-use crate::custom::opt::Opt;
+use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
 use crate::shared::util::StatefulList;
 
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
+
+pub static ONE_MINUTE_NAME: &str = "1 minute";
+pub static ONE_HOUR_NAME: &str = "1 hour";
+pub static ONE_DAY_NAME: &str = "1 day";
+pub static ONE_TWELTH_NAME: &str = "1 twelth year";
+pub static ONE_YEAR_NAME: &str = "1 year";
 
 pub struct App {
 	pub opt: Opt,
@@ -30,12 +36,17 @@ impl App {
 
 		if opt.files.is_empty() {
 			println!("{}: no logfile(s) specified.", Opt::clap().get_name());
-			println!(
-				"Try '{} --help' for more information.",
-				Opt::clap().get_name()
-			);
-			return Err(Error::new(ErrorKind::Other, "missing logfiles"));
+			return exit_with_usage("missing logfiles");
 		}
+
+		if opt.timeline_steps < MIN_TIMELINE_STEPS {
+			println!(
+				"Timeline steps number is too small, minimum is {}",
+				MIN_TIMELINE_STEPS
+			);
+			return exit_with_usage("invalid parameter");
+		}
+
 		let mut dash_state = DashState::new();
 		dash_state.debug_window = opt.debug_window;
 		let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
@@ -59,7 +70,7 @@ impl App {
 		println!("Loading {} files...", opt.files.len());
 		for f in &opt.files {
 			println!("file: {}", f);
-			let mut monitor = LogMonitor::new(f.to_string(), opt.lines_max);
+			let mut monitor = LogMonitor::new(&opt, f.to_string(), opt.lines_max);
 			if opt.debug_dashboard && monitor.index == 0 {
 				if let Some(named_file) = parser_output {
 					monitor.metrics.debug_logfile = Some(named_file);
@@ -224,6 +235,14 @@ fn do_bracketed_next_previous(list: &mut StatefulList<String>, next: bool) {
 	}
 }
 
+fn exit_with_usage(reason: &str) -> Result<App, std::io::Error> {
+	println!(
+		"Try '{} --help' for more information.",
+		Opt::clap().get_name()
+	);
+	return Err(Error::new(ErrorKind::Other, reason));
+}
+
 pub struct LogMonitor {
 	pub index: usize,
 	pub content: StatefulList<String>,
@@ -238,13 +257,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
 
 impl LogMonitor {
-	pub fn new(f: String, max_lines: usize) -> LogMonitor {
+	pub fn new(opt: &Opt, f: String, max_lines: usize) -> LogMonitor {
 		let index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
 		LogMonitor {
 			index,
 			logfile: f,
 			max_content: max_lines,
-			metrics: VaultMetrics::new(),
+			metrics: VaultMetrics::new(&opt),
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,
 			metrics_status: StatefulList::with_items(vec![]),
@@ -304,7 +323,6 @@ impl LogMonitor {
 }
 
 use regex::Regex;
-
 lazy_static::lazy_static! {
 	// static ref REGEX_ERROR = "The regex failed to compile. This is a bug.";
 	static ref LOG_LINE_PATTERN: Regex =
@@ -325,6 +343,125 @@ pub enum VaultAgebracket {
 	Elder,
 }
 
+///! Maintains one or more 'marching bucket' histories for
+///! a given metric, each with its own duration and granularity.
+///!
+///! A BucketSet is used to hold the history of values with
+///! a given bucket_duration and maximum number of buckets.
+///!
+///! A BucketSet begins with a single bucket of fixed
+///! duration holding the initial metric value. New buckets
+///! are added as time progresses until the number of buckets
+///! covers the total duration of the BucketSet. At this
+///! point the oldest bucket is removed when a new bucket is
+///! added, so that the total duration remains constant and
+///! the specified maximum number of buckets is never
+///! exceeded.
+///!
+///! By adding more than one BucketSet, a given metric can be
+///! recorded for different durations and with different
+///! granularities. E.g. 60 * 1s buckets covers a minute
+///! and 60 * 1m buckets covers an hour, and so on.
+pub struct TimelineSet {
+	name: String,
+	bucket_sets: HashMap<&'static str, BucketSet>,
+}
+
+pub struct BucketSet {
+	pub bucket_time: Option<DateTime<FixedOffset>>,
+	pub total_duration: Duration,
+	pub bucket_duration: Duration,
+	pub max_buckets: usize,
+	pub buckets: Vec<u64>,
+}
+
+impl TimelineSet {
+	pub fn new(name: String) -> TimelineSet {
+		TimelineSet {
+			name,
+			bucket_sets: HashMap::<&'static str, BucketSet>::new(),
+		}
+	}
+
+	pub fn get_name(&self) -> &String {
+		&self.name
+	}
+
+	pub fn add_bucket_set(&mut self, name: &'static str, duration: Duration, max_buckets: usize) {
+		self
+			.bucket_sets
+			.insert(name, BucketSet::new(duration, max_buckets));
+	}
+
+	pub fn get_bucket_set(&mut self, bucket_set_name: &str) -> Option<&BucketSet> {
+		self.bucket_sets.get(bucket_set_name)
+	}
+
+	///! Update all bucket_sets with new current time
+	///!
+	///! Call significantly more frequently than the smallest BucketSet duration
+	fn update_current_time(&mut self, new_time: Option<DateTime<FixedOffset>>) {
+		for (name, bs) in self.bucket_sets.iter_mut() {
+			if let Some(mut bucket_time) = bs.bucket_time {
+				if let Some(new_time) = new_time {
+					let mut end_time = bucket_time + bs.bucket_duration;
+
+					while end_time.lt(&new_time) {
+						// Start new bucket
+						bs.bucket_time = Some(end_time);
+						bucket_time = end_time;
+						end_time = bucket_time + bs.bucket_duration;
+
+						bs.buckets.push(0);
+						if bs.buckets.len() > bs.max_buckets {
+							bs.buckets.remove(0);
+						}
+					}
+				}
+			} else {
+				bs.bucket_time = new_time;
+			}
+		}
+	}
+
+	fn increment_value(&mut self) {
+		for (name, bs) in self.bucket_sets.iter_mut() {
+			let index = bs.buckets.len() - 1;
+			bs.buckets[index] += 1;
+		}
+	}
+}
+
+impl BucketSet {
+	pub fn new(bucket_duration: Duration, max_buckets: usize) -> BucketSet {
+		BucketSet {
+			bucket_duration,
+			max_buckets,
+			total_duration: bucket_duration * max_buckets as i32,
+
+			bucket_time: None,
+			buckets: vec![0],
+		}
+	}
+	pub fn set_bucket_value(&mut self, value: u64) {
+		let index = self.buckets.len() - 1;
+		self.buckets[index] = value;
+	}
+
+	pub fn increment_value(&mut self) {
+		let index = self.buckets.len() - 1;
+		self.buckets[index] += 1;
+	}
+
+	pub fn buckets(&self) -> &Vec<u64> {
+		&self.buckets
+	}
+
+	pub fn buckets_mut(&mut self) -> &mut Vec<u64> {
+		&mut self.buckets
+	}
+}
+
 pub struct VaultMetrics {
 	pub vault_started: Option<DateTime<FixedOffset>>,
 	pub running_message: Option<String>,
@@ -332,18 +469,18 @@ pub struct VaultMetrics {
 	pub category_count: HashMap<String, usize>,
 	pub activity_history: Vec<ActivityEntry>,
 	pub log_history: Vec<LogEntry>,
-	pub sparkline_bucket_time: Option<DateTime<FixedOffset>>,
-	pub sparkline_width: Duration,
-	pub sparkline_bucket_width: Duration,
-	pub sparkline_buckets: usize,
-	pub puts_sparkline: Vec<u64>,
-	pub gets_sparkline: Vec<u64>,
+
+	pub puts_timeline: TimelineSet,
+	pub gets_timeline: TimelineSet,
+	pub errors_timeline: TimelineSet, // TODO add code to collect and display
+
 	pub most_recent: Option<DateTime<FixedOffset>>,
 	pub agebracket: VaultAgebracket,
 	pub adults: usize,
 	pub elders: usize,
 	pub activity_gets: u64,
 	pub activity_puts: u64,
+	pub activity_errors: u64,
 	pub activity_other: u64,
 
 	pub debug_logfile: Option<NamedTempFile>,
@@ -351,7 +488,22 @@ pub struct VaultMetrics {
 }
 
 impl VaultMetrics {
-	fn new() -> VaultMetrics {
+	fn new(opt: &Opt) -> VaultMetrics {
+		let mut puts_timeline = TimelineSet::new("PUTS".to_string());
+		let mut gets_timeline = TimelineSet::new("GETS".to_string());
+		let mut errors_timeline = TimelineSet::new("ERRORS".to_string());
+		for timeline in [&mut puts_timeline, &mut gets_timeline, &mut errors_timeline].iter_mut() {
+			timeline.add_bucket_set(&ONE_MINUTE_NAME, Duration::minutes(1), opt.timeline_steps);
+			timeline.add_bucket_set(&ONE_HOUR_NAME, Duration::hours(1), opt.timeline_steps);
+			timeline.add_bucket_set(&ONE_DAY_NAME, Duration::days(1), opt.timeline_steps);
+			timeline.add_bucket_set(
+				&ONE_TWELTH_NAME,
+				Duration::days(365 / 12),
+				opt.timeline_steps,
+			);
+			timeline.add_bucket_set(&ONE_YEAR_NAME, Duration::days(365), opt.timeline_steps);
+		}
+
 		VaultMetrics {
 			// Start
 			vault_started: None,
@@ -363,18 +515,16 @@ impl VaultMetrics {
 			log_history: Vec::<LogEntry>::new(),
 			most_recent: None,
 
-			// Timeline / Sparklines
-			sparkline_bucket_time: None,
-			sparkline_width: Duration::minutes(1),
-			sparkline_bucket_width: Duration::seconds(1),
-			sparkline_buckets: 60,
-			puts_sparkline: vec![0],
-			gets_sparkline: vec![0],
+			// Timelines / Sparklines
+			puts_timeline,
+			gets_timeline,
+			errors_timeline,
 
 			// Counts
 			category_count: HashMap::new(),
 			activity_gets: 0,
 			activity_puts: 0,
+			activity_errors: 0,
 			activity_other: 0,
 
 			// State (vault)
@@ -405,6 +555,7 @@ impl VaultMetrics {
 		self.elders = 0;
 		self.activity_gets = 0;
 		self.activity_puts = 0;
+		self.activity_errors = 0;
 		self.activity_other = 0;
 	}
 
@@ -419,6 +570,16 @@ impl VaultMetrics {
 				entry.time = self.most_recent;
 			} else {
 				self.most_recent = entry.time;
+			}
+
+			for timeline in &mut [
+				&mut self.puts_timeline,
+				&mut self.gets_timeline,
+				&mut self.errors_timeline,
+			]
+			.iter_mut()
+			{
+				timeline.update_current_time(self.most_recent);
 			}
 
 			self.parser_output = entry.parser_output.clone();
@@ -493,7 +654,6 @@ impl VaultMetrics {
 				response = entry.logstring.as_str()[response_start..response_start + response_end].as_ref();
 				if !response.is_empty() {
 					let activity_entry = ActivityEntry::new(entry, response);
-					self.update_buckets();
 					self.parse_activity_counts(&activity_entry);
 					self.activity_history.push(activity_entry);
 					self.parser_output = format!("vault activity: {}", response);
@@ -586,40 +746,19 @@ impl VaultMetrics {
 		}
 	}
 
-	fn update_buckets(&mut self) {
-		if let Some(mut bucket_time) = self.sparkline_bucket_time {
-			if let Some(most_recent) = self.most_recent {
-				let mut end_time = bucket_time + self.sparkline_bucket_width;
-
-				while end_time.lt(&most_recent) {
-					// Start new bucket
-					self.sparkline_bucket_time = Some(end_time);
-					bucket_time = end_time;
-					end_time = bucket_time + self.sparkline_bucket_width;
-
-					self.gets_sparkline.push(0);
-					self.puts_sparkline.push(0);
-					if self.gets_sparkline.len() > self.sparkline_buckets {
-						self.gets_sparkline.remove(0);
-						self.puts_sparkline.remove(0);
-					}
-				}
-			}
-		} else {
-			self.sparkline_bucket_time = self.most_recent;
-		}
-	}
-
 	fn count_get(&mut self) {
 		self.activity_gets += 1;
-		let index = self.gets_sparkline.len() - 1;
-		self.gets_sparkline[index] += 1;
+		self.gets_timeline.increment_value();
 	}
 
 	fn count_put(&mut self) {
 		self.activity_puts += 1;
-		let index = self.puts_sparkline.len() - 1;
-		self.puts_sparkline[index] += 1;
+		self.puts_timeline.increment_value();
+	}
+
+	fn count_error(&mut self) {
+		self.activity_errors += 1;
+		self.errors_timeline.increment_value();
 	}
 
 	///! TODO
@@ -727,31 +866,31 @@ impl LogEntry {
 	}
 }
 
+///! Active UI at top level
 pub enum DashViewMain {
-	DashHorizontal,
-	DashVertical,
+	DashSummary,
+	DashVault,
 	DashDebug,
 }
 
 pub struct DashState {
 	pub main_view: DashViewMain,
+	pub active_timeline_name: &'static str,
+
+	// For --debug-window option
+	pub debug_window_list: StatefulList<String>,
 	pub debug_window: bool,
 	pub debug_window_has_focus: bool,
 	pub debug_dashboard: bool,
 	max_debug_window: usize,
-
-	// For --debug-window option
-	pub debug_window_list: StatefulList<String>,
-
-	// For DashViewMain::DashVertical
-	dash_vertical: DashVertical,
 }
 
 impl DashState {
 	pub fn new() -> DashState {
 		DashState {
-			main_view: DashViewMain::DashHorizontal,
-			dash_vertical: DashVertical::new(),
+			main_view: DashViewMain::DashVault,
+			active_timeline_name: ONE_MINUTE_NAME,
+
 			debug_dashboard: false,
 			debug_window: false,
 			debug_window_has_focus: false,

@@ -22,8 +22,8 @@ pub fn draw_dashboard<B: Backend>(
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
 	match dash_state.main_view {
-		DashViewMain::DashHorizontal => draw_vault_dash(f, dash_state, monitors),
-		DashViewMain::DashVertical => draw_vault_dash(f, dash_state, monitors),
+		DashViewMain::DashSummary => {} //draw_summary_dash(f, dash_state, monitors),
+		DashViewMain::DashVault => draw_vault_dash(f, dash_state, monitors),
 		DashViewMain::DashDebug => {
 			if (dash_state.debug_dashboard) {
 				debug_draw_dashboard(f, dash_state, monitors);
@@ -196,6 +196,8 @@ fn draw_vault_graphs<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut Log
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
 }
 
+use super::app::{ONE_DAY_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME, ONE_YEAR_NAME};
+
 fn draw_timeline<B: Backend>(
 	f: &mut Frame<B>,
 	area: Rect,
@@ -238,17 +240,29 @@ fn draw_timeline<B: Backend>(
 		.constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
 		.split(area);
 
-	let sparkline = Sparkline::default()
-		.block(Block::default().title("PUTS"))
-		.data(&monitor.metrics.puts_sparkline)
-		.style(Style::default().fg(Color::Yellow));
-	f.render_widget(sparkline, chunks[0]);
+	if let Some(bucket_set) = monitor
+		.metrics
+		.puts_timeline
+		.get_bucket_set(&dash_state.active_timeline_name)
+	{
+		let sparkline = Sparkline::default()
+			.block(Block::default().title("PUTS"))
+			.data(&bucket_set.buckets())
+			.style(Style::default().fg(Color::Yellow));
+		f.render_widget(sparkline, chunks[0]);
+	};
 
-	let sparkline = Sparkline::default()
-		.block(Block::default().title("GETS"))
-		.data(&monitor.metrics.gets_sparkline)
-		.style(Style::default().fg(Color::Green));
-	f.render_widget(sparkline, chunks[1]);
+	if let Some(bucket_set) = monitor
+		.metrics
+		.gets_timeline
+		.get_bucket_set(&dash_state.active_timeline_name)
+	{
+		let sparkline = Sparkline::default()
+			.block(Block::default().title("GETS"))
+			.data(&bucket_set.buckets())
+			.style(Style::default().fg(Color::Green));
+		f.render_widget(sparkline, chunks[1]);
+	};
 }
 
 fn draw_logfile<B: Backend>(

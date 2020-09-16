@@ -3,6 +3,7 @@
 ///! Edit src/custom/opt.rs to create a customised fork of logtail-dash
 
 static MAX_CONTENT: &str = "100";
+pub static MIN_TIMELINE_STEPS: usize = 10;
 
 pub use structopt::StructOpt;
 
@@ -15,9 +16,13 @@ pub struct Opt {
 	#[structopt(short = "l", long, default_value = "100")]
 	pub lines_max: usize,
 
-	/// Time between ticks in milliseconds
-	#[structopt(short, long, default_value = "200")]
+	/// Event update tick in milliseconds
+	#[structopt(long, default_value = "200")]
 	pub tick_rate: u64,
+
+	/// Steps to use in the timeline display
+	#[structopt(short, long, default_value = "100")]
+	pub timeline_steps: usize,
 
 	/// Ignore any existing logfile content
 	#[structopt(short, long)]

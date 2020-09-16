@@ -17,7 +17,10 @@ use std::io;
 #[path = "../custom/mod.rs"]
 pub mod custom;
 use self::custom::app::{App, DashViewMain};
-use self::custom::opt::Opt;
+use self::custom::app::{
+	ONE_DAY_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME, ONE_YEAR_NAME,
+};
+
 use self::custom::ui::draw_dashboard;
 
 #[macro_use]
@@ -107,16 +110,29 @@ async fn terminal_main() -> std::io::Result<()> {
 
 							Key::Char('q')|
 							Key::Char('Q') => return Ok(()),
-							Key::Char('h')|
-							Key::Char('H') => app.dash_state.main_view = DashViewMain::DashHorizontal,
+							// Key::Char('s')|
+							// Key::Char('S') => app.dash_state.main_view = DashViewMain::DashSummary,
 							Key::Char('v')|
-							Key::Char('V') => app.dash_state.main_view = DashViewMain::DashVertical,
-							Key::Char('D') => app.dash_state.main_view = DashViewMain::DashDebug,
+							Key::Char('V') => app.dash_state.main_view = DashViewMain::DashVault,
+
+							Key::Char('m')|
+							Key::Char('M') => app.dash_state.active_timeline_name = ONE_MINUTE_NAME.clone(),
+							Key::Char('h')|
+							Key::Char('H') => app.dash_state.active_timeline_name = ONE_HOUR_NAME.clone(),
+							Key::Char('d')|
+							Key::Char('D') => app.dash_state.active_timeline_name = ONE_DAY_NAME.clone(),
+							Key::Char('t')|
+							Key::Char('T') => app.dash_state.active_timeline_name = ONE_TWELTH_NAME.clone(),
+							Key::Char('y')|
+							Key::Char('Y') => app.dash_state.active_timeline_name = ONE_YEAR_NAME.clone(),
+
 							Key::Down => app.handle_arrow_down(),
 							Key::Up => app.handle_arrow_up(),
 							Key::Right|
 							Key::Char('\t') => app.change_focus_next(),
 							Key::Left => app.change_focus_previous(),
+
+							Key::Char('G') => app.dash_state.main_view = DashViewMain::DashDebug,
 								_ => {},
 						}
 					}
