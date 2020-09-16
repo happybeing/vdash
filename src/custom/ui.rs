@@ -206,7 +206,7 @@ fn draw_timeline<B: Backend>(
 ) {
 	let window_widget = Block::default()
 		.borders(Borders::ALL)
-		.title("Timeline".to_string());
+		.title(format!("Timeline - {}", &dash_state.active_timeline_name).to_string());
 	f.render_widget(window_widget, area);
 
 	// For debugging the bucket state
