@@ -28,118 +28,18 @@ pub fn draw_dashboard<B: Backend>(
 	}
 }
 
-fn draw_dash_horizontal<B: Backend>(
-	f: &mut Frame<B>,
-	dash_state: &DashState,
-	monitors: &mut HashMap<String, LogMonitor>,
-) {
-	let constraints = make_percentage_constraints(monitors.len());
-
-	let size = f.size();
-	let chunks = Layout::default()
-		.direction(Direction::Vertical)
-		.constraints(constraints.as_ref())
-		.split(size);
-
-	for (logfile, monitor) in monitors.iter_mut() {
-		let len = monitor.content.items.len();
-		if len > 0 {
-			monitor
-				.content
-				.state
-				.select(Some(monitor.content.items.len() - 1));
-		}
-
-		let items: Vec<ListItem> = monitor
-			.content
-			.items
-			.iter()
-			.map(|s| {
-				ListItem::new(vec![Spans::from(s.clone())])
-					.style(Style::default().fg(Color::Black).bg(Color::White))
-			})
-			.collect();
-
-		let monitor_widget = List::new(items)
-			.block(
-				Block::default()
-					.borders(Borders::ALL)
-					.title(logfile.clone()),
-			)
-			.highlight_style(
-				Style::default()
-					.bg(Color::LightGreen)
-					.add_modifier(Modifier::BOLD),
-			);
-		f.render_stateful_widget(
-			monitor_widget,
-			chunks[monitor.index],
-			&mut monitor.content.state,
-		);
-	}
-}
+use super::ui::draw_logfile;
 
 fn draw_dash_vertical<B: Backend>(
 	f: &mut Frame<B>,
 	dash_state: &DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
-	let constraints = make_percentage_constraints(monitors.len());
-	let size = f.size();
-	let chunks = Layout::default()
-		.direction(Direction::Horizontal)
-		.constraints(constraints.as_ref())
-		.split(size);
-
+	let mut index = 0;
 	for (logfile, monitor) in monitors.iter_mut() {
-		monitor
-			.content
-			.state
-			.select(Some(monitor.content.items.len() - 1));
-		let items: Vec<ListItem> = monitor
-			.content
-			.items
-			.iter()
-			.map(|s| {
-				ListItem::new(vec![Spans::from(s.clone())])
-					.style(Style::default().fg(Color::Black).bg(Color::White))
-			})
-			.collect();
-
-		let monitor_widget = List::new(items)
-			.block(
-				Block::default()
-					.borders(Borders::ALL)
-					.title(logfile.clone()),
-			)
-			.highlight_style(
-				Style::default()
-					.bg(Color::LightGreen)
-					.add_modifier(Modifier::BOLD),
-			);
-		f.render_stateful_widget(
-			monitor_widget,
-			chunks[monitor.index],
-			&mut monitor.content.state,
-		);
+		if monitor.is_debug_dashboard_log {
+			draw_logfile(f, f.size(), logfile, monitor);
+		}
+		index += 1;
 	}
-}
-
-fn make_percentage_constraints(count: usize) -> Vec<Constraint> {
-	let percent = if count > 0 { 100 / count as u16 } else { 0 };
-	let mut constraints = Vec::new();
-	let mut total_percent = 0;
-
-	for i in 1..count + 1 {
-		total_percent += percent;
-
-		let next_percent = if i == count && total_percent < 100 {
-			100 - total_percent
-		} else {
-			percent
-		};
-
-		constraints.push(Constraint::Percentage(next_percent));
-	}
-	constraints
 }

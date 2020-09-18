@@ -21,6 +21,36 @@ pub static ONE_DAY_NAME: &str = "1 day";
 pub static ONE_TWELTH_NAME: &str = "1 twelth year";
 pub static ONE_YEAR_NAME: &str = "1 year";
 
+use std::sync::Mutex;
+lazy_static::lazy_static! {
+	pub static ref DEBUG_LOGFILE: Mutex<Option<NamedTempFile>> =
+		Mutex::<Option<NamedTempFile>>::new(None);
+}
+
+#[macro_export]
+macro_rules! debug_log {
+	($message:expr) => {
+		unsafe {
+			debug_log($message);
+			}
+	};
+}
+
+pub unsafe fn debug_log(message: &str) -> Result<bool, Error> {
+	// --debug-parser - prints parser results for a single logfile
+	// to a temp logfile which is displayed in the adjacent window.
+	match &(*DEBUG_LOGFILE.lock().unwrap()) {
+		Some(f) => {
+			use std::io::Seek;
+			let mut file = f.reopen()?;
+			file.seek(std::io::SeekFrom::End(0))?;
+			writeln!(file, "{}", message)?
+		}
+		None => (),
+	};
+	Ok(true)
+}
+
 pub struct App {
 	pub opt: Opt,
 	pub dash_state: DashState,
@@ -73,7 +103,7 @@ impl App {
 			let mut monitor = LogMonitor::new(&opt, f.to_string(), opt.lines_max);
 			if opt.debug_dashboard && monitor.index == 0 {
 				if let Some(named_file) = parser_output {
-					monitor.metrics.debug_logfile = Some(named_file);
+					unsafe { *DEBUG_LOGFILE.lock().unwrap() = Some(named_file) };
 					parser_output = None;
 					dash_state.debug_dashboard = true;
 				}
@@ -251,6 +281,7 @@ pub struct LogMonitor {
 	pub logfile: String,
 	pub metrics: VaultMetrics,
 	pub metrics_status: StatefulList<String>,
+	pub is_debug_dashboard_log: bool,
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -259,6 +290,14 @@ static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
 impl LogMonitor {
 	pub fn new(opt: &Opt, f: String, max_lines: usize) -> LogMonitor {
 		let index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
+
+		let mut is_debug_dashboard_log = false;
+		if let Some(debug_logfile) = &*DEBUG_LOGFILE.lock().unwrap() {
+			if let Some(debug_logfile_path) = debug_logfile.path().to_str() {
+				is_debug_dashboard_log = f.eq(debug_logfile_path);
+			}
+		}
+
 		LogMonitor {
 			index,
 			logfile: f,
@@ -267,6 +306,7 @@ impl LogMonitor {
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,
 			metrics_status: StatefulList::with_items(vec![]),
+			is_debug_dashboard_log,
 		}
 	}
 
@@ -298,8 +338,11 @@ impl LogMonitor {
 
 	pub fn append_to_content(&mut self, text: &str) -> Result<(), std::io::Error> {
 		if self.line_filter(&text) {
-			self.metrics.gather_metrics(&text)?;
 			self._append_to_content(text)?; // Show in TUI
+			if self.is_debug_dashboard_log {
+				return Ok(());
+			}
+			self.metrics.gather_metrics(&text)?;
 		}
 		Ok(())
 	}
@@ -585,15 +628,8 @@ impl VaultMetrics {
 
 		// --debug-parser - prints parser results for a single logfile
 		// to a temp logfile which is displayed in the adjacent window.
-		match &self.debug_logfile {
-			Some(f) => {
-				use std::io::Seek;
-				let mut file = f.reopen()?;
-				file.seek(std::io::SeekFrom::End(0))?;
-				writeln!(file, "{}", &parser_result)?
-			}
-			None => (),
-		};
+		debug_log!(&parser_result);
+
 		Ok(())
 	}
 

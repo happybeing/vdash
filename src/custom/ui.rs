@@ -265,7 +265,7 @@ fn draw_timeline<B: Backend>(
 	};
 }
 
-fn draw_logfile<B: Backend>(
+pub fn draw_logfile<B: Backend>(
 	f: &mut Frame<B>,
 	area: Rect,
 	logfile: &String,
