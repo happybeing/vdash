@@ -79,13 +79,16 @@ impl App {
 
 		let mut dash_state = DashState::new();
 		dash_state.debug_window = opt.debug_window;
+		if opt.debug_dashboard {
+			dash_state.main_view = DashViewMain::DashDebug;
+		}
+
 		let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
 		let mut logfiles = MuxedLines::new()?;
-		let mut name_for_focus = String::new();
+		let mut debug_logfile_name = String::new();
 		let mut logfile_names = Vec::<String>::new();
 
-		let mut debug_logfile: Option<tempfile::NamedTempFile> = if opt.debug_dashboard {
-			dash_state.main_view = DashViewMain::DashDebug;
+		let mut debug_logfile: Option<tempfile::NamedTempFile> = if opt.debug_window {
 			opt.files = opt.files[0..1].to_vec();
 			let named_file = NamedTempFile::new()?;
 			let path = named_file.path();
@@ -93,7 +96,7 @@ impl App {
 				.to_str()
 				.ok_or_else(|| Error::new(ErrorKind::Other, "invalid path"))?;
 			opt.files.push(String::from(path_str));
-			name_for_focus = String::from(path_str);
+			debug_logfile_name = String::from(path_str);
 			Some(named_file)
 		} else {
 			None
@@ -107,11 +110,10 @@ impl App {
 				first_logfile = f.to_string();
 			}
 			let mut monitor = LogMonitor::new(&opt, f.to_string(), opt.lines_max);
-			if opt.debug_dashboard && monitor.index == 0 {
+			if opt.debug_window && monitor.index == 0 {
 				if let Some(named_file) = debug_logfile {
 					unsafe { *DEBUG_LOGFILE.lock().unwrap() = Some(named_file) };
 					debug_logfile = None;
-					dash_state.debug_dashboard = true;
 				}
 			}
 			if opt.ignore_existing {
@@ -130,10 +132,6 @@ impl App {
 				}
 			}
 
-			if name_for_focus.is_empty() {
-				name_for_focus = f.to_string();
-			}
-
 			match logfiles.add_file(&f).await {
 				Ok(_) => (),
 				Err(e) => {
@@ -146,18 +144,24 @@ impl App {
 			}
 		}
 
+		let activate_debug_dashboard = opt.debug_dashboard;
 		let mut app = App {
 			opt,
 			dash_state,
 			monitors,
-			logfile_with_focus: name_for_focus.clone(),
+			logfile_with_focus: first_logfile.clone(),
 			logfiles,
 			logfile_names,
 		};
 		if !first_logfile.is_empty() {
-			app.dash_state.dash_vault_focus = first_logfile;
+			app.dash_state.dash_vault_focus = first_logfile.clone();
 		}
-		app.set_logfile_with_focus(name_for_focus);
+
+		if activate_debug_dashboard {
+			app.set_logfile_with_focus(debug_logfile_name);
+		} else {
+			app.set_logfile_with_focus(first_logfile);
+		}
 		Ok(app)
 	}
 
@@ -231,7 +235,14 @@ impl App {
 			return;
 		}
 
-		self.set_logfile_with_focus(self.logfile_names[next_i].to_string());
+		let logfile = self.logfile_names[next_i].to_string();
+		self.set_logfile_with_focus(logfile.clone());
+
+		if let Some(debug_logfile) = self.get_debug_dashboard_logfile() {
+			if logfile.eq(&debug_logfile) {
+				self.change_focus_next();
+			}
+		}
 	}
 
 	pub fn change_focus_previous(&mut self) {
@@ -257,7 +268,15 @@ impl App {
 			self.set_logfile_with_focus(DEBUG_WINDOW_NAME.to_string());
 			return;
 		}
-		self.set_logfile_with_focus(self.logfile_names[previous_i].to_string());
+
+		let logfile = self.logfile_names[previous_i].to_string();
+		self.set_logfile_with_focus(logfile.clone());
+
+		if let Some(debug_logfile) = self.get_debug_dashboard_logfile() {
+			if logfile.eq(&debug_logfile) {
+				self.change_focus_previous();
+			}
+		}
 	}
 
 	pub fn handle_arrow_up(&mut self) {
@@ -944,7 +963,6 @@ pub struct DashState {
 	pub debug_window_list: StatefulList<String>,
 	pub debug_window: bool,
 	pub debug_window_has_focus: bool,
-	pub debug_dashboard: bool,
 	max_debug_window: usize,
 }
 
@@ -955,7 +973,6 @@ impl DashState {
 			active_timeline_name: ONE_MINUTE_NAME,
 			dash_vault_focus: String::new(),
 
-			debug_dashboard: false,
 			debug_window: false,
 			debug_window_has_focus: false,
 			debug_window_list: StatefulList::new(),
