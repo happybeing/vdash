@@ -1,6 +1,5 @@
 ///! Terminal based interface and dashboard
 ///!
-///! Edit src/custom/ui.rs to create a customised fork of logtail-dash
 use super::app::{DashState, DashViewMain, LogMonitor};
 use log;
 use std::collections::HashMap;
@@ -19,18 +18,16 @@ pub fn draw_dashboard<B: Backend>(
 	dash_state: &DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
-	trace!("ui_debug.rs draw_dashboard()");
-
 	match dash_state.main_view {
 		DashViewMain::DashSummary => {}
 		DashViewMain::DashVault => {}
-		DashViewMain::DashDebug => draw_dash_vertical(f, dash_state, monitors),
+		DashViewMain::DashDebug => draw_debug_dashboard(f, dash_state, monitors),
 	}
 }
 
 use super::ui::draw_logfile;
 
-fn draw_dash_vertical<B: Backend>(
+fn draw_debug_dashboard<B: Backend>(
 	f: &mut Frame<B>,
 	dash_state: &DashState,
 	monitors: &mut HashMap<String, LogMonitor>,

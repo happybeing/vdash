@@ -84,7 +84,7 @@ impl App {
 		let mut name_for_focus = String::new();
 		let mut logfile_names = Vec::<String>::new();
 
-		let mut parser_output: Option<tempfile::NamedTempFile> = if opt.debug_dashboard {
+		let mut debug_logfile: Option<tempfile::NamedTempFile> = if opt.debug_dashboard {
 			dash_state.main_view = DashViewMain::DashDebug;
 			opt.files = opt.files[0..1].to_vec();
 			let named_file = NamedTempFile::new()?;
@@ -93,18 +93,24 @@ impl App {
 				.to_str()
 				.ok_or_else(|| Error::new(ErrorKind::Other, "invalid path"))?;
 			opt.files.push(String::from(path_str));
+			name_for_focus = String::from(path_str);
 			Some(named_file)
 		} else {
 			None
 		};
+
 		println!("Loading {} files...", opt.files.len());
+		let mut first_logfile = String::new();
 		for f in &opt.files {
 			println!("file: {}", f);
+			if (first_logfile.is_empty()) {
+				first_logfile = f.to_string();
+			}
 			let mut monitor = LogMonitor::new(&opt, f.to_string(), opt.lines_max);
 			if opt.debug_dashboard && monitor.index == 0 {
-				if let Some(named_file) = parser_output {
+				if let Some(named_file) = debug_logfile {
 					unsafe { *DEBUG_LOGFILE.lock().unwrap() = Some(named_file) };
-					parser_output = None;
+					debug_logfile = None;
 					dash_state.debug_dashboard = true;
 				}
 			}
@@ -112,7 +118,7 @@ impl App {
 				logfile_names.push(f.to_string());
 				monitors.insert(f.to_string(), monitor);
 			} else {
-				match monitor.load_logfile() {
+				match monitor.load_logfile(&mut dash_state) {
 					Ok(()) => {
 						logfile_names.push(f.to_string());
 						monitors.insert(f.to_string(), monitor);
@@ -148,8 +154,29 @@ impl App {
 			logfiles,
 			logfile_names,
 		};
-		app.set_logfile_focus(&name_for_focus);
+		if !first_logfile.is_empty() {
+			app.dash_state.dash_vault_focus = first_logfile;
+		}
+		app.set_logfile_with_focus(name_for_focus);
 		Ok(app)
+	}
+
+	pub fn get_debug_dashboard_logfile(&mut self) -> Option<String> {
+		let mut index = 0;
+		for (logfile, monitor) in self.monitors.iter_mut() {
+			if monitor.is_debug_dashboard_log {
+				return Some(monitor.logfile.clone());
+			}
+			index += 1;
+		}
+		None
+	}
+
+	pub fn get_logfile_with_focus(&mut self) -> Option<(String)> {
+		match (&mut self.monitors).get_mut(&self.logfile_with_focus) {
+			Some(mut monitor) => Some(monitor.logfile.clone()),
+			None => None,
+		}
 	}
 
 	pub fn get_monitor_with_focus(&mut self) -> Option<(&mut LogMonitor)> {
@@ -159,7 +186,7 @@ impl App {
 		}
 	}
 
-	pub fn set_logfile_focus(&mut self, logfile_name: &String) {
+	pub fn set_logfile_with_focus(&mut self, logfile_name: String) {
 		match self.get_monitor_with_focus() {
 			Some(fading_monitor) => {
 				fading_monitor.has_focus = false;
@@ -176,7 +203,7 @@ impl App {
 			self.dash_state.debug_window_has_focus = false;
 		}
 
-		if let Some(focus_monitor) = (&mut self.monitors).get_mut(logfile_name) {
+		if let Some(focus_monitor) = (&mut self.monitors).get_mut(&logfile_name) {
 			focus_monitor.has_focus = true;
 			self.logfile_with_focus = logfile_name.clone();
 		} else {
@@ -185,6 +212,10 @@ impl App {
 	}
 
 	pub fn change_focus_next(&mut self) {
+		if self.dash_state.main_view == DashViewMain::DashDebug {
+			return;
+		}
+
 		let mut next_i = 0;
 		for (i, name) in self.logfile_names.iter().enumerate() {
 			if name == &self.logfile_with_focus {
@@ -196,15 +227,18 @@ impl App {
 		}
 
 		if next_i == 0 && self.opt.debug_window && self.logfile_with_focus != DEBUG_WINDOW_NAME {
-			self.set_logfile_focus(&DEBUG_WINDOW_NAME.to_string());
+			self.set_logfile_with_focus(DEBUG_WINDOW_NAME.to_string());
 			return;
 		}
 
-		let new_focus_name = &self.logfile_names[next_i].to_string();
-		self.set_logfile_focus(&new_focus_name);
+		self.set_logfile_with_focus(self.logfile_names[next_i].to_string());
 	}
 
 	pub fn change_focus_previous(&mut self) {
+		if self.dash_state.main_view == DashViewMain::DashDebug {
+			return;
+		}
+
 		let len = self.logfile_names.len();
 		let mut previous_i = len - 1;
 		for (i, name) in self.logfile_names.iter().enumerate() {
@@ -220,11 +254,10 @@ impl App {
 			&& previous_i == len - 1
 			&& self.logfile_with_focus != DEBUG_WINDOW_NAME
 		{
-			self.set_logfile_focus(&DEBUG_WINDOW_NAME.to_string());
+			self.set_logfile_with_focus(DEBUG_WINDOW_NAME.to_string());
 			return;
 		}
-		let new_focus_name = &self.logfile_names[previous_i].to_string();
-		self.set_logfile_focus(new_focus_name);
+		self.set_logfile_with_focus(self.logfile_names[previous_i].to_string());
 	}
 
 	pub fn handle_arrow_up(&mut self) {
@@ -310,7 +343,7 @@ impl LogMonitor {
 		}
 	}
 
-	pub fn load_logfile(&mut self) -> std::io::Result<()> {
+	pub fn load_logfile(&mut self, dash_state: &mut DashState) -> std::io::Result<()> {
 		use std::io::{BufRead, BufReader};
 
 		let f = File::open(self.logfile.to_string());
@@ -323,7 +356,10 @@ impl LogMonitor {
 
 		for line in f.lines() {
 			let line = line.expect("Unable to read line");
-			self.append_to_content(&line)?
+			self.append_to_content(&line)?;
+			if self.is_debug_dashboard_log {
+				dash_state._debug_window(&line);
+			}
 		}
 
 		if self.content.items.len() > 0 {
@@ -860,37 +896,39 @@ impl LogEntry {
 	///!    INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
 	///!    WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
 	fn parse_logfile_line(line: &str) -> Option<LogEntry> {
-		let captures = LOG_LINE_PATTERN.captures(line)?;
+		if let Some(captures) = LOG_LINE_PATTERN.captures(line) {
+			let category = captures.name("category").map_or("", |m| m.as_str());
+			let time_string = captures.name("time_string").map_or("", |m| m.as_str());
+			let source = captures.name("source").map_or("", |m| m.as_str());
+			let message = captures.name("message").map_or("", |m| m.as_str());
+			let mut time_str = String::from("None");
+			let time = match DateTime::<FixedOffset>::parse_from_rfc3339(time_string) {
+				Ok(time) => {
+					time_str = format!("{}", time);
+					Some(time)
+				}
+				Err(e) => None,
+			};
+			let parser_output = format!(
+				"c: {}, t: {}, s: {}, m: {}",
+				category, time_str, source, message
+			);
 
-		let category = captures.name("category").map_or("", |m| m.as_str());
-		let time_string = captures.name("time_string").map_or("", |m| m.as_str());
-		let source = captures.name("source").map_or("", |m| m.as_str());
-		let message = captures.name("message").map_or("", |m| m.as_str());
-		let mut time_str = String::from("None");
-		let time = match DateTime::<FixedOffset>::parse_from_rfc3339(time_string) {
-			Ok(time) => {
-				time_str = format!("{}", time);
-				Some(time)
-			}
-			Err(e) => None,
-		};
-		let parser_output = format!(
-			"c: {}, t: {}, s: {}, m: {}",
-			category, time_str, source, message
-		);
-
-		Some(LogEntry {
-			logstring: String::from(line),
-			category: String::from(category),
-			time: time,
-			source: String::from(source),
-			message: String::from(message),
-			parser_output,
-		})
+			return Some(LogEntry {
+				logstring: String::from(line),
+				category: String::from(category),
+				time: time,
+				source: String::from(source),
+				message: String::from(message),
+				parser_output,
+			});
+		}
+		None
 	}
 }
 
 ///! Active UI at top level
+#[derive(PartialEq)]
 pub enum DashViewMain {
 	DashSummary,
 	DashVault,
@@ -900,6 +938,7 @@ pub enum DashViewMain {
 pub struct DashState {
 	pub main_view: DashViewMain,
 	pub active_timeline_name: &'static str,
+	pub dash_vault_focus: String,
 
 	// For --debug-window option
 	pub debug_window_list: StatefulList<String>,
@@ -914,6 +953,7 @@ impl DashState {
 		DashState {
 			main_view: DashViewMain::DashVault,
 			active_timeline_name: ONE_MINUTE_NAME,
+			dash_vault_focus: String::new(),
 
 			debug_dashboard: false,
 			debug_window: false,
@@ -945,5 +985,39 @@ pub struct DashVertical {
 impl DashVertical {
 	pub fn new() -> Self {
 		DashVertical { active_view: 0 }
+	}
+}
+
+pub fn set_main_view(view: DashViewMain, app: &mut App) {
+	if app.dash_state.main_view == view {
+		return;
+	}
+
+	save_focus(app);
+	app.dash_state.main_view = view;
+	restore_focus(app);
+}
+
+pub fn save_focus(app: &mut App) {
+	match app.dash_state.main_view {
+		DashViewMain::DashSummary => {} // TODO
+		DashViewMain::DashVault => {
+			if let Some(focus) = app.get_logfile_with_focus() {
+				app.dash_state.dash_vault_focus = focus;
+			}
+		}
+		DashViewMain::DashDebug => {}
+	}
+}
+
+pub fn restore_focus(app: &mut App) {
+	match app.dash_state.main_view {
+		DashViewMain::DashSummary => {} // TODO
+		DashViewMain::DashVault => app.set_logfile_with_focus(app.dash_state.dash_vault_focus.clone()),
+		DashViewMain::DashDebug => {
+			if let Some(debug_logfile) = app.get_debug_dashboard_logfile() {
+				app.set_logfile_with_focus(debug_logfile);
+			}
+		}
 	}
 }

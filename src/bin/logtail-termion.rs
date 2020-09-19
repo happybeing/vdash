@@ -16,7 +16,7 @@ use std::io;
 ///! forks of logterm customise the files in src/custom
 #[path = "../custom/mod.rs"]
 pub mod custom;
-use self::custom::app::{App, DashViewMain};
+use self::custom::app::{set_main_view, App, DashViewMain};
 use self::custom::app::{
 	ONE_DAY_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME, ONE_YEAR_NAME,
 };
@@ -111,9 +111,9 @@ async fn terminal_main() -> std::io::Result<()> {
 							Key::Char('q')|
 							Key::Char('Q') => return Ok(()),
 							// Key::Char('s')|
-							// Key::Char('S') => app.dash_state.main_view = DashViewMain::DashSummary,
+							// Key::Char('S') => app.set_main_view(DashViewMain::DashSummary),
 							Key::Char('v')|
-							Key::Char('V') => app.dash_state.main_view = DashViewMain::DashVault,
+							Key::Char('V') => set_main_view(DashViewMain::DashVault, &mut app),
 
 							Key::Char('m')|
 							Key::Char('M') => app.dash_state.active_timeline_name = ONE_MINUTE_NAME.clone(),
@@ -132,14 +132,14 @@ async fn terminal_main() -> std::io::Result<()> {
 							Key::Char('\t') => app.change_focus_next(),
 							Key::Left => app.change_focus_previous(),
 
-							Key::Char('G') => app.dash_state.main_view = DashViewMain::DashDebug,
+							Key::Char('g') => set_main_view(DashViewMain::DashDebug, &mut app),
 								_ => {},
 						}
 					}
 
 					Some(Event::Tick) => {
 						trace!("Event::Tick");
-						match terminal.draw(|f| draw_dashboard(f, &mut app.dash_state, &mut app.monitors)) {
+						match terminal.draw(|f| draw_dashboard(f, &mut app)) {
 							Ok(_) => {},
 							Err(e) => {
 								error!("terminal.draw() '{:#?}'", e);
@@ -163,7 +163,10 @@ async fn terminal_main() -> std::io::Result<()> {
 						match app.monitors.get_mut(&source) {
 							Some(monitor) => {
 								trace!("APPENDING: {}", line.line());
-								monitor.append_to_content(line.line())?
+								monitor.append_to_content(line.line())?;
+								if monitor.is_debug_dashboard_log {
+									app.dash_state._debug_window(line.line());
+								}
 							},
 							None => (),
 						}

@@ -14,7 +14,7 @@
 ///! forks of logterm customise the files in src/custom
 #[path = "../custom/mod.rs"]
 pub mod custom;
-use self::custom::app::{App, DashViewMain};
+use self::custom::app::{set_main_view, App, DashViewMain};
 use self::custom::app::{
 	ONE_DAY_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME, ONE_YEAR_NAME,
 };
@@ -88,7 +88,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 	// Use futures of async functions to handle events
 	// concurrently with logfile changes.
 	loop {
-		terminal.draw(|f| draw_dashboard(f, &mut app.dash_state, &mut app.monitors))?;
+		terminal.draw(|f| draw_dashboard(f, &mut app))?;
 		let logfiles_future = app.logfiles.next().fuse();
 		let events_future = rx.recv().fuse();
 		pin_mut!(logfiles_future, events_future);
@@ -113,9 +113,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							break Ok(());
 						},
 						// KeyCode::Char('s')|
-						// KeyCode::Char('S') => app.dash_state.main_view = DashViewMain::DashSummary,
+						// KeyCode::Char('S') => app.set_main_view(DashViewMain::DashSummary),
 						KeyCode::Char('v')|
-						KeyCode::Char('V') => app.dash_state.main_view = DashViewMain::DashVault,
+						KeyCode::Char('V') => set_main_view(DashViewMain::DashVault, &mut app),
 
 						KeyCode::Char('m')|
 						KeyCode::Char('M') => app.dash_state.active_timeline_name = ONE_MINUTE_NAME.clone(),
@@ -133,6 +133,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Right|
 						KeyCode::Tab => app.change_focus_next(),
 						KeyCode::Left => app.change_focus_previous(),
+
+						KeyCode::Char('g') => set_main_view(DashViewMain::DashDebug, &mut app),
 						_ => {}
 					}
 				}
@@ -155,7 +157,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 					let source = String::from(source_str);
 
 					match app.monitors.get_mut(&source) {
-						Some(monitor) => monitor.append_to_content(line.line())?,
+						Some(monitor) => {
+							monitor.append_to_content(line.line())?;
+							if monitor.is_debug_dashboard_log {
+								app.dash_state._debug_window(line.line());
+							}
+						},
 						None => (),
 					}
 				},
