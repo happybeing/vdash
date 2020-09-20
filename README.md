@@ -33,7 +33,7 @@ Where `vdash` is headed:
 - [ ] Summary view: all vaults on one page
 - [ ] trim VaultMetrics timeline
 - [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
-- [ ] tui-rs [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
+- [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
 - [ ] Implement --features="vdash" / --features="logtail" to select app and UI
 
 ## Operating Systems
