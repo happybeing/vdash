@@ -4,7 +4,6 @@
 
 **Status:** early but useful for real time monitoring or post run logfile analysis.
 
-![vdash screenshot](./screenshots/vdash v0.2.0.png?raw=true "vdash v0.2.0")
 <img src="./screenshots/vdash v0.2.0.png" alt="screenshot of vdash v0.2.0">
 
 ## Specification
