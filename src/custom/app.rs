@@ -37,7 +37,7 @@ macro_rules! debug_log {
 }
 
 pub unsafe fn debug_log(message: &str) -> Result<bool, Error> {
-	// --debug-parser - prints parser results for a single logfile
+	// --debug-window - prints parser results for a single logfile
 	// to a temp logfile which is displayed in the adjacent window.
 	match &(*DEBUG_LOGFILE.lock().unwrap()) {
 		Some(f) => {
@@ -641,7 +641,7 @@ impl VaultMetrics {
 			activity_other: 0,
 
 			// State (vault)
-			agebracket: VaultAgebracket::Infant,
+			agebracket: VaultAgebracket::Unknown,
 
 			// State (network)
 			adults: 0,
@@ -799,11 +799,11 @@ impl VaultMetrics {
 				"Adult" => VaultAgebracket::Adult,
 				"Elder" => VaultAgebracket::Elder,
 				_ => {
-					self.parser_output = format!("Error, unkown vault agedbracket '{}'", agebracket);
+					debug_log!(self.parser_output.as_str());
 					VaultAgebracket::Unknown
 				}
 			};
-			if self.agebracket == VaultAgebracket::Unknown {
+			if self.agebracket != VaultAgebracket::Unknown {
 				self.parser_output = format!("Vault agebracket: {}", agebracket);
 			} else {
 				self.parser_output = format!("FAILED to parse agebracket in: {}", &entry.logstring);
@@ -816,7 +816,7 @@ impl VaultMetrics {
 
 	fn parse_usize(&mut self, prefix: &str, content: &str) -> Option<usize> {
 		if let Some(position) = content.find(prefix) {
-			match content[position + prefix.len()..].parse::<usize>() {
+			match content[position + prefix.len()..].trim().parse::<usize>() {
 				Ok(value) => return Some(value),
 				Err(e) => self.parser_output = format!("failed to parse usize from: '{}'", content),
 			}
@@ -826,7 +826,10 @@ impl VaultMetrics {
 
 	fn parse_word(&mut self, prefix: &str, content: &str) -> Option<String> {
 		if let Some(mut start) = content.find(prefix) {
-			let word: Vec<&str> = content.trim_start().splitn(1, " ").collect();
+			let word: Vec<&str> = content[start + prefix.len()..]
+				.trim_start()
+				.splitn(1, " ")
+				.collect();
 			if word.len() == 1 {
 				return Some(word[0].to_string());
 			} else {
