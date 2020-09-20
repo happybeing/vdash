@@ -23,6 +23,7 @@ Where `vdash` is headed:
   - [ ] add a timeline
     - [x] simple timeline with PUTS and GETS
     - [x] implement multiple timeline durations (hour, minute etc)
+    - [x] add status/timeline for ERRORS
     - [ ] mod sparkline widget so can anchor 'now' to right border
   - [ ] reduce lag in processing logfile changes
   - [ ] add a dummy test chart
