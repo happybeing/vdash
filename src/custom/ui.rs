@@ -32,7 +32,7 @@ fn draw_vault_dash<B: Backend>(
 	// Horizonatal bands:
 	let constraints = [
 		Constraint::Length(12), // Stats summary and graphs
-		Constraint::Length(12), // Timeline
+		Constraint::Length(18), // Timeline
 		Constraint::Min(0),     // Bottom panel
 	];
 
@@ -124,8 +124,8 @@ fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogM
 
 	push_metric(
 		&mut items,
-		&"Other".to_string(),
-		&monitor.metrics.activity_other.to_string(),
+		&"ERRORS".to_string(),
+		&monitor.metrics.activity_errors.to_string(),
 	);
 
 	push_subheading(&mut items, &"".to_string());
@@ -142,17 +142,11 @@ fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogM
 	// 	&monitor.metrics.elders.to_string(),
 	// );
 
-	let monitor_widget = List::new(items)
-		.block(
-			Block::default()
-				.borders(Borders::ALL)
-				.title("Vault Status".to_string()),
-		)
-		.highlight_style(
-			Style::default()
-				.bg(Color::LightGreen)
-				.add_modifier(Modifier::BOLD),
-		);
+	let monitor_widget = List::new(items).block(
+		Block::default()
+			.borders(Borders::ALL)
+			.title("Vault Status".to_string()),
+	);
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.metrics_status.state);
 }
 
@@ -167,7 +161,7 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	let s = format!("{:<12}: {:>12}", metric, value);
 	items.push(
 		ListItem::new(vec![Spans::from(s.clone())])
-			.style(Style::default().fg(Color::Green).bg(Color::Black)),
+			.style(Style::default().fg(Color::Blue).bg(Color::Black)),
 	);
 }
 
@@ -229,7 +223,14 @@ fn draw_timeline<B: Backend>(
 	let chunks = Layout::default()
 		.direction(Direction::Vertical)
 		.margin(1)
-		.constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+		.constraints(
+			[
+				Constraint::Percentage(33),
+				Constraint::Percentage(33),
+				Constraint::Percentage(33),
+			]
+			.as_ref(),
+		)
 		.split(area);
 
 	if let Some(bucket_set) = monitor
@@ -254,6 +255,18 @@ fn draw_timeline<B: Backend>(
 			.data(&bucket_set.buckets())
 			.style(Style::default().fg(Color::Green));
 		f.render_widget(sparkline, chunks[1]);
+	};
+
+	if let Some(bucket_set) = monitor
+		.metrics
+		.errors_timeline
+		.get_bucket_set(&dash_state.active_timeline_name)
+	{
+		let sparkline = Sparkline::default()
+			.block(Block::default().title("ERRORS"))
+			.data(&bucket_set.buckets())
+			.style(Style::default().fg(Color::Red));
+		f.render_widget(sparkline, chunks[2]);
 	};
 }
 

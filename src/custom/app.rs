@@ -445,7 +445,7 @@ impl LogMonitor {
 use regex::Regex;
 lazy_static::lazy_static! {
 	static ref LOG_LINE_PATTERN: Regex =
-		Regex::new(r"(?P<category>^[A-Z]{4}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
+		Regex::new(r"(?P<category>^[A-Z]{4,6}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
 }
 
 #[derive(PartialEq)]
@@ -777,6 +777,10 @@ impl VaultMetrics {
 	///! Capture state updates from a logfile entry
 	///! Returns true if the line has been processed and can be discarded
 	fn parse_states(&mut self, entry: &LogEntry) -> bool {
+		if entry.category.eq("ERROR") {
+			self.count_error();
+		}
+
 		let &content = &entry.logstring.as_str();
 		if let Some(elders) = self.parse_usize("No. of Elders:", content) {
 			self.elders = elders;
