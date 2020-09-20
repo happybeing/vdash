@@ -4,7 +4,8 @@
 
 **Status:** early but useful for real time monitoring or post run logfile analysis.
 
-![vdash screenshot](/screenshots/vdash v0.2.0.png?raw=true "vdash v0.2.0")
+![vdash screenshot](./screenshots/vdash v0.2.0.png?raw=true "vdash v0.2.0")
+<img src="./screenshots/vdash v0.2.0.png" alt="screenshot of vdash v0.2.0">
 
 ## Specification
 Feature requests and discussion are currently summarised in the opening post of the Safe Network forum topic: [Vault Dashboard ideas please!](https://safenetforum.org/t/vault-dashboard-ideas-please/32572?u=happybeing) 
