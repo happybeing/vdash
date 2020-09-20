@@ -2,7 +2,9 @@
 
 `vdash` is a SAFE Network Vault dashboard for the terminal. It is written in Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI and [linemux](https://github.com/jmagnuson/linemux) to monitor vault logfiles on the local machine.
 
-**Status:** work in progress - not useful yet unless you want to help with testing.
+**Status:** early but useful for real time monitoring or post run logfile analysis.
+
+![vdash screenshot](/screenshots/vdash v0.2.0.png?raw=true "vdash v0.2.0")
 
 ## Specification
 Feature requests and discussion are currently summarised in the opening post of the Safe Network forum topic: [Vault Dashboard ideas please!](https://safenetforum.org/t/vault-dashboard-ideas-please/32572?u=happybeing) 
