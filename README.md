@@ -21,9 +21,9 @@ Where `vdash` is headed:
   - [x] scroll vault logfile (arrow keys)
   - [x] multiple vaults (navigate with tab and arrow keys)
   - [ ] add a timeline
-    - [x] simple timeline with PUTS and GETS 
+    - [x] simple timeline with PUTS and GETS
+    - [x] implement multiple timeline durations (hour, minute etc)
     - [ ] mod sparkline widget so can anchor 'now' to right border
-    - [ ] more scales: minute, hour, day etc (bucket set for each)
   - [ ] reduce lag in processing logfile changes
   - [ ] add a dummy test chart
   - [ ] mock storage chart: horizontal bar chart (vault storage limit/used)
@@ -33,6 +33,7 @@ Where `vdash` is headed:
 - [ ] Summary view: all vaults on one page
 - [ ] trim VaultMetrics timeline
 - [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
+- [ ] tui-rs [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
 - [ ] Implement --features="vdash" / --features="logtail" to select app and UI
 
 ## Operating Systems
