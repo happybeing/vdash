@@ -165,6 +165,28 @@ impl App {
 		Ok(app)
 	}
 
+	pub fn get_monitor_for_file_path(&mut self, logfile: &String) -> Option<(&mut LogMonitor)> {
+		let mut index = 0;
+		let mut monitor_for_path = None;
+		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
+			if monitor_file.eq(logfile) {
+				let monitor_for_path = Some(&mut monitor);
+				break;
+			}
+			use std::env::current_dir;
+			use std::path::Path;
+			if let Ok(current_dir) = current_dir() {
+				let logfile_path = Path::new(logfile.as_str());
+				if current_dir.join(monitor_file).eq(&logfile_path) {
+					monitor_for_path = Some(monitor);
+					break;
+				}
+			}
+			index += 1;
+		}
+		return monitor_for_path;
+	}
+
 	pub fn get_debug_dashboard_logfile(&mut self) -> Option<String> {
 		let mut index = 0;
 		for (logfile, monitor) in self.monitors.iter_mut() {
