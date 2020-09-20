@@ -3,6 +3,10 @@
 ///! Edit src/custom/ui.rs to create a customised fork of logtail-dash
 use super::app::{App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
+
+#[path = "../widgets/mod.rs"]
+pub mod widgets;
+use self::widgets::sparkline::SparklineRight;
 use std::collections::HashMap;
 
 use log;
@@ -12,7 +16,7 @@ use tui::{
 	layout::{Constraint, Corner, Direction, Layout, Rect},
 	style::{Color, Modifier, Style},
 	text::{Span, Spans, Text},
-	widgets::{Block, BorderType, Borders, List, ListItem, Sparkline, Widget},
+	widgets::{Block, BorderType, Borders, List, ListItem, Widget},
 	Frame, Terminal,
 };
 
@@ -238,7 +242,7 @@ fn draw_timeline<B: Backend>(
 		.puts_timeline
 		.get_bucket_set(&dash_state.active_timeline_name)
 	{
-		let sparkline = Sparkline::default()
+		let sparkline = SparklineRight::default()
 			.block(Block::default().title("PUTS"))
 			.data(&bucket_set.buckets())
 			.style(Style::default().fg(Color::Yellow));
@@ -250,7 +254,7 @@ fn draw_timeline<B: Backend>(
 		.gets_timeline
 		.get_bucket_set(&dash_state.active_timeline_name)
 	{
-		let sparkline = Sparkline::default()
+		let sparkline = SparklineRight::default()
 			.block(Block::default().title("GETS"))
 			.data(&bucket_set.buckets())
 			.style(Style::default().fg(Color::Green));
@@ -262,7 +266,7 @@ fn draw_timeline<B: Backend>(
 		.errors_timeline
 		.get_bucket_set(&dash_state.active_timeline_name)
 	{
-		let sparkline = Sparkline::default()
+		let sparkline = SparklineRight::default()
 			.block(Block::default().title("ERRORS"))
 			.data(&bucket_set.buckets())
 			.style(Style::default().fg(Color::Red));
