@@ -553,7 +553,7 @@ impl BucketSet {
 			total_duration: bucket_duration * max_buckets as i32,
 
 			bucket_time: None,
-			buckets: vec![0],
+			buckets: vec![0; max_buckets],
 		}
 	}
 	pub fn set_bucket_value(&mut self, value: u64) {

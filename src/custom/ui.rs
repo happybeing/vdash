@@ -244,7 +244,10 @@ fn draw_timeline<B: Backend>(
 	{
 		let sparkline = SparklineRight::default()
 			.block(Block::default().title("PUTS"))
-			.data(&bucket_set.buckets())
+			.data(buckets_right_justify(
+				&bucket_set.buckets(),
+				chunks[0].width,
+			))
 			.style(Style::default().fg(Color::Yellow));
 		f.render_widget(sparkline, chunks[0]);
 	};
@@ -256,7 +259,10 @@ fn draw_timeline<B: Backend>(
 	{
 		let sparkline = SparklineRight::default()
 			.block(Block::default().title("GETS"))
-			.data(&bucket_set.buckets())
+			.data(buckets_right_justify(
+				&bucket_set.buckets(),
+				chunks[1].width,
+			))
 			.style(Style::default().fg(Color::Green));
 		f.render_widget(sparkline, chunks[1]);
 	};
@@ -268,10 +274,23 @@ fn draw_timeline<B: Backend>(
 	{
 		let sparkline = SparklineRight::default()
 			.block(Block::default().title("ERRORS"))
-			.data(&bucket_set.buckets())
+			.data(buckets_right_justify(
+				&bucket_set.buckets(),
+				chunks[2].width,
+			))
 			.style(Style::default().fg(Color::Red));
 		f.render_widget(sparkline, chunks[2]);
 	};
+}
+
+// Right justify and truncate (left) a set of buckets to width
+fn buckets_right_justify(buckets: &Vec<u64>, width: u16) -> &[u64] {
+	let width = width as usize;
+	if (width < buckets.len()) {
+		return &buckets[buckets.len() - width..];
+	}
+
+	buckets
 }
 
 pub fn draw_logfile<B: Backend>(

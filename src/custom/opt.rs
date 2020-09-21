@@ -20,8 +20,8 @@ pub struct Opt {
 	#[structopt(long, default_value = "200")]
 	pub tick_rate: u64,
 
-	/// Steps to use in the timeline display
-	#[structopt(short, long, default_value = "100")]
+	/// Steps (width) of each timeline, helps tweak right justification.
+	#[structopt(short, long, default_value = "210")]
 	pub timeline_steps: usize,
 
 	/// Ignore any existing logfile content
