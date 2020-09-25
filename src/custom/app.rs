@@ -170,7 +170,7 @@ impl App {
 		let mut monitor_for_path = None;
 		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
 			if monitor_file.eq(logfile) {
-				let monitor_for_path = Some(&mut monitor);
+				monitor_for_path = Some(monitor);
 				break;
 			}
 			use std::env::current_dir;
