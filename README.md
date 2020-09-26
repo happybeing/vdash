@@ -15,7 +15,7 @@ Where `vdash` is headed:
   - [x] implement parsing log file for simple metrics and timeline
   - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
 - [x] change events to use tokio mpsc (unbounded) channel
-- [ ] does tokio mpsc fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
+- [x] does tokio mpsc fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
 - [ ] implement vault dashboard
   - [x] vault status summary page (single vault)
   - [x] debug window (--debug-window)
@@ -26,14 +26,22 @@ Where `vdash` is headed:
     - [x] simple timeline with PUTS and GETS
     - [x] implement multiple timeline durations (hour, minute etc)
     - [x] add status/timeline for ERRORS
-    - [ ] mod sparkline widget so can anchor 'now' to right border
+    - [x] anchor 'now' to right border
+    - [ ] mod sparkline widget to have a minimum Y scale (e.g. 10 units)
   - [ ] reduce lag in processing logfile changes
-  - [ ] add a dummy test chart
-  - [ ] mock storage chart: horizontal bar chart (vault storage limit/used)
-  - [ ] mock chunk metering: vertical bar chart (total, immutable, sequence etc chunks)
-  - [ ] get real data into storage chart (poll disk)
-  - [ ] get real data into chunk metering
-- [ ] Summary view: all vaults on one page
+    - [x] implement simple rate limit on redraws
+    - [ ] implement update/redraw tick (for timeline and stats)
+    - [ ] optimise redraw rate limit
+    - [ ] make a CLI option for redraw rate limit
+  - [ ] implement storage 'meter'
+    - [ ] code to get vault storage used
+    - [ ] code to get free space on same device
+    - [ ] implement storage used/free 'progress' bar
+  - [ ] implement bandwidth 'meter'
+    - [ ] code to get vault bandwidth
+    - [ ] code to get total bandwidth
+    - [ ] implement bandwidth vault/total/max in last day 'progress' bar
+- [ ] Implement DashOverview: all vaults on one page (rename from DashSummary)
 - [ ] trim VaultMetrics timeline
 - [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
 - [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
