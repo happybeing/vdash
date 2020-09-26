@@ -186,8 +186,6 @@ fn draw_vault_graphs<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut Log
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
 }
 
-use super::app::{ONE_DAY_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME, ONE_YEAR_NAME};
-
 fn draw_timeline<B: Backend>(
 	f: &mut Frame<B>,
 	area: Rect,
