@@ -4,7 +4,7 @@
 use linemux::MuxedLines;
 use std::collections::HashMap;
 
-use chrono::{DateTime, Duration, FixedOffset, TimeZone};
+use chrono::{Duration, DateTime, Utc, TimeZone};
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use structopt::StructOpt;
@@ -164,6 +164,13 @@ impl App {
 		}
 		Ok(app)
 	}
+
+	pub fn update_timelines(&mut self, now: Option<DateTime<Utc>>) {
+		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
+			monitor.metrics.update_timelines(now);
+		}
+	}
+
 
 	pub fn get_monitor_for_file_path(&mut self, logfile: &String) -> Option<(&mut LogMonitor)> {
 		let mut index = 0;
@@ -481,7 +488,7 @@ pub struct TimelineSet {
 }
 
 pub struct BucketSet {
-	pub bucket_time: Option<DateTime<FixedOffset>>,
+	pub bucket_time: Option<DateTime<Utc>>,
 	pub total_duration: Duration,
 	pub bucket_duration: Duration,
 	pub max_buckets: usize,
@@ -513,7 +520,7 @@ impl TimelineSet {
 	///! Update all bucket_sets with new current time
 	///!
 	///! Call significantly more frequently than the smallest BucketSet duration
-	fn update_current_time(&mut self, new_time: Option<DateTime<FixedOffset>>) {
+	fn update_current_time(&mut self, new_time: Option<DateTime<Utc>>) {
 		for (name, bs) in self.bucket_sets.iter_mut() {
 			if let Some(mut bucket_time) = bs.bucket_time {
 				if let Some(new_time) = new_time {
@@ -576,7 +583,7 @@ impl BucketSet {
 }
 
 pub struct VaultMetrics {
-	pub vault_started: Option<DateTime<FixedOffset>>,
+	pub vault_started: Option<DateTime<Utc>>,
 	pub running_message: Option<String>,
 	pub running_version: Option<String>,
 	pub category_count: HashMap<String, usize>,
@@ -587,7 +594,7 @@ pub struct VaultMetrics {
 	pub gets_timeline: TimelineSet,
 	pub errors_timeline: TimelineSet, // TODO add code to collect and display
 
-	pub most_recent: Option<DateTime<FixedOffset>>,
+	pub most_recent: Option<DateTime<Utc>>,
 	pub agebracket: VaultAgebracket,
 	pub adults: usize,
 	pub elders: usize,
@@ -685,16 +692,7 @@ impl VaultMetrics {
 				self.most_recent = entry.time;
 			}
 
-			for timeline in &mut [
-				&mut self.puts_timeline,
-				&mut self.gets_timeline,
-				&mut self.errors_timeline,
-			]
-			.iter_mut()
-			{
-				timeline.update_current_time(self.most_recent);
-			}
-
+			self.update_timelines(self.most_recent);
 			self.parser_output = entry.parser_output.clone();
 			self.process_logfile_entry(&entry); // May overwrite self.parser_output
 			parser_result = self.parser_output.clone();
@@ -708,6 +706,18 @@ impl VaultMetrics {
 		debug_log!(&parser_result);
 
 		Ok(())
+	}
+
+	pub fn update_timelines(&mut self, now: Option<DateTime<Utc>>) {
+		for timeline in &mut [
+			&mut self.puts_timeline,
+			&mut self.gets_timeline,
+			&mut self.errors_timeline,
+		]
+		.iter_mut()
+		{
+			timeline.update_current_time(now);
+		}
 	}
 
 	///! Returm a LogEntry and capture metadata for logfile vault start:
@@ -887,7 +897,7 @@ pub struct ActivityEntry {
 	pub activity: String,
 	pub logstring: String,
 	pub category: String, // First word, "Running", "INFO", "WARN" etc
-	pub time: Option<DateTime<FixedOffset>>,
+	pub time: Option<DateTime<Utc>>,
 	pub source: String,
 
 	pub parser_output: String,
@@ -911,7 +921,7 @@ impl ActivityEntry {
 pub struct LogEntry {
 	pub logstring: String,
 	pub category: String, // First word, "Running", "INFO", "WARN" etc
-	pub time: Option<DateTime<FixedOffset>>,
+	pub time: Option<DateTime<Utc>>,
 	pub source: String,
 	pub message: String,
 
@@ -950,7 +960,8 @@ impl LogEntry {
 			let source = captures.name("source").map_or("", |m| m.as_str());
 			let message = captures.name("message").map_or("", |m| m.as_str());
 			let mut time_str = String::from("None");
-			let time = match DateTime::<FixedOffset>::parse_from_rfc3339(time_string) {
+
+			let time = match Utc.datetime_from_str(time_string, "%+") {
 				Ok(time) => {
 					time_str = format!("{}", time);
 					Some(time)

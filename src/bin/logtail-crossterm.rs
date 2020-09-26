@@ -42,6 +42,8 @@ use std::{
 	time::{Duration, Instant,SystemTime, UNIX_EPOCH},
 };
 
+use chrono::Utc;
+
 use tui::{
 	backend::CrosstermBackend,
 	layout::{Constraint, Corner, Direction, Layout},
@@ -151,6 +153,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 				}
 
 				Some(Event::Tick) => {
+					app.update_timelines(Some(Utc::now()));
 				// draw_dashboard(&mut f, &dash_state, &mut monitors).unwrap();
 				// draw_dashboard(f, &dash_state, &mut monitors)?;
 				}

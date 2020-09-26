@@ -9,7 +9,7 @@
 //!
 //! See README for more information.
 
-#![recursion_limit = "512"] // Prevent select! macro blowing up
+#![recursion_limit = "1024"] // Prevent select! macro blowing up
 
 use std::io;
 
@@ -54,8 +54,10 @@ type TuiTerminal = tui::terminal::Terminal<
 
 use std::{
 	io::{Error, ErrorKind},
-	time::{Duration, Instant,SystemTime, UNIX_EPOCH},
+	time::{Duration, SystemTime, UNIX_EPOCH},
 };
+
+use chrono::Utc;
 
 use futures::{
 	future::FutureExt, // for `.fuse()`
@@ -154,6 +156,7 @@ async fn terminal_main() -> std::io::Result<()> {
 
 					Some(Event::Tick) => {
 						trace!("Event::Tick");
+						app.update_timelines(Some(Utc::now()));
 						match terminal.draw(|f| draw_dashboard(f, &mut app)) {
 							Ok(_) => {},
 							Err(e) => {
