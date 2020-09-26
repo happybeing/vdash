@@ -16,7 +16,7 @@
 pub mod custom;
 use self::custom::app::{set_main_view, App, DashViewMain};
 use self::custom::app::{
-	ONE_DAY_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME, ONE_YEAR_NAME,
+	ONE_DAY_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME, ONE_SECOND_NAME,
 };
 
 use self::custom::ui::draw_dashboard;
@@ -39,7 +39,7 @@ use std::{
 	error::Error,
 	io::{stdout, Write},
 	thread,
-	time::{Duration, Instant},
+	time::{Duration, Instant,SystemTime, UNIX_EPOCH},
 };
 
 use tui::{
@@ -87,8 +87,19 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 	// Use futures of async functions to handle events
 	// concurrently with logfile changes.
+
+	let mut start = SystemTime::now()
+		.duration_since(UNIX_EPOCH)
+		.expect("Time went backwards");
+	let mut next_update = start - Duration::from_secs(2);
 	loop {
-		terminal.draw(|f| draw_dashboard(f, &mut app))?;
+		if next_update < SystemTime::now()
+			.duration_since(UNIX_EPOCH)
+			.expect("Time went backwards") {
+			terminal.draw(|f| draw_dashboard(f, &mut app))?;
+			next_update += Duration::from_secs(1);
+		}
+
 		let logfiles_future = app.logfiles.next().fuse();
 		let events_future = rx.recv().fuse();
 		pin_mut!(logfiles_future, events_future);
@@ -112,11 +123,13 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							terminal.show_cursor()?;
 							break Ok(());
 						},
-						// KeyCode::Char('s')|
-						// KeyCode::Char('S') => app.set_main_view(DashViewMain::DashSummary),
+						// KeyCode::Char('o')|	// TODO change DashSummary to DashOverview
+						// KeyCode::Char('O') => app.set_main_view(DashViewMain::DashSummary),
 						KeyCode::Char('v')|
 						KeyCode::Char('V') => set_main_view(DashViewMain::DashVault, &mut app),
 
+						KeyCode::Char('s')|
+						KeyCode::Char('S') => app.dash_state.active_timeline_name = ONE_SECOND_NAME.clone(),
 						KeyCode::Char('m')|
 						KeyCode::Char('M') => app.dash_state.active_timeline_name = ONE_MINUTE_NAME.clone(),
 						KeyCode::Char('h')|
@@ -125,8 +138,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Char('D') => app.dash_state.active_timeline_name = ONE_DAY_NAME.clone(),
 						KeyCode::Char('t')|
 						KeyCode::Char('T') => app.dash_state.active_timeline_name = ONE_TWELTH_NAME.clone(),
-						KeyCode::Char('y')|
-						KeyCode::Char('Y') => app.dash_state.active_timeline_name = ONE_YEAR_NAME.clone(),
 
 						KeyCode::Down => app.handle_arrow_down(),
 						KeyCode::Up => app.handle_arrow_up(),
@@ -163,7 +174,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 								app.dash_state._debug_window(line.line());
 							}
 						},
-						None => (),
+						None => {
+							app.dash_state._debug_window(format!("NO MONITOR FOR: {}", source).as_str());
+						},
 					}
 				},
 				Some(Err(e)) => {

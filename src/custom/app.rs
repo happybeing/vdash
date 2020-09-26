@@ -15,11 +15,11 @@ use crate::shared::util::StatefulList;
 
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
 
-pub static ONE_MINUTE_NAME: &str = "1 minute";
-pub static ONE_HOUR_NAME: &str = "1 hour";
-pub static ONE_DAY_NAME: &str = "1 day";
-pub static ONE_TWELTH_NAME: &str = "1 twelth year";
-pub static ONE_YEAR_NAME: &str = "1 year";
+pub static ONE_SECOND_NAME: &str = "1 second columns";
+pub static ONE_MINUTE_NAME: &str = "1 minute columns";
+pub static ONE_HOUR_NAME: &str = "1 hour columns";
+pub static ONE_DAY_NAME: &str = "1 day columns";
+pub static ONE_TWELTH_NAME: &str = "1 twelth year columns";
 
 use std::sync::Mutex;
 lazy_static::lazy_static! {
@@ -606,6 +606,7 @@ impl VaultMetrics {
 		let mut gets_timeline = TimelineSet::new("GETS".to_string());
 		let mut errors_timeline = TimelineSet::new("ERRORS".to_string());
 		for timeline in [&mut puts_timeline, &mut gets_timeline, &mut errors_timeline].iter_mut() {
+			timeline.add_bucket_set(&ONE_SECOND_NAME, Duration::seconds(1), opt.timeline_steps);
 			timeline.add_bucket_set(&ONE_MINUTE_NAME, Duration::minutes(1), opt.timeline_steps);
 			timeline.add_bucket_set(&ONE_HOUR_NAME, Duration::hours(1), opt.timeline_steps);
 			timeline.add_bucket_set(&ONE_DAY_NAME, Duration::days(1), opt.timeline_steps);
@@ -614,7 +615,6 @@ impl VaultMetrics {
 				Duration::days(365 / 12),
 				opt.timeline_steps,
 			);
-			timeline.add_bucket_set(&ONE_YEAR_NAME, Duration::days(365), opt.timeline_steps);
 		}
 
 		VaultMetrics {
@@ -999,7 +999,7 @@ impl DashState {
 	pub fn new() -> DashState {
 		DashState {
 			main_view: DashViewMain::DashVault,
-			active_timeline_name: ONE_MINUTE_NAME,
+			active_timeline_name: ONE_SECOND_NAME,
 			dash_vault_focus: String::new(),
 
 			debug_window: false,
