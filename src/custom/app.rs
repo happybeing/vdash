@@ -4,7 +4,7 @@
 use linemux::MuxedLines;
 use std::collections::HashMap;
 
-use chrono::{Duration, DateTime, Utc, TimeZone};
+use chrono::{DateTime, Duration, TimeZone, Utc};
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use structopt::StructOpt;
@@ -32,7 +32,7 @@ macro_rules! debug_log {
 	($message:expr) => {
 		unsafe {
 			debug_log($message);
-			}
+		}
 	};
 }
 
@@ -170,7 +170,6 @@ impl App {
 			monitor.metrics.update_timelines(now);
 		}
 	}
-
 
 	pub fn get_monitor_for_file_path(&mut self, logfile: &String) -> Option<(&mut LogMonitor)> {
 		let mut index = 0;
@@ -411,8 +410,7 @@ impl LogMonitor {
 		}
 
 		if self.content.items.len() > 0 {
-			self
-				.content
+			self.content
 				.state
 				.select(Some(self.content.items.len() - 1));
 		}
@@ -508,8 +506,7 @@ impl TimelineSet {
 	}
 
 	pub fn add_bucket_set(&mut self, name: &'static str, duration: Duration, max_buckets: usize) {
-		self
-			.bucket_sets
+		self.bucket_sets
 			.insert(name, BucketSet::new(duration, max_buckets));
 	}
 
@@ -544,9 +541,32 @@ impl TimelineSet {
 		}
 	}
 
-	fn increment_value(&mut self) {
+	fn increment_value(&mut self, time: Option<DateTime<Utc>>) {
+		debug_log!("increment_value()");
 		for (name, bs) in self.bucket_sets.iter_mut() {
-			let index = bs.buckets.len() - 1;
+			let mut index = bs.buckets.len() - 1;
+			if let Some(time) = time {
+				debug_log!("increment (time)");
+				if let Some(bucket_time) = bs.bucket_time {
+					debug_log!("increment (bucket_time)");
+					if time < bucket_time {
+						debug_log!("increment (closest bucket)");
+						// Use the closest bucket to this time
+						let time_difference = (bucket_time - time).num_nanoseconds();
+						let bucket_duration = bs.bucket_duration.num_nanoseconds();
+						if time_difference.and(bucket_duration).is_some() {
+							let buckets_behind = time_difference.unwrap() / bucket_duration.unwrap();
+							debug_log!(format!("increment buckets_behind: {}", buckets_behind).as_str());
+							if buckets_behind as usize > bs.buckets.len() {
+									index = 0;
+							} else {
+									index = bs.buckets.len() - buckets_behind as usize;
+							}
+						}
+					}
+				}
+			}
+			debug_log!(format!("increment index: {}", index).as_str());
 			bs.buckets[index] += 1;
 		}
 	}
@@ -721,7 +741,7 @@ impl VaultMetrics {
 	}
 
 	///! Returm a LogEntry and capture metadata for logfile vault start:
-	///!    'Running safe-vault v0.24.0'
+	///!	'Running safe-vault v0.24.0'
 	pub fn parse_start(&mut self, line: &str) -> Option<LogEntry> {
 		let running_prefix = String::from("Running safe-vault ");
 
@@ -731,8 +751,7 @@ impl VaultMetrics {
 			self.vault_started = self.most_recent;
 			let parser_output = format!(
 				"START at {}",
-				self
-					.most_recent
+				self.most_recent
 					.map_or(String::from("None"), |m| format!("{}", m))
 			);
 
@@ -767,7 +786,8 @@ impl VaultMetrics {
 			let mut response = "";
 
 			if let Some(response_end) = entry.logstring[response_start..].find(",") {
-				response = entry.logstring.as_str()[response_start..response_start + response_end].as_ref();
+				response = entry.logstring.as_str()[response_start..response_start + response_end]
+					.as_ref();
 				if !response.is_empty() {
 					let activity_entry = ActivityEntry::new(entry, response);
 					self.parse_activity_counts(&activity_entry);
@@ -788,7 +808,7 @@ impl VaultMetrics {
 	///! Returns true if the line has been processed and can be discarded
 	fn parse_states(&mut self, entry: &LogEntry) -> bool {
 		if entry.category.eq("ERROR") {
-			self.count_error();
+			self.count_error(entry.time);
 		}
 
 		let &content = &entry.logstring.as_str();
@@ -856,27 +876,27 @@ impl VaultMetrics {
 	///! Counts vault activity in categories GET, PUT and other
 	pub fn parse_activity_counts(&mut self, entry: &ActivityEntry) {
 		if entry.activity.starts_with("Get") {
-			self.count_get();
+			self.count_get(entry.time);
 		} else if entry.activity.starts_with("Mut") {
-			self.count_put();
+			self.count_put(entry.time);
 		} else {
 			self.activity_other += 1;
 		}
 	}
 
-	fn count_get(&mut self) {
+	fn count_get(&mut self, time: Option<DateTime<Utc>>) {
 		self.activity_gets += 1;
-		self.gets_timeline.increment_value();
+		self.gets_timeline.increment_value(time);
 	}
 
-	fn count_put(&mut self) {
+	fn count_put(&mut self, time: Option<DateTime<Utc>>) {
 		self.activity_puts += 1;
-		self.puts_timeline.increment_value();
+		self.puts_timeline.increment_value(time);
 	}
 
-	fn count_error(&mut self) {
+	fn count_error(&mut self, time: Option<DateTime<Utc>>) {
 		self.activity_errors += 1;
-		self.errors_timeline.increment_value();
+		self.errors_timeline.increment_value(time);
 	}
 
 	///! TODO
@@ -930,8 +950,8 @@ pub struct LogEntry {
 
 impl LogEntry {
 	///! Decode vault logfile lines of the form:
-	///!    INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
-	///!    WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
+	///!	INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
+	///!	WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
 	///!
 	pub fn decode(line: &str) -> Option<LogEntry> {
 		let mut test_entry = LogEntry {
@@ -951,8 +971,8 @@ impl LogEntry {
 	}
 
 	///! Parse a line of the form:
-	///!    INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
-	///!    WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
+	///!	INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
+	///!	WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
 	fn parse_logfile_line(line: &str) -> Option<LogEntry> {
 		if let Some(captures) = LOG_LINE_PATTERN.captures(line) {
 			let category = captures.name("category").map_or("", |m| m.as_str());
@@ -961,12 +981,20 @@ impl LogEntry {
 			let message = captures.name("message").map_or("", |m| m.as_str());
 			let mut time_str = String::from("None");
 
-			let time = match Utc.datetime_from_str(time_string, "%+") {
+			let mut time_utc: Option<DateTime<Utc>> = None;
+
+			// TODO switch to datetime_from_str() when solved (chrono issue #489)
+			// let time = match Utc.datetime_from_str(time_string, "%+") {
+			let time = match DateTime::parse_from_rfc3339(time_string) {
 				Ok(time) => {
+					time_utc = Some(time.with_timezone(&Utc));
 					time_str = format!("{}", time);
 					Some(time)
 				}
-				Err(e) => None,
+				Err(e) => {
+					debug_log!(format!("ERROR parsing logfile time: {}", e).as_str());
+					None
+				}
 			};
 			let parser_output = format!(
 				"c: {}, t: {}, s: {}, m: {}",
@@ -976,7 +1004,7 @@ impl LogEntry {
 			return Some(LogEntry {
 				logstring: String::from(line),
 				category: String::from(category),
-				time: time,
+				time: time_utc,
 				source: String::from(source),
 				message: String::from(message),
 				parser_output,
@@ -1070,7 +1098,9 @@ pub fn save_focus(app: &mut App) {
 pub fn restore_focus(app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashSummary => {} // TODO
-		DashViewMain::DashVault => app.set_logfile_with_focus(app.dash_state.dash_vault_focus.clone()),
+		DashViewMain::DashVault => {
+			app.set_logfile_with_focus(app.dash_state.dash_vault_focus.clone())
+		}
 		DashViewMain::DashDebug => {
 			if let Some(debug_logfile) = app.get_debug_dashboard_logfile() {
 				app.set_logfile_with_focus(debug_logfile);
