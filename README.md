@@ -31,7 +31,8 @@ Where `vdash` is headed:
   - [ ] reduce lag in processing logfile changes
     - [x] implement simple rate limit on redraws
     - [x] implement update/redraw tick (for timeline and stats)
-    - [ ] fix load from logfile to timeline (currently all ends up in last bucket)
+    - [x] fix load from logfile to timeline (currently all ends up in last bucket)
+    - [ ] change timeline scaling to use +/- keys rather than s, m, d etc
     - [ ] optimise redraw rate limit
     - [ ] make a CLI option for redraw rate limit
   - [ ] implement storage 'meter'
