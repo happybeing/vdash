@@ -17,10 +17,6 @@ use std::io;
 #[path = "../custom/mod.rs"]
 pub mod custom;
 use self::custom::app::{set_main_view, App, DashViewMain};
-use self::custom::app::{
-	ONE_DAY_NAME, ONE_SECOND_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME,
-};
-
 use self::custom::ui::draw_dashboard;
 
 #[macro_use]
@@ -127,22 +123,18 @@ async fn terminal_main() -> std::io::Result<()> {
 
 							Key::Char('q')|
 							Key::Char('Q') => return Ok(()),
-						// Key::Char('o')|	// TODO change DashSummary to DashOverview
-						// Key::Char('O') => app.set_main_view(DashViewMain::DashSummary),
+						// Key::Char('s')|
+						// Key::Char('S') => app.set_main_view(DashViewMain::DashSummary),
 							Key::Char('v')|
 							Key::Char('V') => set_main_view(DashViewMain::DashVault, &mut app),
 
-							Key::Char('s')|
-							Key::Char('S') => app.dash_state.active_timeline_name = ONE_SECOND_NAME.clone(),
-							Key::Char('m')|
-							Key::Char('M') => app.dash_state.active_timeline_name = ONE_MINUTE_NAME.clone(),
-							Key::Char('h')|
-							Key::Char('H') => app.dash_state.active_timeline_name = ONE_HOUR_NAME.clone(),
-							Key::Char('d')|
-							Key::Char('D') => app.dash_state.active_timeline_name = ONE_DAY_NAME.clone(),
-							Key::Char('t')|
-							Key::Char('T') => app.dash_state.active_timeline_name = ONE_TWELTH_NAME.clone(),
-
+							Key::Char('+')|
+							Key::Char('i')|
+							Key::Char('I') => app.scale_timeline_up(),
+							Key::Char('-')|
+							Key::Char('o')|
+							Key::Char('O') => app.scale_timeline_down(),
+	
 							Key::Down => app.handle_arrow_down(),
 							Key::Up => app.handle_arrow_up(),
 							Key::Right|
@@ -151,7 +143,14 @@ async fn terminal_main() -> std::io::Result<()> {
 
 							Key::Char('g') => set_main_view(DashViewMain::DashDebug, &mut app),
 								_ => {},
-						}
+						};
+						match terminal.draw(|f| draw_dashboard(f, &mut app)) {
+							Ok(_) => {},
+							Err(e) => {
+								error!("terminal.draw() '{:#?}'", e);
+								return Err(e);
+							}
+						};
 					}
 
 					Some(Event::Tick) => {

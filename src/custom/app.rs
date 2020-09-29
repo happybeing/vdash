@@ -15,12 +15,6 @@ use crate::shared::util::StatefulList;
 
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
 
-pub static ONE_SECOND_NAME: &str = "1 second columns";
-pub static ONE_MINUTE_NAME: &str = "1 minute columns";
-pub static ONE_HOUR_NAME: &str = "1 hour columns";
-pub static ONE_DAY_NAME: &str = "1 day columns";
-pub static ONE_TWELTH_NAME: &str = "1 twelth year columns";
-
 use std::sync::Mutex;
 lazy_static::lazy_static! {
 	pub static ref DEBUG_LOGFILE: Mutex<Option<NamedTempFile>> =
@@ -143,7 +137,7 @@ impl App {
 				}
 			}
 		}
-
+		
 		let activate_debug_dashboard = opt.debug_dashboard;
 		let mut app = App {
 			opt,
@@ -153,6 +147,8 @@ impl App {
 			logfiles,
 			logfile_names,
 		};
+		app.update_timelines(Some(Utc::now()));
+
 		if !first_logfile.is_empty() {
 			app.dash_state.dash_vault_focus = first_logfile.clone();
 		}
@@ -321,6 +317,20 @@ impl App {
 		} else if self.opt.debug_window {
 			do_bracketed_next_previous(&mut self.dash_state.debug_window_list, true);
 		}
+	}
+
+	pub fn scale_timeline_up(&mut self) {
+		if (self.dash_state.active_timeline == 0) {
+			return;
+		}
+		self.dash_state.active_timeline -= 1;
+	}
+
+	pub fn scale_timeline_down(&mut self) {
+		if (self.dash_state.active_timeline == TIMELINES.len()-1 ) {
+			return;
+		}
+		self.dash_state.active_timeline += 1;
 	}
 }
 
@@ -633,15 +643,11 @@ impl VaultMetrics {
 		let mut gets_timeline = TimelineSet::new("GETS".to_string());
 		let mut errors_timeline = TimelineSet::new("ERRORS".to_string());
 		for timeline in [&mut puts_timeline, &mut gets_timeline, &mut errors_timeline].iter_mut() {
-			timeline.add_bucket_set(&ONE_SECOND_NAME, Duration::seconds(1), opt.timeline_steps);
-			timeline.add_bucket_set(&ONE_MINUTE_NAME, Duration::minutes(1), opt.timeline_steps);
-			timeline.add_bucket_set(&ONE_HOUR_NAME, Duration::hours(1), opt.timeline_steps);
-			timeline.add_bucket_set(&ONE_DAY_NAME, Duration::days(1), opt.timeline_steps);
-			timeline.add_bucket_set(
-				&ONE_TWELTH_NAME,
-				Duration::days(365 / 12),
-				opt.timeline_steps,
-			);
+			for i in 0..TIMELINES.len()-1 {
+				if let Some(spec) = TIMELINES.get(i) {
+					timeline.add_bucket_set(spec.0, spec.1, opt.timeline_steps);
+				}
+			}
 		}
 
 		VaultMetrics {
@@ -1022,9 +1028,20 @@ pub enum DashViewMain {
 	DashDebug,
 }
 
+lazy_static::lazy_static! {
+	pub static ref TIMELINES: std::vec::Vec<(&'static str, Duration)> = vec!(
+		("1 second columns", Duration::seconds(1)),
+		("1 minute columns", Duration::minutes(1)),
+		("1 hour columns", Duration::hours(1)),
+		("1 day columns", Duration::days(1)),
+		("1 twelth year columns", Duration::days(365 / 12)),
+	);
+}
+
 pub struct DashState {
 	pub main_view: DashViewMain,
-	pub active_timeline_name: &'static str,
+	pub active_timeline: usize,
+	pub active_timeline_name: &'static str,// TODO delete
 	pub dash_vault_focus: String,
 
 	// For --debug-window option
@@ -1036,9 +1053,15 @@ pub struct DashState {
 
 impl DashState {
 	pub fn new() -> DashState {
+		let mut active_timeline_name = "";
+		if let Some(spec) = TIMELINES.get(0) {
+			active_timeline_name = spec.0;
+		}
+
 		DashState {
 			main_view: DashViewMain::DashVault,
-			active_timeline_name: ONE_SECOND_NAME,
+			active_timeline: 0,
+			active_timeline_name,
 			dash_vault_focus: String::new(),
 
 			debug_window: false,

@@ -1,15 +1,15 @@
-///! Terminal based interface and dashboard
-///!
-///! Edit src/custom/ui.rs to create a customised fork of logtail-dash
-use super::app::{App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
+/// Terminal based interface and dashboard
+///
+/// Edit src/custom/ui.rs to create a customised fork of logtail-dash
+
+use log;
+use super::app::{TIMELINES, App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
 
 #[path = "../widgets/mod.rs"]
 pub mod widgets;
 use self::widgets::sparkline::SparklineRight;
 use std::collections::HashMap;
-
-use log;
 
 use tui::{
 	backend::Backend,
@@ -192,9 +192,18 @@ fn draw_timeline<B: Backend>(
 	dash_state: &mut DashState,
 	monitor: &mut LogMonitor,
 ) {
+	let mut active_timeline_name = "";
+	match TIMELINES.get(dash_state.active_timeline) {
+		None => {
+			// debug_log!("ERROR getting active timeline name");
+			return;
+		}
+		Some((name, _)) => active_timeline_name = name,
+	}
+
 	let window_widget = Block::default()
 		.borders(Borders::ALL)
-		.title(format!("Timeline - {}", &dash_state.active_timeline_name).to_string());
+		.title(format!("Timeline - {}", active_timeline_name).to_string());
 	f.render_widget(window_widget, area);
 
 	// For debugging the bucket state
@@ -238,7 +247,7 @@ fn draw_timeline<B: Backend>(
 	if let Some(bucket_set) = monitor
 		.metrics
 		.puts_timeline
-		.get_bucket_set(&dash_state.active_timeline_name)
+		.get_bucket_set(active_timeline_name)
 	{
 		let sparkline = SparklineRight::default()
 			.block(Block::default().title("PUTS"))

@@ -9,16 +9,12 @@
 //!
 //! See README for more information.
 
-#![recursion_limit = "512"] // Prevent select! macro blowing up
+#![recursion_limit = "1024"] // Prevent select! macro blowing up
 
 ///! forks of logterm customise the files in src/custom
 #[path = "../custom/mod.rs"]
 pub mod custom;
 use self::custom::app::{set_main_view, App, DashViewMain};
-use self::custom::app::{
-	ONE_DAY_NAME, ONE_HOUR_NAME, ONE_MINUTE_NAME, ONE_TWELTH_NAME, ONE_SECOND_NAME,
-};
-
 use self::custom::ui::draw_dashboard;
 
 #[macro_use]
@@ -125,21 +121,17 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							terminal.show_cursor()?;
 							break Ok(());
 						},
-						// KeyCode::Char('o')|	// TODO change DashSummary to DashOverview
-						// KeyCode::Char('O') => app.set_main_view(DashViewMain::DashSummary),
+						// KeyCode::Char('s')|
+						// KeyCode::Char('S') => app.set_main_view(DashViewMain::DashSummary),
 						KeyCode::Char('v')|
 						KeyCode::Char('V') => set_main_view(DashViewMain::DashVault, &mut app),
 
-						KeyCode::Char('s')|
-						KeyCode::Char('S') => app.dash_state.active_timeline_name = ONE_SECOND_NAME.clone(),
-						KeyCode::Char('m')|
-						KeyCode::Char('M') => app.dash_state.active_timeline_name = ONE_MINUTE_NAME.clone(),
-						KeyCode::Char('h')|
-						KeyCode::Char('H') => app.dash_state.active_timeline_name = ONE_HOUR_NAME.clone(),
-						KeyCode::Char('d')|
-						KeyCode::Char('D') => app.dash_state.active_timeline_name = ONE_DAY_NAME.clone(),
-						KeyCode::Char('t')|
-						KeyCode::Char('T') => app.dash_state.active_timeline_name = ONE_TWELTH_NAME.clone(),
+						KeyCode::Char('+')|
+						KeyCode::Char('i')|
+						KeyCode::Char('I') => app.scale_timeline_up(),
+						KeyCode::Char('-')|
+						KeyCode::Char('o')|
+						KeyCode::Char('O') => app.scale_timeline_down(),
 
 						KeyCode::Down => app.handle_arrow_down(),
 						KeyCode::Up => app.handle_arrow_up(),
@@ -149,7 +141,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 						KeyCode::Char('g') => set_main_view(DashViewMain::DashDebug, &mut app),
 						_ => {}
-					}
+					};
+					terminal.draw(|f| draw_dashboard(f, &mut app));
 				}
 
 				Some(Event::Tick) => {
