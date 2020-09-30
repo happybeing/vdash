@@ -35,6 +35,7 @@ Where `vdash` is headed:
     - [x] change timeline scaling to use +/- an i/o keys rather than s, m, d etc
     - [ ] optimise redraw rate limit
     - [ ] make a CLI option for redraw rate limit
+  - [ ] track sn_node [issue #1126](https://github.com/maidsafe/sn_node/issues/1126) (maintain Get/Put response in)
   - [ ] implement storage 'meter'
     - [ ] code to get vault storage used
     - [ ] code to get free space on same device
