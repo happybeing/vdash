@@ -147,6 +147,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 				Some(Event::Tick) => {
 					app.update_timelines(Some(Utc::now()));
+					app.update_chunk_store_stats();
 				// draw_dashboard(&mut f, &dash_state, &mut monitors).unwrap();
 				// draw_dashboard(f, &dash_state, &mut monitors)?;
 				}

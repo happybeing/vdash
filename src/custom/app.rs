@@ -5,8 +5,9 @@ use linemux::MuxedLines;
 use std::collections::HashMap;
 
 use chrono::{DateTime, Duration, TimeZone, Utc};
-use std::fs::File;
-use std::io::{Error, ErrorKind, Write};
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Error, ErrorKind, Write};
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
 
@@ -167,6 +168,12 @@ impl App {
 		}
 	}
 
+	pub fn update_chunk_store_stats(&mut self) {
+		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
+			update_chunk_store_stats(&monitor.chunk_store_pathbuf, &mut monitor.chunk_store_stats);
+		}
+	}
+
 	pub fn get_monitor_for_file_path(&mut self, logfile: &String) -> Option<(&mut LogMonitor)> {
 		let mut index = 0;
 		let mut monitor_for_path = None;
@@ -176,7 +183,6 @@ impl App {
 				break;
 			}
 			use std::env::current_dir;
-			use std::path::Path;
 			if let Ok(current_dir) = current_dir() {
 				let logfile_path = Path::new(logfile.as_str());
 				if current_dir.join(monitor_file).eq(&logfile_path) {
@@ -363,12 +369,98 @@ fn exit_with_usage(reason: &str) -> Result<App, std::io::Error> {
 	return Err(Error::new(ErrorKind::Other, reason));
 }
 
+pub struct ChunkStoreSpec {
+	pub dir_name: String,
+	pub ui_name: String,
+	pub visible: bool,
+}
+
+impl ChunkStoreSpec {
+	pub fn new(dir_name: &str, ui_name: &str, visible: bool) -> ChunkStoreSpec {
+		ChunkStoreSpec {
+			dir_name: String::from(dir_name),
+			ui_name: String::from(ui_name),
+			visible,
+		}
+	}
+}
+
+lazy_static::lazy_static! {
+	static ref CHUNK_STORES: Vec::<ChunkStoreSpec> = vec!(
+		ChunkStoreSpec::new("append_only", "Append Only", true),
+		ChunkStoreSpec::new("immutable", "Immutable", true),
+		ChunkStoreSpec::new("login_packets", "Login Packets", true),
+		ChunkStoreSpec::new("mutable", "Mutable", true),
+		ChunkStoreSpec::new("sequence", "Sequence", true),
+	);
+
+	static ref CHUNK_STORES_STATS_ALL: ChunkStoreStatsAll = ChunkStoreStatsAll::new();
+}
+
+pub struct ChunkStoreStat {
+	spec:	&'static ChunkStoreSpec,
+	space_used: u64,
+}
+
+pub struct ChunkStoreStatsAll {
+	chunk_store_stats: Vec<ChunkStoreStat>,
+	total_used: u64,
+}
+
+impl ChunkStoreStatsAll {
+	pub fn new() -> ChunkStoreStatsAll {
+		ChunkStoreStatsAll {
+			chunk_store_stats: Vec::<ChunkStoreStat>::new(),
+			total_used: 0,
+		}
+	}
+}
+
+const USED_SPACE_FILENAME: &str = "used_space";
+
+pub fn update_chunk_store_stats(chunk_stores_path: &PathBuf, chunk_store_stats: &mut ChunkStoreStatsAll) {
+	chunk_store_stats.chunk_store_stats = Vec::<ChunkStoreStat>::new();
+	chunk_store_stats.total_used = 0;
+
+	let path_str = match chunk_stores_path.to_str() {
+		Some(path_str) => path_str,
+		None => "<Unknown chunk_stores_path>"
+	};
+	debug_log!(format!("update_chunk_store_stats() for {}", path_str).as_str());
+
+	for spec in CHUNK_STORES.iter() {
+		let mut chunks_dir = PathBuf::from(chunk_stores_path);
+		chunks_dir.push(spec.dir_name.clone());
+
+		let mut space_used: u64 = 0;
+		match OpenOptions::new()
+			.read(true)
+			.write(false)
+			.create(false)
+			.open(chunks_dir.join(USED_SPACE_FILENAME)) {
+				Ok(mut record) => {
+					let mut buffer = vec![];
+					let _ = record.read_to_end(&mut buffer).unwrap();
+					if let Ok(size) = bincode::deserialize::<u64>(&buffer) {
+						chunk_store_stats.total_used += size;
+						space_used = size;
+					};
+					debug_log!(format!("stat {} used {} bytes", &spec.dir_name, space_used).as_str());
+					chunk_store_stats.chunk_store_stats.push(ChunkStoreStat {spec, space_used});
+				},
+				Err(_) => {},
+		}
+	}
+}
+
 pub struct LogMonitor {
 	pub index: usize,
 	pub content: StatefulList<String>,
 	max_content: usize, // Limit number of lines in content
 	pub has_focus: bool,
 	pub logfile: String,
+	pub chunk_store_pathbuf: PathBuf,
+	chunk_store_stats: ChunkStoreStatsAll,	
 	pub metrics: VaultMetrics,
 	pub metrics_status: StatefulList<String>,
 	pub is_debug_dashboard_log: bool,
@@ -388,10 +480,17 @@ impl LogMonitor {
 			}
 		}
 
+		let mut chunk_store_pathbuf = PathBuf::from(&f);
+		if chunk_store_pathbuf.pop() {
+			chunk_store_pathbuf.push("chunks")
+		}
+	
 		LogMonitor {
 			index,
 			logfile: f,
 			max_content: max_lines,
+			chunk_store_pathbuf,
+			chunk_store_stats: ChunkStoreStatsAll::new(),	
 			metrics: VaultMetrics::new(&opt),
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,
