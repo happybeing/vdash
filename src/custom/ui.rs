@@ -60,32 +60,6 @@ fn draw_vault_dash<B: Backend>(
 	draw_debug_window(f, size, dash_state);
 }
 
-fn draw_bottom_panel<B: Backend>(
-	f: &mut Frame<B>,
-	area: Rect,
-	dash_state: &mut DashState,
-	logfile: &String,
-	monitor: &mut LogMonitor,
-) {
-	if dash_state.debug_window {
-		// Vertical split:
-		let constraints = [
-			Constraint::Percentage(50), // Logfile
-			Constraint::Percentage(50), // Debug window
-		];
-
-		let chunks = Layout::default()
-			.direction(Direction::Horizontal)
-			.constraints(constraints.as_ref())
-			.split(area);
-
-		draw_logfile(f, chunks[0], &logfile, monitor);
-		draw_debug_window(f, chunks[1], dash_state);
-	} else {
-		draw_logfile(f, area, &logfile, monitor);
-	}
-}
-
 fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// Columns:
 	let constraints = [
@@ -99,14 +73,13 @@ fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor
 		.split(area);
 
 	draw_vault_stats(f, chunks[0], monitor);
-	draw_vault_graphs(f, chunks[1], monitor);
+	draw_vault_storage(f, chunks[1], monitor);
 }
 
 fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
-	let heading = format!("Vault {:>2}", monitor.index + 1);
-	push_subheading(&mut items, &heading);
+	push_subheading(&mut items, &"Vault".to_string());
 	push_metric(
 		&mut items,
 		&"Agebracket".to_string(),
@@ -146,10 +119,11 @@ fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogM
 	// 	&monitor.metrics.elders.to_string(),
 	// );
 
+	let heading = format!("Vault {:>2} Status", monitor.index + 1);
 	let monitor_widget = List::new(items).block(
 		Block::default()
 			.borders(Borders::ALL)
-			.title("Vault Status".to_string()),
+			.title(heading.to_string()),
 	);
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.metrics_status.state);
 }
@@ -169,14 +143,15 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	);
 }
 
-fn draw_vault_graphs<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
+fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO draw some graphs!
 
+	let heading = format!("Vault {:>2} Chunk Store", monitor.index + 1);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
 		.block(
 			Block::default()
 				.borders(Borders::ALL)
-				.title("Vault Metrics (TODO)".to_string()),
+				.title(heading),
 		)
 		.highlight_style(
 			Style::default()
@@ -298,6 +273,32 @@ fn buckets_right_justify(buckets: &Vec<u64>, width: u16) -> &[u64] {
 	}
 
 	buckets
+}
+
+fn draw_bottom_panel<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	dash_state: &mut DashState,
+	logfile: &String,
+	monitor: &mut LogMonitor,
+) {
+	if dash_state.debug_window {
+		// Vertical split:
+		let constraints = [
+			Constraint::Percentage(50), // Logfile
+			Constraint::Percentage(50), // Debug window
+		];
+
+		let chunks = Layout::default()
+			.direction(Direction::Horizontal)
+			.constraints(constraints.as_ref())
+			.split(area);
+
+		draw_logfile(f, chunks[0], &logfile, monitor);
+		draw_debug_window(f, chunks[1], dash_state);
+	} else {
+		draw_logfile(f, area, &logfile, monitor);
+	}
 }
 
 pub fn draw_logfile<B: Backend>(
