@@ -146,9 +146,16 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 
 fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	let total_string = format_size(monitor.chunk_store.total_used, 1);
-	// TODO determine chunk_store_limit from device (stored in monitor)
-	let chunk_store_limit: u64 = 500_000_000;
-	let limit_string = format_size(chunk_store_limit, 1);	
+	let mut chunk_store_limit = 0u64;
+	let limit_string = match &monitor.chunk_store_fsstats {
+		Some(fsstats) => {
+			chunk_store_limit = fsstats.free_space();
+			format_size(chunk_store_limit, 1).to_string()
+		},
+		None => {
+			"unknown".to_string()
+		}
+	};
 
 	let heading = format!("Vault {:>2} Chunk Store:  {:>9} of {} limit", monitor.index+1, &total_string, &limit_string);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
@@ -200,10 +207,16 @@ fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut
 
 		// First gauge is the chunk store total as percent of limit
 		let mut next_gauge: usize = 0;
+		let r = if chunk_store_limit > 0 {
+			ratio(monitor.chunk_store.total_used, chunk_store_limit)
+		} else {
+			0.0f64
+		};
+
 		let gauge = Gauge2::default()
 			.block(Block::default())
 			.gauge_style(Style::default().fg(Color::Yellow))
-			.ratio(ratio(monitor.chunk_store.total_used, chunk_store_limit));
+			.ratio(r);
 		f.render_widget(gauge, gauges[next_gauge]);
 		next_gauge += 1;
 

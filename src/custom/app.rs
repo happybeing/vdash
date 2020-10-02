@@ -170,6 +170,7 @@ impl App {
 
 	pub fn update_chunk_store_stats(&mut self) {
 		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
+			monitor.update_chunk_store_fsstats();
 			update_chunk_store_stats(&monitor.chunk_store_pathbuf, &mut monitor.chunk_store);
 		}
 	}
@@ -453,12 +454,15 @@ pub fn update_chunk_store_stats(chunk_stores_path: &PathBuf, chunk_store_stats: 
 	}
 }
 
+use fs2::{statvfs, FsStats};
+
 pub struct LogMonitor {
 	pub index: usize,
 	pub content: StatefulList<String>,
 	max_content: usize, // Limit number of lines in content
 	pub has_focus: bool,
 	pub logfile: String,
+	pub chunk_store_fsstats: Option<FsStats>,
 	pub chunk_store_pathbuf: PathBuf,
 	pub chunk_store: ChunkStoreStatsAll,	
 	pub metrics: VaultMetrics,
@@ -489,6 +493,7 @@ impl LogMonitor {
 			index,
 			logfile: f,
 			max_content: max_lines,
+			chunk_store_fsstats: None,
 			chunk_store_pathbuf,
 			chunk_store: ChunkStoreStatsAll::new(),	
 			metrics: VaultMetrics::new(&opt),
@@ -497,6 +502,13 @@ impl LogMonitor {
 			metrics_status: StatefulList::with_items(vec![]),
 			is_debug_dashboard_log,
 		}
+	}
+
+	pub fn update_chunk_store_fsstats(&mut self) {
+		self.chunk_store_fsstats = match statvfs(&self.chunk_store_pathbuf) {
+			Ok(fsstats) => Some(fsstats),
+			Err(_) => None,
+		};
 	}
 
 	pub fn load_logfile(&mut self, dash_state: &mut DashState) -> std::io::Result<()> {
@@ -508,6 +520,7 @@ impl LogMonitor {
 			Err(_e) => return Ok(()), // It's ok for a logfile not to exist yet
 		};
 
+		self.update_chunk_store_fsstats();
 		let f = BufReader::new(f);
 
 		for line in f.lines() {

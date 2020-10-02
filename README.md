@@ -36,10 +36,10 @@ Where `vdash` is headed:
     - [ ] optimise redraw rate limit
     - [ ] make a CLI option for redraw rate limit
   - [ ] track sn_node [issue #1126](https://github.com/maidsafe/sn_node/issues/1126) (maintain Get/Put response in)
-  - [ ] implement storage 'meter'
+  - [x] implement storage 'meter'
     - [x] code to get vault storage used
-    - [ ] code to get free space on same device
-    - [ ] implement storage used/free 'progress' bar
+    - [x] code to get free space on same device
+    - [x] implement storage used/free 'progress' bar
   - [ ] implement bandwidth 'meter'
     - [ ] code to get vault bandwidth
     - [ ] code to get total bandwidth
