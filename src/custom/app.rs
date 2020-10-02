@@ -661,9 +661,9 @@ impl TimelineSet {
 
 	fn increment_value(&mut self, time: Option<DateTime<Utc>>) {
 		debug_log!("increment_value()");
-		for (_name, bs) in self.bucket_sets.iter_mut() {
-			let mut index = bs.buckets.len() - 1;
-			if let Some(time) = time {
+		if let Some(time) = time {
+			for (_name, bs) in self.bucket_sets.iter_mut() {
+				let mut index = Some(bs.buckets.len() - 1);
 				debug_log!("increment (time)");
 				if let Some(bucket_time) = bs.bucket_time {
 					debug_log!("increment (bucket_time)");
@@ -676,16 +676,18 @@ impl TimelineSet {
 							let buckets_behind = time_difference.unwrap() / bucket_duration.unwrap();
 							debug_log!(format!("increment buckets_behind: {}", buckets_behind).as_str());
 							if buckets_behind as usize > bs.buckets.len() {
-									index = 0;
+									index = None;
 							} else {
-									index = bs.buckets.len() - buckets_behind as usize;
+									index = Some(bs.buckets.len() - buckets_behind as usize);
 							}
 						}
 					}
 				}
+				if let Some(index) = index {
+					debug_log!(format!("increment index: {}", index).as_str());
+					bs.buckets[index] += 1;
+				}
 			}
-			debug_log!(format!("increment index: {}", index).as_str());
-			bs.buckets[index] += 1;
 		}
 	}
 }
