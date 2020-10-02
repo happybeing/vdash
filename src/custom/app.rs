@@ -4,7 +4,7 @@
 use linemux::MuxedLines;
 use std::collections::HashMap;
 
-use chrono::{DateTime, Duration, TimeZone, Utc};
+use chrono::{DateTime, Duration, Utc};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Error, ErrorKind, Write};
 use std::path::{Path, PathBuf};
@@ -31,19 +31,19 @@ macro_rules! debug_log {
 	};
 }
 
-pub unsafe fn debug_log(message: &str) -> Result<bool, Error> {
+pub unsafe fn debug_log(message: &str) {
 	// --debug-window - prints parser results for a single logfile
 	// to a temp logfile which is displayed in the adjacent window.
 	match &(*DEBUG_LOGFILE.lock().unwrap()) {
 		Some(f) => {
 			use std::io::Seek;
-			let mut file = f.reopen()?;
-			file.seek(std::io::SeekFrom::End(0))?;
-			writeln!(file, "{}", message)?
+			if let Ok(mut file) = f.reopen() {
+				file.seek(std::io::SeekFrom::End(0)).unwrap();
+				writeln!(file, "{}", message).unwrap();
+			}
 		}
 		None => (),
 	};
-	Ok(true)
 }
 
 pub struct App {
@@ -101,13 +101,13 @@ impl App {
 		let mut first_logfile = String::new();
 		for f in &opt.files {
 			println!("file: {}", f);
-			if (first_logfile.is_empty()) {
+			if first_logfile.is_empty() {
 				first_logfile = f.to_string();
 			}
 			let mut monitor = LogMonitor::new(&opt, f.to_string(), opt.lines_max);
 			if opt.debug_window && monitor.index == 0 {
 				if let Some(named_file) = debug_logfile {
-					unsafe { *DEBUG_LOGFILE.lock().unwrap() = Some(named_file) };
+					*DEBUG_LOGFILE.lock().unwrap() = Some(named_file);
 					debug_logfile = None;
 				}
 			}
@@ -163,22 +163,21 @@ impl App {
 	}
 
 	pub fn update_timelines(&mut self, now: Option<DateTime<Utc>>) {
-		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
+		for (_monitor_file, monitor) in self.monitors.iter_mut() {
 			monitor.metrics.update_timelines(now);
 		}
 	}
 
 	pub fn update_chunk_store_stats(&mut self) {
-		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
+		for (_monitor_file, monitor) in self.monitors.iter_mut() {
 			monitor.update_chunk_store_fsstats();
 			update_chunk_store_stats(&monitor.chunk_store_pathbuf, &mut monitor.chunk_store);
 		}
 	}
 
-	pub fn get_monitor_for_file_path(&mut self, logfile: &String) -> Option<(&mut LogMonitor)> {
-		let mut index = 0;
+	pub fn get_monitor_for_file_path(&mut self, logfile: &String) -> Option<&mut LogMonitor> {
 		let mut monitor_for_path = None;
-		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
+		for (monitor_file, monitor) in self.monitors.iter_mut() {
 			if monitor_file.eq(logfile) {
 				monitor_for_path = Some(monitor);
 				break;
@@ -191,32 +190,29 @@ impl App {
 					break;
 				}
 			}
-			index += 1;
 		}
 		return monitor_for_path;
 	}
 
 	pub fn get_debug_dashboard_logfile(&mut self) -> Option<String> {
-		let mut index = 0;
-		for (logfile, monitor) in self.monitors.iter_mut() {
+		for (_logfile, monitor) in self.monitors.iter_mut() {
 			if monitor.is_debug_dashboard_log {
 				return Some(monitor.logfile.clone());
 			}
-			index += 1;
 		}
 		None
 	}
 
-	pub fn get_logfile_with_focus(&mut self) -> Option<(String)> {
+	pub fn get_logfile_with_focus(&mut self) -> Option<String> {
 		match (&mut self.monitors).get_mut(&self.logfile_with_focus) {
-			Some(mut monitor) => Some(monitor.logfile.clone()),
+			Some(monitor) => Some(monitor.logfile.clone()),
 			None => None,
 		}
 	}
 
-	pub fn get_monitor_with_focus(&mut self) -> Option<(&mut LogMonitor)> {
+	pub fn get_monitor_with_focus(&mut self) -> Option<&mut LogMonitor> {
 		match (&mut self.monitors).get_mut(&self.logfile_with_focus) {
-			Some(mut monitor) => Some(monitor),
+			Some(monitor) => Some(monitor),
 			None => None,
 		}
 	}
@@ -230,7 +226,7 @@ impl App {
 			None => (),
 		}
 
-		if (logfile_name == DEBUG_WINDOW_NAME) {
+		if logfile_name == DEBUG_WINDOW_NAME {
 			self.dash_state.debug_window_has_focus = true;
 			self.logfile_with_focus = logfile_name.clone();
 			return;
@@ -327,14 +323,14 @@ impl App {
 	}
 
 	pub fn scale_timeline_up(&mut self) {
-		if (self.dash_state.active_timeline == 0) {
+		if self.dash_state.active_timeline == 0 {
 			return;
 		}
 		self.dash_state.active_timeline -= 1;
 	}
 
 	pub fn scale_timeline_down(&mut self) {
-		if (self.dash_state.active_timeline == TIMELINES.len()-1 ) {
+		if self.dash_state.active_timeline == TIMELINES.len()-1 {
 			return;
 		}
 		self.dash_state.active_timeline += 1;
@@ -343,7 +339,7 @@ impl App {
 
 /// Move selection forward or back without wrapping at start or end
 fn do_bracketed_next_previous(list: &mut StatefulList<String>, next: bool) {
-	if (next) {
+	if next {
 		if let Some(selected) = list.state.selected() {
 			if selected != list.items.len() - 1 {
 				list.next();
@@ -423,10 +419,10 @@ pub fn update_chunk_store_stats(chunk_stores_path: &PathBuf, chunk_store_stats: 
 	chunk_store_stats.chunk_store_stats = Vec::<ChunkStoreStat>::new();
 	chunk_store_stats.total_used = 0;
 
-	let path_str = match chunk_stores_path.to_str() {
-		Some(path_str) => path_str,
-		None => "<Unknown chunk_stores_path>"
-	};
+	// let path_str = match chunk_stores_path.to_str() {
+	// 	Some(path_str) => path_str,
+	// 	None => "<Unknown chunk_stores_path>"
+	// };
 	// debug_log!(format!("update_chunk_store_stats() for {}", path_str).as_str());
 
 	for spec in CHUNK_STORES.iter() {
@@ -564,7 +560,7 @@ impl LogMonitor {
 
 	// Some logfile lines are too numerous to include so we ignore them
 	// Returns true if the line is to be processed
-	fn line_filter(&mut self, line: &str) -> bool {
+	fn line_filter(&mut self, _line: &str) -> bool {
 		true
 	}
 }
@@ -640,7 +636,7 @@ impl TimelineSet {
 	///!
 	///! Call significantly more frequently than the smallest BucketSet duration
 	fn update_current_time(&mut self, new_time: Option<DateTime<Utc>>) {
-		for (name, bs) in self.bucket_sets.iter_mut() {
+		for (_name, bs) in self.bucket_sets.iter_mut() {
 			if let Some(mut bucket_time) = bs.bucket_time {
 				if let Some(new_time) = new_time {
 					let mut end_time = bucket_time + bs.bucket_duration;
@@ -665,7 +661,7 @@ impl TimelineSet {
 
 	fn increment_value(&mut self, time: Option<DateTime<Utc>>) {
 		debug_log!("increment_value()");
-		for (name, bs) in self.bucket_sets.iter_mut() {
+		for (_name, bs) in self.bucket_sets.iter_mut() {
 			let mut index = bs.buckets.len() - 1;
 			if let Some(time) = time {
 				debug_log!("increment (time)");
@@ -970,14 +966,14 @@ impl VaultMetrics {
 		if let Some(position) = content.find(prefix) {
 			match content[position + prefix.len()..].trim().parse::<usize>() {
 				Ok(value) => return Some(value),
-				Err(e) => self.parser_output = format!("failed to parse usize from: '{}'", content),
+				Err(_e) => self.parser_output = format!("failed to parse usize from: '{}'", content),
 			}
 		}
 		None
 	}
 
 	fn parse_word(&mut self, prefix: &str, content: &str) -> Option<String> {
-		if let Some(mut start) = content.find(prefix) {
+		if let Some(start) = content.find(prefix) {
 			let word: Vec<&str> = content[start + prefix.len()..]
 				.trim_start()
 				.splitn(1, " ")
@@ -1072,7 +1068,7 @@ impl LogEntry {
 	///!	WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
 	///!
 	pub fn decode(line: &str) -> Option<LogEntry> {
-		let mut test_entry = LogEntry {
+		let mut _test_entry = LogEntry {
 			logstring: String::from(line),
 			category: String::from("test"),
 			time: None,
@@ -1103,7 +1099,7 @@ impl LogEntry {
 
 			// TODO switch to datetime_from_str() when solved (chrono issue #489)
 			// let time = match Utc.datetime_from_str(time_string, "%+") {
-			let time = match DateTime::parse_from_rfc3339(time_string) {
+			match DateTime::parse_from_rfc3339(time_string) {
 				Ok(time) => {
 					time_utc = Some(time.with_timezone(&Utc));
 					time_str = format!("{}", time);
@@ -1199,12 +1195,12 @@ impl DashState {
 }
 
 pub struct DashVertical {
-	active_view: usize,
+	_active_view: usize,
 }
 
 impl DashVertical {
 	pub fn new() -> Self {
-		DashVertical { active_view: 0 }
+		DashVertical { _active_view: 0 }
 	}
 }
 

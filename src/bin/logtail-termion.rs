@@ -26,30 +26,15 @@ extern crate env_logger;
 ///! logtail and its forks share code in src/
 #[path = "../mod.rs"]
 pub mod shared;
-use crate::shared::util::StatefulList;
 use shared::event::{Event, Events};
 
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
-	backend::Backend,
 	backend::TermionBackend,
-	layout::{Constraint, Corner, Direction, Layout},
-	style::{Color, Modifier, Style},
-	text::{Span, Spans, Text},
-	widgets::{Block, BorderType, Borders, List, ListItem, Widget},
-	Frame, Terminal,
+	Terminal,
 };
 
-type TuiTerminal = tui::terminal::Terminal<
-	TermionBackend<
-		termion::screen::AlternateScreen<
-			termion::input::MouseTerminal<termion::raw::RawTerminal<std::io::Stdout>>,
-		>,
-	>,
->;
-
 use std::{
-	io::{Error, ErrorKind},
 	time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -97,7 +82,7 @@ async fn terminal_main() -> std::io::Result<()> {
 	// concurrently with logfile changes.
 	info!("Processing started");
 
-	let mut start = SystemTime::now()
+	let start = SystemTime::now()
 		.duration_since(UNIX_EPOCH)
 		.expect("Time went backwards");
 	let mut next_update = start - Duration::from_secs(2);

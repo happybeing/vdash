@@ -2,7 +2,6 @@
 ///!
 ///! Edit src/custom/opt.rs to create a customised fork of logtail-dash
 
-static MAX_CONTENT: &str = "100";
 pub static MIN_TIMELINE_STEPS: usize = 10;
 
 pub use structopt::StructOpt;

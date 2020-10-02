@@ -2,7 +2,6 @@
 ///
 /// Edit src/custom/ui.rs to create a customised fork of logtail-dash
 
-use log;
 use super::app::{TIMELINES, App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
 
@@ -14,11 +13,11 @@ use std::collections::HashMap;
 
 use tui::{
 	backend::Backend,
-	layout::{Constraint, Corner, Direction, Layout, Rect},
+	layout::{Constraint, Direction, Layout, Rect},
 	style::{Color, Modifier, Style},
-	text::{Span, Spans, Text},
-	widgets::{Block, BorderType, Borders, List, ListItem, Widget},
-	Frame, Terminal,
+	text::{Spans},
+	widgets::{Block, Borders, List, ListItem},
+	Frame,
 };
 
 pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &mut App) {
@@ -47,7 +46,7 @@ fn draw_vault_dash<B: Backend>(
 		.constraints(constraints.as_ref())
 		.split(size);
 
-	for mut entry in monitors.into_iter() {
+	for entry in monitors.into_iter() {
 		let (logfile, mut monitor) = entry;
 		if monitor.has_focus {
 			// Stats and Graphs / Timeline / Logfile
@@ -144,7 +143,7 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	);
 }
 
-fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitor: &mut LogMonitor) {
+fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	let total_string = format_size(monitor.chunk_store.total_used, 1);
 	let mut chunk_store_limit = 0u64;
 	let limit_string = match &monitor.chunk_store_fsstats {
@@ -280,14 +279,13 @@ fn draw_timeline<B: Backend>(
 	dash_state: &mut DashState,
 	monitor: &mut LogMonitor,
 ) {
-	let mut active_timeline_name = "";
-	match TIMELINES.get(dash_state.active_timeline) {
+	let active_timeline_name = match TIMELINES.get(dash_state.active_timeline) {
 		None => {
 			// debug_log!("ERROR getting active timeline name");
 			return;
 		}
-		Some((name, _)) => active_timeline_name = name,
-	}
+		Some((name, _)) => name,
+	};
 
 	let window_widget = Block::default()
 		.borders(Borders::ALL)
@@ -381,7 +379,7 @@ fn draw_timeline<B: Backend>(
 // Right justify and truncate (left) a set of buckets to width
 fn buckets_right_justify(buckets: &Vec<u64>, width: u16) -> &[u64] {
 	let width = width as usize;
-	if (width < buckets.len()) {
+	if width < buckets.len() {
 		return &buckets[buckets.len() - width..];
 	}
 
