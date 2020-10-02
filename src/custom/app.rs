@@ -427,7 +427,7 @@ pub fn update_chunk_store_stats(chunk_stores_path: &PathBuf, chunk_store_stats: 
 		Some(path_str) => path_str,
 		None => "<Unknown chunk_stores_path>"
 	};
-	debug_log!(format!("update_chunk_store_stats() for {}", path_str).as_str());
+	// debug_log!(format!("update_chunk_store_stats() for {}", path_str).as_str());
 
 	for spec in CHUNK_STORES.iter() {
 		let mut chunks_dir = PathBuf::from(chunk_stores_path);
@@ -446,7 +446,7 @@ pub fn update_chunk_store_stats(chunk_stores_path: &PathBuf, chunk_store_stats: 
 						chunk_store_stats.total_used += size;
 						space_used = size;
 					};
-					debug_log!(format!("stat {} used {} bytes", &spec.dir_name, space_used).as_str());
+					// debug_log!(format!("stat {} used {} bytes", &spec.dir_name, space_used).as_str());
 					chunk_store_stats.chunk_store_stats.push(ChunkStoreStat {spec, space_used});
 				},
 				Err(_) => {},
