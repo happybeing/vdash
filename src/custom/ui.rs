@@ -335,14 +335,7 @@ fn draw_timeline<B: Backend>(
 		.puts_timeline
 		.get_bucket_set(active_timeline_name)
 	{
-		let sparkline = Sparkline2::default()
-			.block(Block::default().title("PUTS"))
-			.data(buckets_right_justify(
-				&bucket_set.buckets(),
-				chunks[0].width,
-			))
-			.style(Style::default().fg(Color::Yellow));
-		f.render_widget(sparkline, chunks[0]);
+		draw_sparkline(f, chunks[0], &bucket_set.buckets(), &"PUTS", Color::Yellow);
 	};
 
 	if let Some(bucket_set) = monitor
@@ -350,14 +343,7 @@ fn draw_timeline<B: Backend>(
 		.gets_timeline
 		.get_bucket_set(&dash_state.active_timeline_name)
 	{
-		let sparkline = Sparkline2::default()
-			.block(Block::default().title("GETS"))
-			.data(buckets_right_justify(
-				&bucket_set.buckets(),
-				chunks[1].width,
-			))
-			.style(Style::default().fg(Color::Green));
-		f.render_widget(sparkline, chunks[1]);
+		draw_sparkline(f, chunks[1], &bucket_set.buckets(), &"GETS", Color::Green);
 	};
 
 	if let Some(bucket_set) = monitor
@@ -365,15 +351,25 @@ fn draw_timeline<B: Backend>(
 		.errors_timeline
 		.get_bucket_set(&dash_state.active_timeline_name)
 	{
-		let sparkline = Sparkline2::default()
-			.block(Block::default().title("ERRORS"))
-			.data(buckets_right_justify(
-				&bucket_set.buckets(),
-				chunks[2].width,
-			))
-			.style(Style::default().fg(Color::Red));
-		f.render_widget(sparkline, chunks[2]);
+		draw_sparkline(f, chunks[2], &bucket_set.buckets(), &"ERRORS", Color::Red);
 	};
+}
+
+fn draw_sparkline<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	buckets: &Vec<u64>,
+	title: &str,
+	fg_colour: tui::style::Color,
+	) {
+	let sparkline = Sparkline2::default()
+		.block(Block::default().title(title))
+		.data(buckets_right_justify(
+			buckets,
+			area.width,
+		))
+		.style(Style::default().fg(fg_colour));
+	f.render_widget(sparkline, area);
 }
 
 // Right justify and truncate (left) a set of buckets to width
