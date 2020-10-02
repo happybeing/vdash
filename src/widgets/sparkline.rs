@@ -12,7 +12,7 @@ use tui::{
 /// Based on tui::widgets::Sparkline, but with origin
 /// on right hand edge.
 #[derive(Debug, Clone)]
-pub struct SparklineRight<'a> {
+pub struct Sparkline2<'a> {
 	/// A block to wrap the widget in
 	block: Option<Block<'a>>,
 	/// Widget style
@@ -26,9 +26,9 @@ pub struct SparklineRight<'a> {
 	bar_set: symbols::bar::Set,
 }
 
-impl<'a> Default for SparklineRight<'a> {
-	fn default() -> SparklineRight<'a> {
-		SparklineRight {
+impl<'a> Default for Sparkline2<'a> {
+	fn default() -> Sparkline2<'a> {
+		Sparkline2 {
 			block: None,
 			style: Default::default(),
 			data: &[],
@@ -38,34 +38,34 @@ impl<'a> Default for SparklineRight<'a> {
 	}
 }
 
-impl<'a> SparklineRight<'a> {
-	pub fn block(mut self, block: Block<'a>) -> SparklineRight<'a> {
+impl<'a> Sparkline2<'a> {
+	pub fn block(mut self, block: Block<'a>) -> Sparkline2<'a> {
 		self.block = Some(block);
 		self
 	}
 
-	pub fn style(mut self, style: Style) -> SparklineRight<'a> {
+	pub fn style(mut self, style: Style) -> Sparkline2<'a> {
 		self.style = style;
 		self
 	}
 
-	pub fn data(mut self, data: &'a [u64]) -> SparklineRight<'a> {
+	pub fn data(mut self, data: &'a [u64]) -> Sparkline2<'a> {
 		self.data = data;
 		self
 	}
 
-	pub fn max(mut self, max: u64) -> SparklineRight<'a> {
+	pub fn max(mut self, max: u64) -> Sparkline2<'a> {
 		self.max = Some(max);
 		self
 	}
 
-	pub fn bar_set(mut self, bar_set: symbols::bar::Set) -> SparklineRight<'a> {
+	pub fn bar_set(mut self, bar_set: symbols::bar::Set) -> Sparkline2<'a> {
 		self.bar_set = bar_set;
 		self
 	}
 }
 
-impl<'a> Widget for SparklineRight<'a> {
+impl<'a> Widget for Sparkline2<'a> {
 	fn render(mut self, area: Rect, buf: &mut Buffer) {
 		let spark_area = match self.block.take() {
 			Some(b) => {
@@ -130,7 +130,7 @@ mod tests {
 
 	#[test]
 	fn it_does_not_panic_if_max_is_zero() {
-		let widget = SparklineRight::default().data(&[0, 0, 0]);
+		let widget = Sparkline2::default().data(&[0, 0, 0]);
 		let area = Rect::new(0, 0, 3, 1);
 		let mut buffer = Buffer::empty(area);
 		widget.render(area, &mut buffer);
@@ -138,7 +138,7 @@ mod tests {
 
 	#[test]
 	fn it_does_not_panic_if_max_is_set_to_zero() {
-		let widget = SparklineRight::default().data(&[0, 1, 2]).max(0);
+		let widget = Sparkline2::default().data(&[0, 1, 2]).max(0);
 		let area = Rect::new(0, 0, 3, 1);
 		let mut buffer = Buffer::empty(area);
 		widget.render(area, &mut buffer);

@@ -8,7 +8,8 @@ use super::ui_debug::draw_dashboard as debug_draw_dashboard;
 
 #[path = "../widgets/mod.rs"]
 pub mod widgets;
-use self::widgets::sparkline::SparklineRight;
+use self::widgets::sparkline::Sparkline2;
+use self::widgets::gauge::Gauge2;
 use std::collections::HashMap;
 
 use tui::{
@@ -50,7 +51,7 @@ fn draw_vault_dash<B: Backend>(
 		let (logfile, mut monitor) = entry;
 		if monitor.has_focus {
 			// Stats and Graphs / Timeline / Logfile
-			draw_vault(f, chunks[0], &mut monitor);
+			draw_vault(f, chunks[0], dash_state, &mut monitor);
 			draw_timeline(f, chunks[1], dash_state, &mut monitor);
 			draw_bottom_panel(f, chunks[2], dash_state, &logfile, &mut monitor);
 			return;
@@ -60,7 +61,7 @@ fn draw_vault_dash<B: Backend>(
 	draw_debug_window(f, size, dash_state);
 }
 
-fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
+fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	// Columns:
 	let constraints = [
 		Constraint::Length(40), // Stats summary
@@ -73,7 +74,7 @@ fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor
 		.split(area);
 
 	draw_vault_stats(f, chunks[0], monitor);
-	draw_vault_storage(f, chunks[1], monitor);
+	draw_vault_storage(f, chunks[1], dash_state, monitor);
 }
 
 fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
@@ -143,15 +144,18 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	);
 }
 
-fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
-	// TODO draw some graphs!
+fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitor: &mut LogMonitor) {
+	let total_string = format_size(monitor.chunk_store.total_used, 1);
+	// TODO determine chunk_store_limit from device (stored in monitor)
+	let chunk_store_limit: u64 = 500_000_000;
+	let limit_string = format_size(chunk_store_limit, 1);	
 
-	let heading = format!("Vault {:>2} Chunk Store", monitor.index + 1);
+	let heading = format!("Vault {:>2} Chunk Store:  {:>9} of {} limit", monitor.index+1, &total_string, &limit_string);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
 		.block(
 			Block::default()
 				.borders(Borders::ALL)
-				.title(heading),
+				.title(heading.clone()),
 		)
 		.highlight_style(
 			Style::default()
@@ -159,6 +163,102 @@ fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut Lo
 				.add_modifier(Modifier::BOLD),
 		);
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
+	
+	if monitor.chunk_store.chunk_store_stats.len() < 1 {
+		return;
+	}
+
+	let columns = Layout::default()
+		.direction(Direction::Horizontal)
+		.margin(1)
+		.constraints(
+			[
+				Constraint::Length(27),
+				Constraint::Min(12),
+			]
+			.as_ref(),
+		)
+		.split(area);
+
+		let mut gauges_column = columns[1];
+		gauges_column.height = 1;
+
+		// One extra for the heading, and a spare gauge so the last drawn doesn't expand to the bottom
+		let constraints = vec![Constraint::Length(1); monitor.chunk_store.chunk_store_stats.len() + 2];
+		let gauges = Layout::default()
+			.direction(Direction::Vertical)
+			.constraints(constraints.as_ref())
+			.split(columns[1]);
+
+		// First label
+		let mut label_items = Vec::<ListItem>::new();
+		push_storage_metric(
+			&mut label_items,
+			&"All Chunks".to_string(),
+			&total_string
+		);
+
+		// First gauge is the chunk store total as percent of limit
+		let mut next_gauge: usize = 0;
+		let gauge = Gauge2::default()
+			.block(Block::default())
+			.gauge_style(Style::default().fg(Color::Yellow))
+			.ratio(ratio(monitor.chunk_store.total_used, chunk_store_limit));
+		f.render_widget(gauge, gauges[next_gauge]);
+		next_gauge += 1;
+
+		// Remainder of metrics in pairs (label + guage)
+		for stat in monitor.chunk_store.chunk_store_stats.iter() {
+			// For labels column
+			push_storage_metric(
+				&mut label_items,
+				&stat.spec.ui_name,
+				&format_size(stat.space_used, 1)
+			);
+
+			// Gauge2s column
+			let gauge = Gauge2::default()
+				.block(Block::default())
+				.gauge_style(Style::default().fg(Color::Yellow))
+				.ratio(ratio(stat.space_used, monitor.chunk_store.total_used));
+			f.render_widget(gauge, gauges[next_gauge]);
+			next_gauge += 1;
+		}
+
+		// Render labels
+		let labels_widget = List::new(label_items).block(
+			Block::default()
+				.borders(Borders::NONE)
+		);
+		f.render_widget(labels_widget, columns[0]);
+
+	}
+
+// Return string representation in TB, MB, KB or bytes depending on magnitude
+fn format_size(bytes: u64, fractional_digits: usize) -> String {
+	use::byte_unit::Byte;
+	let bytes = Byte::from_bytes(bytes as u128);
+	bytes.get_appropriate_unit(false).format(fractional_digits)
+}
+
+// Return ratio from two u64
+fn ratio(numerator: u64, denomimator: u64) -> f64 {
+	let percent = numerator as f64 / denomimator as f64;
+	if  percent.is_nan() || percent < 0.0 {
+		0.0
+	} else if percent > 1.0 {
+		1.0
+	} else {
+		percent
+	}
+} 
+
+fn push_storage_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
+	let s = format!("{:<15}:{:>9}", metric, value);
+	items.push(
+		ListItem::new(vec![Spans::from(s.clone())])
+			.style(Style::default().fg(Color::Blue).bg(Color::Black)),
+	);
 }
 
 fn draw_timeline<B: Backend>(
@@ -224,7 +324,7 @@ fn draw_timeline<B: Backend>(
 		.puts_timeline
 		.get_bucket_set(active_timeline_name)
 	{
-		let sparkline = SparklineRight::default()
+		let sparkline = Sparkline2::default()
 			.block(Block::default().title("PUTS"))
 			.data(buckets_right_justify(
 				&bucket_set.buckets(),
@@ -239,7 +339,7 @@ fn draw_timeline<B: Backend>(
 		.gets_timeline
 		.get_bucket_set(&dash_state.active_timeline_name)
 	{
-		let sparkline = SparklineRight::default()
+		let sparkline = Sparkline2::default()
 			.block(Block::default().title("GETS"))
 			.data(buckets_right_justify(
 				&bucket_set.buckets(),
@@ -254,7 +354,7 @@ fn draw_timeline<B: Backend>(
 		.errors_timeline
 		.get_bucket_set(&dash_state.active_timeline_name)
 	{
-		let sparkline = SparklineRight::default()
+		let sparkline = Sparkline2::default()
 			.block(Block::default().title("ERRORS"))
 			.data(buckets_right_justify(
 				&bucket_set.buckets(),

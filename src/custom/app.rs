@@ -170,7 +170,7 @@ impl App {
 
 	pub fn update_chunk_store_stats(&mut self) {
 		for (monitor_file, mut monitor) in self.monitors.iter_mut() {
-			update_chunk_store_stats(&monitor.chunk_store_pathbuf, &mut monitor.chunk_store_stats);
+			update_chunk_store_stats(&monitor.chunk_store_pathbuf, &mut monitor.chunk_store);
 		}
 	}
 
@@ -398,13 +398,13 @@ lazy_static::lazy_static! {
 }
 
 pub struct ChunkStoreStat {
-	spec:	&'static ChunkStoreSpec,
-	space_used: u64,
+	pub spec:	&'static ChunkStoreSpec,
+	pub space_used: u64,
 }
 
 pub struct ChunkStoreStatsAll {
-	chunk_store_stats: Vec<ChunkStoreStat>,
-	total_used: u64,
+	pub chunk_store_stats: Vec<ChunkStoreStat>,
+	pub total_used: u64,
 }
 
 impl ChunkStoreStatsAll {
@@ -460,7 +460,7 @@ pub struct LogMonitor {
 	pub has_focus: bool,
 	pub logfile: String,
 	pub chunk_store_pathbuf: PathBuf,
-	chunk_store_stats: ChunkStoreStatsAll,	
+	pub chunk_store: ChunkStoreStatsAll,	
 	pub metrics: VaultMetrics,
 	pub metrics_status: StatefulList<String>,
 	pub is_debug_dashboard_log: bool,
@@ -490,7 +490,7 @@ impl LogMonitor {
 			logfile: f,
 			max_content: max_lines,
 			chunk_store_pathbuf,
-			chunk_store_stats: ChunkStoreStatsAll::new(),	
+			chunk_store: ChunkStoreStatsAll::new(),	
 			metrics: VaultMetrics::new(&opt),
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,

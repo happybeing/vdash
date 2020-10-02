@@ -176,7 +176,7 @@ async fn terminal_main() -> std::io::Result<()> {
 					Some(Ok(line)) => {
 						let source_str = line.source().to_str().unwrap();
 						let source = String::from(source_str);
-						app.dash_state._debug_window(format!("{}: {}", source, line.line()).as_str());
+						// app.dash_state._debug_window(format!("{}: {}", source, line.line()).as_str());
 
 						match app.get_monitor_for_file_path(&source) {
 							Some(monitor) => {
