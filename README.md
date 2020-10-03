@@ -59,25 +59,28 @@ Where `vdash` is headed:
 
 1 Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-2a. **Linux/MacOS** install **vdash:**
+2a. **Linux (Ubuntu)**
+
+    sudo apt-get install build-essential
+
+2b. **Linux/MacOS** install **vdash:**
 
     cargo install vdash
     vdash --help
 
-2b. **Windows** install **vdash-crossterm:**
+2c. **Windows** install **vdash-crossterm:**
 
-    cargo install vdash --bin logtail-crossterm --features="crossterm"
-    vdash-crossterm --help
+To install on Windows you must build manually and use the 'nightly' compiler until the 'itarget' feature becomes part of 'stable', so install Rust nightly using `rustup`:
 
-3a. **Linux/MacOS** (optional) install **vdash:**
+    rustup toolchain install nightly
+    
+To build `vdash-crossterm` on Windows, clone vdash, build with `+nightly` and use the binary it creates under `./taget/release`:
 
-    cargo install vdash
-    vdash --help
+    git clone https://github.com/theWebalyst/vdash
+    cd vdash
+    cargo +nightly build -Z features=itarget --bin vdash-crossterm --release --no-default-features
 
-3b. **Windows** (optional) install **vdash-crossterm:**
-
-    cargo install vdash --bin vdash-crossterm --features="crossterm"
-    vdash-crossterm --help
+    ./target/release/vdash-crossterm --help
 
 ## Using vdash - SAFE Network Vault Dashboard
 `vdash` is provides a terminal based graphical dashboard of SAFE Network Vault activity on the local machine. It parses input from one or more vault logfiles to gather live vault metrics which are displayed using terminal graphics.
@@ -175,7 +178,7 @@ Builds `vdash` the crossterm backend (see [tui-rs](https://github.com/fdehau/tui
 
 NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
 ```
-cargo build --bin logtail-crossterm --features="crossterm" --features="vdash" --release
+cargo build --bin vdash-crossterm --features="crossterm" --features="vdash" --release
 ```
 
 ## LICENSE
