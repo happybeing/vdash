@@ -341,7 +341,7 @@ fn draw_timeline<B: Backend>(
 	if let Some(bucket_set) = monitor
 		.metrics
 		.gets_timeline
-		.get_bucket_set(&dash_state.active_timeline_name)
+		.get_bucket_set(active_timeline_name)
 	{
 		draw_sparkline(f, chunks[1], &bucket_set.buckets(), &"GETS", Color::Green);
 	};
@@ -349,7 +349,7 @@ fn draw_timeline<B: Backend>(
 	if let Some(bucket_set) = monitor
 		.metrics
 		.errors_timeline
-		.get_bucket_set(&dash_state.active_timeline_name)
+		.get_bucket_set(active_timeline_name)
 	{
 		draw_sparkline(f, chunks[2], &bucket_set.buckets(), &"ERRORS", Color::Red);
 	};
@@ -362,10 +362,11 @@ fn draw_sparkline<B: Backend>(
 	title: &str,
 	fg_colour: tui::style::Color,
 	) {
-	let sparkline = Sparkline2::default()
+
+		let sparkline = Sparkline2::default()
 		.block(Block::default().title(title))
 		.data(buckets_right_justify(
-			buckets,
+			&buckets,
 			area.width,
 		))
 		.style(Style::default().fg(fg_colour));

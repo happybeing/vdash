@@ -660,34 +660,38 @@ impl TimelineSet {
 	}
 
 	fn increment_value(&mut self, time: Option<DateTime<Utc>>) {
-		debug_log!("increment_value()");
+		// debug_log!("increment_value()");
 		if let Some(time) = time {
 			for (_name, bs) in self.bucket_sets.iter_mut() {
+				// debug_log!(format!("name       : {}", _name).as_str());
 				let mut index = Some(bs.buckets.len() - 1);
-				debug_log!("increment (time)");
+				// debug_log!(format!("time       : {}", time).as_str());
 				if let Some(bucket_time) = bs.bucket_time {
-					debug_log!("increment (bucket_time)");
-					if time < bucket_time {
-						debug_log!("increment (closest bucket)");
+				// debug_log!(format!("bucket_time: {}", bucket_time).as_str());
+					if time.lt(&bucket_time) {
 						// Use the closest bucket to this time
+						// debug_log!("increment (closest bucket)");
 						let time_difference = (bucket_time - time).num_nanoseconds();
 						let bucket_duration = bs.bucket_duration.num_nanoseconds();
 						if time_difference.and(bucket_duration).is_some() {
 							let buckets_behind = time_difference.unwrap() / bucket_duration.unwrap();
-							debug_log!(format!("increment buckets_behind: {}", buckets_behind).as_str());
 							if buckets_behind as usize > bs.buckets.len() {
-									index = None;
+								// debug_log!(format!("increment DISCARDED buckets_behind: {}", buckets_behind).as_str());
+								index = None;
 							} else {
-									index = Some(bs.buckets.len() - buckets_behind as usize);
+								// debug_log!(format!("increment INCLUDED buckets_behind: {}", buckets_behind).as_str());
+								index = Some(bs.buckets.len() - 1 - buckets_behind as usize);
 							}
 						}
 					}
 				}
 				if let Some(index) = index {
-					debug_log!(format!("increment index: {}", index).as_str());
+					// debug_log!(format!("increment index: {}", index).as_str());
 					bs.buckets[index] += 1;
 				}
 			}
+		} else {
+			debug_log!("increment FAIL");
 		}
 	}
 }
@@ -703,6 +707,7 @@ impl BucketSet {
 			buckets: vec![0; max_buckets],
 		}
 	}
+
 	pub fn set_bucket_value(&mut self, value: u64) {
 		let index = self.buckets.len() - 1;
 		self.buckets[index] = value;
@@ -753,14 +758,14 @@ impl VaultMetrics {
 		let mut gets_timeline = TimelineSet::new("GETS".to_string());
 		let mut errors_timeline = TimelineSet::new("ERRORS".to_string());
 		for timeline in [&mut puts_timeline, &mut gets_timeline, &mut errors_timeline].iter_mut() {
-			for i in 0..TIMELINES.len()-1 {
+			for i in 0..TIMELINES.len() {
 				if let Some(spec) = TIMELINES.get(i) {
 					timeline.add_bucket_set(spec.0, spec.1, opt.timeline_steps);
 				}
 			}
 		}
 
-		VaultMetrics {
+		let mut metrics = VaultMetrics {
 			// Start
 			vault_started: None,
 			running_message: None,
@@ -793,7 +798,9 @@ impl VaultMetrics {
 			// Debug
 			debug_logfile: None,
 			parser_output: String::from("-"),
-		}
+		};
+		metrics.update_timelines(Some(Utc::now()));
+		metrics
 	}
 
 	pub fn agebracket_string(&self) -> String {
