@@ -40,14 +40,7 @@ use std::{
 
 use chrono::Utc;
 
-use tui::{
-	backend::CrosstermBackend,
-	layout::{Constraint, Corner, Direction, Layout},
-	style::{Color, Modifier, Style},
-	text::{Span, Spans, Text},
-	widgets::{Block, BorderType, Borders, List, ListItem, Widget},
-	Frame, Terminal,
-};
+use tui::{backend::CrosstermBackend, Terminal};
 
 use futures::{
 	future::FutureExt, // for `.fuse()`
@@ -71,7 +64,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 	let mut app = match App::new().await {
 		Ok(app) => app,
-		Err(e) => return Ok(()),
+		Err(_e) => return Ok(()),
 	};
 
 	// Terminal initialization
@@ -86,7 +79,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 	// Use futures of async functions to handle events
 	// concurrently with logfile changes.
 
-	let mut start = SystemTime::now()
+	let start = SystemTime::now()
 		.duration_since(UNIX_EPOCH)
 		.expect("Time went backwards");
 	let mut next_update = start - Duration::from_secs(2);
