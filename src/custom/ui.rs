@@ -235,7 +235,7 @@ fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mu
 		// Render labels
 		let labels_widget = List::new(label_items).block(
 			Block::default()
-				.borders(Borders::NONE))
+				.borders(Borders::NONE)
 		);
 		f.render_widget(labels_widget, columns[0]);
 
