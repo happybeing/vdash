@@ -1151,14 +1151,14 @@ lazy_static::lazy_static! {
 		("1 minute columns", Duration::minutes(1)),
 		("1 hour columns", Duration::hours(1)),
 		("1 day columns", Duration::days(1)),
-		("1 twelth year columns", Duration::days(365 / 12)),
+		("1 week columns", Duration::days(7)),
+		("1 year columns", Duration::days(365)),
 	);
 }
 
 pub struct DashState {
 	pub main_view: DashViewMain,
 	pub active_timeline: usize,
-	pub active_timeline_name: &'static str,// TODO delete
 	pub dash_vault_focus: String,
 
 	// For --debug-window option
@@ -1170,15 +1170,10 @@ pub struct DashState {
 
 impl DashState {
 	pub fn new() -> DashState {
-		let mut active_timeline_name = "";
-		if let Some(spec) = TIMELINES.get(0) {
-			active_timeline_name = spec.0;
-		}
 
 		DashState {
 			main_view: DashViewMain::DashVault,
 			active_timeline: 0,
-			active_timeline_name,
 			dash_vault_focus: String::new(),
 
 			debug_window: false,
