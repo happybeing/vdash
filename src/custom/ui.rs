@@ -145,10 +145,9 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 
 fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	let total_string = format_size(monitor.chunk_store.total_used, 1);
-	let mut chunk_store_limit = 0u64;
 	let limit_string = match &monitor.chunk_store_fsstats {
 		Some(fsstats) => {
-			chunk_store_limit = fsstats.free_space();
+			let chunk_store_limit = fsstats.free_space();
 			format_size(chunk_store_limit, 1).to_string()
 		},
 		None => {
@@ -186,40 +185,20 @@ fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mu
 		)
 		.split(area);
 
+		let mut label_items = Vec::<ListItem>::new();
+		push_storage_subheading(&mut label_items, &"Chunks".to_string());
 		let mut gauges_column = columns[1];
 		gauges_column.height = 1;
-
-		// One extra for the heading, and a spare gauge so the last drawn doesn't expand to the bottom
+		
+		// One gauge gap for heading, and an extra gauge so the last one drawn doesn't expand to the bottom
 		let constraints = vec![Constraint::Length(1); monitor.chunk_store.chunk_store_stats.len() + 2];
 		let gauges = Layout::default()
 			.direction(Direction::Vertical)
 			.constraints(constraints.as_ref())
 			.split(columns[1]);
 
-		// First label
-		let mut label_items = Vec::<ListItem>::new();
-		push_storage_metric(
-			&mut label_items,
-			&"All Chunks".to_string(),
-			&total_string
-		);
-
-		// First gauge is the chunk store total as percent of limit
-		let mut next_gauge: usize = 0;
-		let r = if chunk_store_limit > 0 {
-			ratio(monitor.chunk_store.total_used, chunk_store_limit)
-		} else {
-			0.0f64
-		};
-
-		let gauge = Gauge2::default()
-			.block(Block::default())
-			.gauge_style(Style::default().fg(Color::Yellow))
-			.ratio(r);
-		f.render_widget(gauge, gauges[next_gauge]);
-		next_gauge += 1;
-
-		// Remainder of metrics in pairs (label + guage)
+		// Metrics with label + gauge
+		let mut next_gauge: usize = 1;	// Start after the heading
 		for stat in monitor.chunk_store.chunk_store_stats.iter() {
 			// For labels column
 			push_storage_metric(
@@ -237,6 +216,22 @@ fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mu
 			next_gauge += 1;
 		}
 
+		push_storage_subheading(&mut label_items, &"".to_string());
+		push_storage_subheading(&mut label_items, &"Device".to_string());
+
+		push_storage_metric(
+			&mut label_items,
+			&"Total Chunks".to_string(),
+			&total_string
+		);
+		
+		push_storage_metric(
+			&mut label_items,
+			&"Space Free".to_string(),
+			&limit_string
+		);
+		
+		
 		// Render labels
 		let labels_widget = List::new(label_items).block(
 			Block::default()
@@ -265,8 +260,15 @@ fn ratio(numerator: u64, denomimator: u64) -> f64 {
 	}
 } 
 
+fn push_storage_subheading(items: &mut Vec<ListItem>, subheading: &String) {
+	items.push(
+		ListItem::new(vec![Spans::from(subheading.clone())])
+			.style(Style::default().fg(Color::Yellow).bg(Color::Black)),
+	);
+}
+
 fn push_storage_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
-	let s = format!("{:<15}:{:>9}", metric, value);
+	let s = format!("{:<13}:{:>9}", metric, value);
 	items.push(
 		ListItem::new(vec![Spans::from(s.clone())])
 			.style(Style::default().fg(Color::Blue).bg(Color::Black)),
