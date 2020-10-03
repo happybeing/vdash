@@ -131,7 +131,7 @@ fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogM
 fn push_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 	items.push(
 		ListItem::new(vec![Spans::from(subheading.clone())])
-			.style(Style::default().fg(Color::Yellow).bg(Color::Black)),
+			.style(Style::default().fg(Color::Yellow)),
 	);
 }
 
@@ -139,7 +139,7 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	let s = format!("{:<12}: {:>12}", metric, value);
 	items.push(
 		ListItem::new(vec![Spans::from(s.clone())])
-			.style(Style::default().fg(Color::Blue).bg(Color::Black)),
+			.style(Style::default().fg(Color::Blue)),
 	);
 }
 
@@ -235,7 +235,7 @@ fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mu
 		// Render labels
 		let labels_widget = List::new(label_items).block(
 			Block::default()
-				.borders(Borders::NONE)
+				.borders(Borders::NONE))
 		);
 		f.render_widget(labels_widget, columns[0]);
 
@@ -263,7 +263,7 @@ fn ratio(numerator: u64, denomimator: u64) -> f64 {
 fn push_storage_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 	items.push(
 		ListItem::new(vec![Spans::from(subheading.clone())])
-			.style(Style::default().fg(Color::Yellow).bg(Color::Black)),
+			.style(Style::default().fg(Color::Yellow)),
 	);
 }
 
@@ -271,7 +271,7 @@ fn push_storage_metric(items: &mut Vec<ListItem>, metric: &String, value: &Strin
 	let s = format!("{:<13}:{:>9}", metric, value);
 	items.push(
 		ListItem::new(vec![Spans::from(s.clone())])
-			.style(Style::default().fg(Color::Blue).bg(Color::Black)),
+			.style(Style::default().fg(Color::Blue)),
 	);
 }
 
