@@ -998,6 +998,7 @@ impl VaultMetrics {
 
 	///! Counts vault activity in categories GET, PUT and other
 	pub fn parse_activity_counts(&mut self, entry: &ActivityEntry) {
+		// TODO: may need to check entry.activity for 'success' but wait on sn_node issue #1126
 		if entry.activity.starts_with("Get") {
 			self.count_get(entry.time);
 		} else if entry.activity.starts_with("Mut") {
