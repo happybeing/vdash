@@ -1,14 +1,17 @@
 # SAFE Network Vault Dashboard
 
-`vdash` is a SAFE Network Vault dashboard for the terminal. It is written in Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI and [linemux](https://github.com/jmagnuson/linemux) to monitor vault logfiles on the local machine.
+`vdash` is a SAFE Network Vault dashboard for the terminal. It is written in
+Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
+and [linemux](https://github.com/jmagnuson/linemux) to monitor vault logfiles on
+the local machine.
 
-**Status:** early but useful for real time monitoring or post run logfile analysis.
+**Status:** working on Windows, MacOS and Linux using 'baby-fleming-vaults' tests.
 
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
 
 ## Specification
 Feature requests and discussion are currently summarised in the opening post of the Safe Network forum topic: [Vault Dashboard ideas please!](https://safenetforum.org/t/vault-dashboard-ideas-please/32572?u=happybeing) 
-## TODO
+## TODOm
 Where `vdash` is headed:
 - [x] implement ability to parse logfiles
   - [x] add --debug-parser to show results in second logfile
@@ -51,9 +54,9 @@ Where `vdash` is headed:
 - [ ] Implement --features="vdash" / --features="logtail" to select app and UI
 
 ## Operating Systems
-- **Linux:** works on Ubuntu.
+- **Linux:** works on Linux (tested on Ubuntu).
 - **Windows:** works on Windows 10.
-- **MacOS:** let me know what happens!
+- **MacOS:** works on MacOS.
 
 ## Install from crates.io
 
@@ -70,7 +73,9 @@ Where `vdash` is headed:
 
 2c. **Windows** install **vdash-crossterm:**
 
-To install on Windows you must build manually and use the 'nightly' compiler until the 'itarget' feature becomes part of 'stable', so install Rust nightly using `rustup`:
+To install on Windows you must build manually and use the 'nightly' compiler
+until the 'itarget' feature becomes part of 'stable', so install Rust nightly
+using `rustup`:
 
     rustup toolchain install nightly
     
@@ -128,9 +133,26 @@ rm -f ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
 RUST_LOG=debug,quinn=error safe vault run-baby-fleming -t
 ```
 Note:
-- `save vault killall` makes sure no existing vaults are still running, and deleting existing logfiles prevents you picking up statistics from previous activity. If you leave the logfile in place then `vdash` will waste time processing that, although you can skip that process using a command line option.
-- setting RUST_LOG ensures the logfiles contain the data which vdash needs, and excludes some that gets in the way.
-When there is a live test network you will be able to use `vdash` with that, but pre-beta those test networks are only available intermittently. The following therefore shows how to run a local test network and use `vdash` with this.
+- `save vault killall` makes sure no existing vaults are still running, and
+  deleting existing logfiles prevents you picking up statistics from previous
+  activity. If you leave the logfile in place then `vdash` will waste time
+  processing that, although you can skip that process using a command line
+  option.
+- setting RUST_LOG ensures the logfiles contain the data which vdash needs, and
+  excludes some that gets in the way.
+- On Windows to set RUST_LOG environment variable:
+	
+	Using Windows Command Line:
+	```
+	set RUST_LOG="safe=trace,quinn=trace"
+	safe vault run-baby-fleming -t
+	```
+	
+	Using Windows PowerShell:
+	```
+	$env:RUST_LOG="safe=trace,quinn=trace"
+	safe vault run-baby-fleming -t
+	```
 
 ### Using vdash With a Local Test Network
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
@@ -139,6 +161,9 @@ When there is a live test network you will be able to use `vdash` with that, but
     rm -f ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
     RUST_LOG=debug,quinn=error safe vault run-baby-fleming -t
     ```
+		
+	Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
+
 2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
     ```
     vdash ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
