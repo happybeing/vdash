@@ -1,6 +1,6 @@
 # SAFE Network Vault Dashboard
 
-`vdash` is a SAFE Network Vault dashboard for the terminal. It is written in
+`vdash` is a SAFE Network Vault/Node dashboard for the terminal. It is written in
 Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
 and [linemux](https://github.com/jmagnuson/linemux) to monitor vault logfiles on
 the local machine.
@@ -9,49 +9,20 @@ the local machine.
 
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
 
-## Specification
-Feature requests and discussion are currently summarised in the opening post of the Safe Network forum topic: [Vault Dashboard ideas please!](https://safenetforum.org/t/vault-dashboard-ideas-please/32572?u=happybeing) 
-## TODOm
-Where `vdash` is headed:
-- [x] implement ability to parse logfiles
-  - [x] add --debug-parser to show results in second logfile
-  - [x] implement parsing log file for simple metrics and timeline
-  - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
-- [x] change events to use tokio mpsc (unbounded) channel
-- [x] does tokio mpsc fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
-- [ ] implement vault dashboard
-  - [x] vault status summary page (single vault)
-  - [x] debug window (--debug-window)
-  - [x] add basic vault stats (age/PUTs/GETs)
-  - [x] scroll vault logfile (arrow keys)
-  - [x] multiple vaults (navigate with tab and arrow keys)
-  - [ ] add a timeline
-    - [x] simple timeline with PUTS and GETS
-    - [x] implement multiple timeline durations (hour, minute etc)
-    - [x] add status/timeline for ERRORS
-    - [x] anchor 'now' to right border
-    - [ ] mod sparkline widget to have a minimum Y scale (e.g. 10 units)
-  - [ ] reduce lag in processing logfile changes
-    - [x] implement simple rate limit on redraws
-    - [x] implement update/redraw tick (for timeline and stats)
-    - [x] fix load from logfile to timeline (currently all ends up in last bucket)
-    - [x] change timeline scaling to use +/- an i/o keys rather than s, m, d etc
-    - [ ] optimise redraw rate limit
-    - [ ] make a CLI option for redraw rate limit
-  - [ ] track sn_node [issue #1126](https://github.com/maidsafe/sn_node/issues/1126) (maintain Get/Put response in)
-  - [x] implement storage 'meter'
-    - [x] code to get vault storage used
-    - [x] code to get free space on same device
-    - [x] implement storage used/free 'progress' bar
-  - [ ] implement bandwidth 'meter'
-    - [ ] code to get vault bandwidth
-    - [ ] code to get total bandwidth
-    - [ ] implement bandwidth vault/total/max in last day 'progress' bar
-- [ ] Implement DashOverview: all vaults on one page (rename from DashSummary)
-- [ ] trim VaultMetrics timeline
-- [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
-- [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
-- [ ] Implement --features="vdash" / --features="logtail" to select app and UI
+## Features
+`vdash` will load historic metrics from one or more Safe node
+logfiles and display these with live updates in the terminal (see above).
+
+You can cycle through different Safe nodes using left/right arrow
+keys, and zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-'). 
+
+Press 'q' to quit.
+
+Feature requests and discussion are currently summarised in the opening post of
+the Safe Network forum topic: [Vault Dashboard ideas
+please!](https://safenetforum.org/t/vault-dashboard-ideas-please/32572?u=happybeing).
+
+For more details and progress see [Roadmap](#roadmap) (below).
 
 ## Operating Systems
 - **Linux:** works on Linux (tested on Ubuntu).
@@ -205,6 +176,50 @@ NOT working on Windows yet, this is being worked on at the moment. Help with tes
 ```
 cargo build --bin vdash-crossterm --features="crossterm" --features="vdash" --release
 ```
+
+
+# Roadmap
+Where `vdash` is headed:
+- [x] implement ability to parse logfiles
+  - [x] add --debug-parser to show results in second logfile
+  - [x] implement parsing log file for simple metrics and timeline
+  - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
+- [x] change events to use tokio mpsc (unbounded) channel
+- [x] does tokio mpsc fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
+- [ ] implement vault dashboard
+  - [x] vault status summary page (single vault)
+  - [x] debug window (--debug-window)
+  - [x] add basic vault stats (age/PUTs/GETs)
+  - [x] scroll vault logfile (arrow keys)
+  - [x] multiple vaults (navigate with tab and arrow keys)
+  - [ ] add a timeline
+    - [x] simple timeline with PUTS and GETS
+    - [x] implement multiple timeline durations (hour, minute etc)
+    - [x] add status/timeline for ERRORS
+    - [x] anchor 'now' to right border
+    - [ ] mod sparkline widget to have a minimum Y scale (e.g. 10 units)
+  - [ ] reduce lag in processing logfile changes
+    - [x] implement simple rate limit on redraws
+    - [x] implement update/redraw tick (for timeline and stats)
+    - [x] fix load from logfile to timeline (currently all ends up in last bucket)
+    - [x] change timeline scaling to use +/- an i/o keys rather than s, m, d etc
+    - [ ] optimise redraw rate limit
+    - [ ] make a CLI option for redraw rate limit
+  - [ ] track sn_node [issue #1126](https://github.com/maidsafe/sn_node/issues/1126) (maintain Get/Put response in)
+  - [x] implement storage 'meter'
+    - [x] code to get vault storage used
+    - [x] code to get free space on same device
+    - [x] implement storage used/free 'progress' bar
+  - [ ] implement bandwidth 'meter'
+    - [ ] code to get vault bandwidth
+    - [ ] code to get total bandwidth
+    - [ ] implement bandwidth vault/total/max in last day 'progress' bar
+- [ ] Implement DashOverview: all vaults on one page (rename from DashSummary)
+- [ ] trim VaultMetrics timeline
+- [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
+- [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
+- [ ] Implement --features="vdash" / --features="logtail" to select app and UI
+
 
 ## LICENSE
 
