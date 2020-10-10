@@ -844,7 +844,7 @@ impl VaultMetrics {
 			// TODO Trim log_history
 		}
 
-		// --debug-parser - prints parser results for a single logfile
+		// --debug-dashboard - prints parser results for a single logfile
 		// to a temp logfile which is displayed in the adjacent window.
 		debug_log!(&parser_result);
 
@@ -1107,9 +1107,7 @@ impl LogEntry {
 
 			let mut time_utc: Option<DateTime<Utc>> = None;
 
-			// TODO switch to datetime_from_str() when solved (chrono issue #489)
-			// let time = match Utc.datetime_from_str(time_string, "%+") {
-			match DateTime::parse_from_rfc3339(time_string) {
+			match DateTime::parse_from_str(time_string, "%+") {
 				Ok(time) => {
 					time_utc = Some(time.with_timezone(&Utc));
 					time_str = format!("{}", time);
