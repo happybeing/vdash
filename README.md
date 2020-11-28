@@ -52,7 +52,7 @@ using `rustup`:
     
 To build `vdash-crossterm` on Windows, clone vdash, build with `+nightly` and use the binary it creates under `./taget/release`:
 
-    git clone https://github.com/theWebalyst/vdash
+    git clone https://github.com/happybeing/vdash
     cd vdash
     cargo +nightly build -Z features=itarget --bin vdash-crossterm --release --no-default-features
 
@@ -156,7 +156,7 @@ See [Get SAFE Network Pre-requisites](#get-safe-network-pre-requisites).
 
 ### Get code
 ```
-git clone https://github.com/theWebalyst/vdash
+git clone https://github.com/happybeing/vdash
 cd vdash
 ```
 
@@ -216,7 +216,7 @@ Where `vdash` is headed:
     - [ ] implement bandwidth vault/total/max in last day 'progress' bar
 - [ ] Implement DashOverview: all vaults on one page (rename from DashSummary)
 - [ ] trim VaultMetrics timeline
-- [ ] logtail-dash [Issue #1](https://github.com/theWebalyst/logfile-dash/issues/1): Implement popup help on ?, h, H
+- [ ] logtail-dash [Issue #1](https://github.com/happybeing/logfile-dash/issues/1): Implement popup help on ?, h, H
 - [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
 - [ ] Implement --features="vdash" / --features="logtail" to select app and UI
 
