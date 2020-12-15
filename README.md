@@ -5,7 +5,7 @@ Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
 and [linemux](https://github.com/jmagnuson/linemux) to monitor node logfiles on
 the local machine.
 
-**Status:** working on Windows, MacOS and Linux using 'baby-fleming-nodes' tests.
+**Status:** working on Windows, MacOS and Linux using 'local-test-network' tests.
 
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
 
@@ -100,7 +100,7 @@ RUST_LOG=debug,quinn=error safe node join
 Or
 ```sh
 safe node killall
-rm -f ~/.safe/node/baby-fleming-nodes/*/safe_node.log
+rm -f ~/.safe/node/local-test-network/*/safe_node.log
 RUST_LOG=debug,quinn=error safe node run-baby-fleming -t
 ```
 Note:
@@ -129,7 +129,7 @@ Note:
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
     safe node killall
-    rm -f ~/.safe/node/baby-fleming-nodes/*/safe_node.log
+    rm -f ~/.safe/node/local-test-network/*/safe_node.log
     RUST_LOG=debug,quinn=error safe node run-baby-fleming -t
     ```
 		
@@ -137,7 +137,7 @@ Note:
 
 2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
     ```
-    vdash ~/.safe/node/baby-fleming-nodes/*/safe_node.log
+    vdash ~/.safe/node/local-test-network/*/safe_node.log
     ```
     Or with a live network:
     ```
