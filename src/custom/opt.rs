@@ -8,7 +8,7 @@ pub use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
-	about = "Monitor Safe Network vaults in the terminal.\nNavigate using tab and arrow keys."
+	about = "Monitor Safe Network nodes in the terminal.\nNavigate using tab and arrow keys."
 )]
 pub struct Opt {
 	/// Maximum number of lines to keep for each logfile

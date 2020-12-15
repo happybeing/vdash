@@ -1,11 +1,11 @@
-# SAFE Network Vault Dashboard
+# SAFE Network Node Dashboard
 
-`vdash` is a SAFE Network Vault/Node dashboard for the terminal. It is written in
+`vdash` is a SAFE Network Node/Node dashboard for the terminal. It is written in
 Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
-and [linemux](https://github.com/jmagnuson/linemux) to monitor vault logfiles on
+and [linemux](https://github.com/jmagnuson/linemux) to monitor node logfiles on
 the local machine.
 
-**Status:** working on Windows, MacOS and Linux using 'baby-fleming-vaults' tests.
+**Status:** working on Windows, MacOS and Linux using 'baby-fleming-nodes' tests.
 
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
 
@@ -19,8 +19,8 @@ keys, and zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-').
 Press 'q' to quit.
 
 Feature requests and discussion are currently summarised in the opening post of
-the Safe Network forum topic: [Vault Dashboard ideas
-please!](https://safenetforum.org/t/vault-dashboard-ideas-please/32572?u=happybeing).
+the Safe Network forum topic: [Node Dashboard ideas
+please!](https://safenetforum.org/t/node-dashboard-ideas-please/32572?u=happybeing).
 
 For more details and progress see [Roadmap](#roadmap) (below).
 
@@ -58,8 +58,8 @@ To build `vdash-crossterm` on Windows, clone vdash, build with `+nightly` and us
 
     ./target/release/vdash-crossterm --help
 
-## Using vdash - SAFE Network Vault Dashboard
-`vdash` is provides a terminal based graphical dashboard of SAFE Network Vault activity on the local machine. It parses input from one or more vault logfiles to gather live vault metrics which are displayed using terminal graphics.
+## Using vdash - SAFE Network Node Dashboard
+`vdash` is provides a terminal based graphical dashboard of SAFE Network Node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
 
 **Status:** work-in-progress, not useful yet unless you want to help!
 
@@ -68,43 +68,43 @@ To build `vdash-crossterm` on Windows, clone vdash, build with `+nightly` and us
 
 2. **Get the SAFE CLI:** either download using an install script or build the SAFE CLI locally. Instructions for both options are [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#safe-network-cli).
 
-3. **Get the SAFE Vault:** when you have the SAFE CLI working you can install the vault software with the command ` safe vault install` (details [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#vault-install)).
+3. **Get the SAFE Node:** when you have the SAFE CLI working you can install the node software with the command ` safe node install` (details [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#node-install)).
 
 You are now ready to install `vdash` and can test it by running a local test network.
 
 ## Usage
 
-In the terminal type the command and the paths of one or more vault logfiles you want to monitor. For example:
+In the terminal type the command and the paths of one or more node logfiles you want to monitor. For example:
 
-    vdash ~/.safe/vault/local-vault/safe_vault.log
+    vdash ~/.safe/node/local-node/safe_node.log
 
 When the dashboard is active, pressing 's' or 'd' switches between summary and detail views.
 For more information:
 
     vdash --help
 
-### Vault Setup
-**IMPORTANT:** You must ensure the vault logfile includes the telemetry information used by vdash by setting the required logging level (e.g. 'info', or 'debug' etc).
+### Node Setup
+**IMPORTANT:** You must ensure the node logfile includes the telemetry information used by vdash by setting the required logging level (e.g. 'info', or 'debug' etc).
 
 The required level may change as things progress, so for now I recommend using a logging level of 'info' to keep resources minimal. The logfile will be larger and **vdash** become slower, but may have access to more metrics if you increase the logging level to 'debug', or even 'trace'.
 
-You control the vault logging level by setting the environment variable `RUST_LOG` but be aware that setting this to one of  to one of 'warn', 'info', 'debug', or 'trace' will apply this to *all* modules used by `safe_vault` code, not just the `safe_vault` module. You can though set the default to one level and different levels for other modules.
+You control the node logging level by setting the environment variable `RUST_LOG` but be aware that setting this to one of  to one of 'warn', 'info', 'debug', or 'trace' will apply this to *all* modules used by `safe_node` code, not just the `safe_node` module. You can though set the default to one level and different levels for other modules.
 
 For example, to set the default level to 'debug' for everything, except for the `quinn` module which generates a lot of unnecessary INFO log messages, module use:
 
 ```sh
-safe vault killall
-rm -f ~/.safe/vault/local-vault/safe_vault.log
-RUST_LOG=debug,quinn=error safe vault join
+safe node killall
+rm -f ~/.safe/node/local-node/safe_node.log
+RUST_LOG=debug,quinn=error safe node join
 ```
 Or
 ```sh
-safe vault killall
-rm -f ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
-RUST_LOG=debug,quinn=error safe vault run-baby-fleming -t
+safe node killall
+rm -f ~/.safe/node/baby-fleming-nodes/*/safe_node.log
+RUST_LOG=debug,quinn=error safe node run-baby-fleming -t
 ```
 Note:
-- `save vault killall` makes sure no existing vaults are still running, and
+- `save node killall` makes sure no existing nodes are still running, and
   deleting existing logfiles prevents you picking up statistics from previous
   activity. If you leave the logfile in place then `vdash` will waste time
   processing that, although you can skip that process using a command line
@@ -116,34 +116,34 @@ Note:
 	Using Windows Command Line:
 	```
 	set RUST_LOG="safe=trace,quinn=trace"
-	safe vault run-baby-fleming -t
+	safe node run-baby-fleming -t
 	```
 	
 	Using Windows PowerShell:
 	```
 	$env:RUST_LOG="safe=trace,quinn=trace"
-	safe vault run-baby-fleming -t
+	safe node run-baby-fleming -t
 	```
 
 ### Using vdash With a Local Test Network
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
-    safe vault killall
-    rm -f ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
-    RUST_LOG=debug,quinn=error safe vault run-baby-fleming -t
+    safe node killall
+    rm -f ~/.safe/node/baby-fleming-nodes/*/safe_node.log
+    RUST_LOG=debug,quinn=error safe node run-baby-fleming -t
     ```
 		
 	Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
 
 2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
     ```
-    vdash ~/.safe/vault/baby-fleming-vaults/*/safe_vault.log
+    vdash ~/.safe/node/baby-fleming-nodes/*/safe_node.log
     ```
     Or with a live network:
     ```
-    vdash ~/.safe/vault/local-vault/safe_vault.log
+    vdash ~/.safe/node/local-node/safe_node.log
     ```
-3. **Upload files using SAFE CLI:** in the SAFE CLI window you can perform operations on the local test network that will affect the vault and the effects will be shown in `vdash`. For example, to [use the SAFE CLI to upload files](https://github.com/maidsafe/sn_api/tree/master/sn_cli#files):
+3. **Upload files using SAFE CLI:** in the SAFE CLI window you can perform operations on the local test network that will affect the node and the effects will be shown in `vdash`. For example, to [use the SAFE CLI to upload files](https://github.com/maidsafe/sn_api/tree/master/sn_cli#files):
     ```
     safe files put ./<some-directory>/ --recursive
     ```
@@ -186,12 +186,12 @@ Where `vdash` is headed:
   - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
 - [x] change events to use tokio mpsc (unbounded) channel
 - [x] does tokio mpsc fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
-- [ ] implement vault dashboard
-  - [x] vault status summary page (single vault)
+- [ ] implement node dashboard
+  - [x] node status summary page (single node)
   - [x] debug window (--debug-window)
-  - [x] add basic vault stats (age/PUTs/GETs)
-  - [x] scroll vault logfile (arrow keys)
-  - [x] multiple vaults (navigate with tab and arrow keys)
+  - [x] add basic node stats (age/PUTs/GETs)
+  - [x] scroll node logfile (arrow keys)
+  - [x] multiple nodes (navigate with tab and arrow keys)
   - [ ] add a timeline
     - [x] simple timeline with PUTS and GETS
     - [x] implement multiple timeline durations (hour, minute etc)
@@ -207,15 +207,15 @@ Where `vdash` is headed:
     - [ ] make a CLI option for redraw rate limit
   - [ ] track sn_node [issue #1126](https://github.com/maidsafe/sn_node/issues/1126) (maintain Get/Put response in)
   - [x] implement storage 'meter'
-    - [x] code to get vault storage used
+    - [x] code to get node storage used
     - [x] code to get free space on same device
     - [x] implement storage used/free 'progress' bar
   - [ ] implement bandwidth 'meter'
-    - [ ] code to get vault bandwidth
+    - [ ] code to get node bandwidth
     - [ ] code to get total bandwidth
-    - [ ] implement bandwidth vault/total/max in last day 'progress' bar
-- [ ] Implement DashOverview: all vaults on one page (rename from DashSummary)
-- [ ] trim VaultMetrics timeline
+    - [ ] implement bandwidth node/total/max in last day 'progress' bar
+- [ ] Implement DashOverview: all nodes on one page (rename from DashSummary)
+- [ ] trim NodeMetrics timeline
 - [ ] logtail-dash [Issue #1](https://github.com/happybeing/logfile-dash/issues/1): Implement popup help on ?, h, H
 - [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
 - [ ] Implement --features="vdash" / --features="logtail" to select app and UI

@@ -111,7 +111,7 @@ async fn terminal_main() -> std::io::Result<()> {
 						// Key::Char('s')|
 						// Key::Char('S') => app.set_main_view(DashViewMain::DashSummary),
 							Key::Char('v')|
-							Key::Char('V') => set_main_view(DashViewMain::DashVault, &mut app),
+							Key::Char('V') => set_main_view(DashViewMain::DashNode, &mut app),
 
 							Key::Char('+')|
 							Key::Char('i')|

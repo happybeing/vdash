@@ -1,6 +1,6 @@
 [package]
 name = "vdash"
-description = "SAFE Network Vault Dashboard"
+description = "SAFE Network Node Dashboard"
 version = "0.4.0"
 authors = ["Mark <git@happybeing.com>"]
 license = "GPL-3.0"
