@@ -117,7 +117,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						// KeyCode::Char('s')|
 						// KeyCode::Char('S') => app.set_main_view(DashViewMain::DashSummary),
 						KeyCode::Char('v')|
-						KeyCode::Char('V') => set_main_view(DashViewMain::DashVault, &mut app),
+						KeyCode::Char('V') => set_main_view(DashViewMain::DashNode, &mut app),
 
 						KeyCode::Char('+')|
 						KeyCode::Char('i')|

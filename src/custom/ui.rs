@@ -23,12 +23,12 @@ use tui::{
 pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashSummary => {} //draw_summary_dash(f, dash_state, monitors),
-		DashViewMain::DashVault => draw_vault_dash(f, &mut app.dash_state, &mut app.monitors),
+		DashViewMain::DashNode => draw_node_dash(f, &mut app.dash_state, &mut app.monitors),
 		DashViewMain::DashDebug => debug_draw_dashboard(f, &mut app.dash_state, &mut app.monitors),
 	}
 }
 
-fn draw_vault_dash<B: Backend>(
+fn draw_node_dash<B: Backend>(
 	f: &mut Frame<B>,
 	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
@@ -50,7 +50,7 @@ fn draw_vault_dash<B: Backend>(
 		let (logfile, mut monitor) = entry;
 		if monitor.has_focus {
 			// Stats and Graphs / Timeline / Logfile
-			draw_vault(f, chunks[0], dash_state, &mut monitor);
+			draw_node(f, chunks[0], dash_state, &mut monitor);
 			draw_timeline(f, chunks[1], dash_state, &mut monitor);
 			draw_bottom_panel(f, chunks[2], dash_state, &logfile, &mut monitor);
 			return;
@@ -60,7 +60,7 @@ fn draw_vault_dash<B: Backend>(
 	draw_debug_window(f, size, dash_state);
 }
 
-fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitor: &mut LogMonitor) {
+fn draw_node<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	// Columns:
 	let constraints = [
 		Constraint::Length(40), // Stats summary
@@ -72,14 +72,14 @@ fn draw_vault<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashSta
 		.constraints(constraints.as_ref())
 		.split(area);
 
-	draw_vault_stats(f, chunks[0], monitor);
-	draw_vault_storage(f, chunks[1], dash_state, monitor);
+	draw_node_stats(f, chunks[0], monitor);
+	draw_node_storage(f, chunks[1], dash_state, monitor);
 }
 
-fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
+fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
-	push_subheading(&mut items, &"Vault".to_string());
+	push_subheading(&mut items, &"Node".to_string());
 	push_metric(
 		&mut items,
 		&"Agebracket".to_string(),
@@ -119,7 +119,7 @@ fn draw_vault_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogM
 	// 	&monitor.metrics.elders.to_string(),
 	// );
 
-	let heading = format!("Vault {:>2} Status", monitor.index + 1);
+	let heading = format!("Node {:>2} Status", monitor.index + 1);
 	let monitor_widget = List::new(items).block(
 		Block::default()
 			.borders(Borders::ALL)
@@ -143,7 +143,7 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	);
 }
 
-fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
+fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	let total_string = format_size(monitor.chunk_store.total_used, 1);
 	let limit_string = match &monitor.chunk_store_fsstats {
 		Some(fsstats) => {
@@ -155,7 +155,7 @@ fn draw_vault_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mu
 		}
 	};
 
-	let heading = format!("Vault {:>2} Chunk Store:  {:>9} of {} limit", monitor.index+1, &total_string, &limit_string);
+	let heading = format!("Node {:>2} Chunk Store:  {:>9} of {} limit", monitor.index+1, &total_string, &limit_string);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
 		.block(
 			Block::default()
@@ -434,13 +434,13 @@ pub fn draw_logfile<B: Backend>(
 		})
 		.collect();
 
-	let vault_log_title = format!("Vault Log ({})", logfile);
+	let node_log_title = format!("Node Log ({})", logfile);
 
 	let logfile_widget = List::new(items)
 		.block(
 			Block::default()
 				.borders(Borders::ALL)
-				.title(vault_log_title.clone()),
+				.title(node_log_title.clone()),
 		)
 		.highlight_style(highlight_style);
 

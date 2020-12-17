@@ -151,7 +151,7 @@ impl App {
 		app.update_timelines(Some(Utc::now()));
 
 		if !first_logfile.is_empty() {
-			app.dash_state.dash_vault_focus = first_logfile.clone();
+			app.dash_state.dash_node_focus = first_logfile.clone();
 		}
 
 		if activate_debug_dashboard {
@@ -461,7 +461,7 @@ pub struct LogMonitor {
 	pub chunk_store_fsstats: Option<FsStats>,
 	pub chunk_store_pathbuf: PathBuf,
 	pub chunk_store: ChunkStoreStatsAll,	
-	pub metrics: VaultMetrics,
+	pub metrics: NodeMetrics,
 	pub metrics_status: StatefulList<String>,
 	pub is_debug_dashboard_log: bool,
 }
@@ -492,7 +492,7 @@ impl LogMonitor {
 			chunk_store_fsstats: None,
 			chunk_store_pathbuf,
 			chunk_store: ChunkStoreStatsAll::new(),	
-			metrics: VaultMetrics::new(&opt),
+			metrics: NodeMetrics::new(&opt),
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,
 			metrics_status: StatefulList::with_items(vec![]),
@@ -572,7 +572,7 @@ lazy_static::lazy_static! {
 }
 
 #[derive(PartialEq)]
-pub enum VaultAgebracket {
+pub enum NodeAgebracket {
 	Unknown,
 	Infant,
 	Adult,
@@ -727,8 +727,8 @@ impl BucketSet {
 	}
 }
 
-pub struct VaultMetrics {
-	pub vault_started: Option<DateTime<Utc>>,
+pub struct NodeMetrics {
+	pub node_started: Option<DateTime<Utc>>,
 	pub running_message: Option<String>,
 	pub running_version: Option<String>,
 	pub category_count: HashMap<String, usize>,
@@ -740,7 +740,7 @@ pub struct VaultMetrics {
 	pub errors_timeline: TimelineSet, // TODO add code to collect and display
 
 	pub most_recent: Option<DateTime<Utc>>,
-	pub agebracket: VaultAgebracket,
+	pub agebracket: NodeAgebracket,
 	pub adults: usize,
 	pub elders: usize,
 	pub activity_gets: u64,
@@ -752,8 +752,8 @@ pub struct VaultMetrics {
 	parser_output: String,
 }
 
-impl VaultMetrics {
-	fn new(opt: &Opt) -> VaultMetrics {
+impl NodeMetrics {
+	fn new(opt: &Opt) -> NodeMetrics {
 		let mut puts_timeline = TimelineSet::new("PUTS".to_string());
 		let mut gets_timeline = TimelineSet::new("GETS".to_string());
 		let mut errors_timeline = TimelineSet::new("ERRORS".to_string());
@@ -765,9 +765,9 @@ impl VaultMetrics {
 			}
 		}
 
-		let mut metrics = VaultMetrics {
+		let mut metrics = NodeMetrics {
 			// Start
-			vault_started: None,
+			node_started: None,
 			running_message: None,
 			running_version: None,
 
@@ -788,8 +788,8 @@ impl VaultMetrics {
 			activity_errors: 0,
 			activity_other: 0,
 
-			// State (vault)
-			agebracket: VaultAgebracket::Unknown,
+			// State (node)
+			agebracket: NodeAgebracket::Unknown,
 
 			// State (network)
 			adults: 0,
@@ -805,15 +805,15 @@ impl VaultMetrics {
 
 	pub fn agebracket_string(&self) -> String {
 		match self.agebracket {
-			VaultAgebracket::Infant => "Infant".to_string(),
-			VaultAgebracket::Adult => "Adult".to_string(),
-			VaultAgebracket::Elder => "Elder".to_string(),
-			VaultAgebracket::Unknown => "Unknown".to_string(),
+			NodeAgebracket::Infant => "Infant".to_string(),
+			NodeAgebracket::Adult => "Adult".to_string(),
+			NodeAgebracket::Elder => "Elder".to_string(),
+			NodeAgebracket::Unknown => "Unknown".to_string(),
 		}
 	}
 
 	fn reset_metrics(&mut self) {
-		self.agebracket = VaultAgebracket::Infant;
+		self.agebracket = NodeAgebracket::Infant;
 		self.adults = 0;
 		self.elders = 0;
 		self.activity_gets = 0;
@@ -822,8 +822,8 @@ impl VaultMetrics {
 		self.activity_other = 0;
 	}
 
-	///! Process a line from a SAFE Vault logfile.
-	///! May add a LogEntry to the VaultMetrics::log_history vector.
+	///! Process a line from a SAFE Node logfile.
+	///! May add a LogEntry to the NodeMetrics::log_history vector.
 	///! Use a created LogEntry to update metrics.
 	pub fn gather_metrics(&mut self, line: &str) -> Result<(), std::io::Error> {
 		// For debugging LogEntry::decode()
@@ -863,15 +863,15 @@ impl VaultMetrics {
 		}
 	}
 
-	///! Returm a LogEntry and capture metadata for logfile vault start:
-	///!	'Running safe-vault v0.24.0'
+	///! Returm a LogEntry and capture metadata for logfile node start:
+	///!	'Running safe-node v0.24.0'
 	pub fn parse_start(&mut self, line: &str) -> Option<LogEntry> {
-		let running_prefix = String::from("Running safe-vault ");
+		let running_prefix = String::from("Running safe-node ");
 
 		if line.starts_with(&running_prefix) {
 			self.running_message = Some(line.to_string());
 			self.running_version = Some(line[running_prefix.len()..].to_string());
-			self.vault_started = self.most_recent;
+			self.node_started = self.most_recent;
 			let parser_output = format!(
 				"START at {}",
 				self.most_recent
@@ -915,7 +915,7 @@ impl VaultMetrics {
 					let activity_entry = ActivityEntry::new(entry, response);
 					self.parse_activity_counts(&activity_entry);
 					self.activity_history.push(activity_entry);
-					self.parser_output = format!("vault activity: {}", response);
+					self.parser_output = format!("node activity: {}", response);
 				}
 			}
 			if response.is_empty() {
@@ -948,20 +948,20 @@ impl VaultMetrics {
 		};
 
 		if let Some(agebracket) = self
-			.parse_word("Vault promoted to ", &entry.logstring)
-			.or(self.parse_word("Initializing new Vault as ", &entry.logstring))
+			.parse_word("Node promoted to ", &entry.logstring)
+			.or(self.parse_word("Initializing new Node as ", &entry.logstring))
 		{
 			self.agebracket = match agebracket.as_str() {
-				"Infant" => VaultAgebracket::Infant,
-				"Adult" => VaultAgebracket::Adult,
-				"Elder" => VaultAgebracket::Elder,
+				"Infant" => NodeAgebracket::Infant,
+				"Adult" => NodeAgebracket::Adult,
+				"Elder" => NodeAgebracket::Elder,
 				_ => {
 					debug_log!(self.parser_output.as_str());
-					VaultAgebracket::Unknown
+					NodeAgebracket::Unknown
 				}
 			};
-			if self.agebracket != VaultAgebracket::Unknown {
-				self.parser_output = format!("Vault agebracket: {}", agebracket);
+			if self.agebracket != NodeAgebracket::Unknown {
+				self.parser_output = format!("Node agebracket: {}", agebracket);
 			} else {
 				self.parser_output = format!("FAILED to parse agebracket in: {}", &entry.logstring);
 			}
@@ -996,7 +996,7 @@ impl VaultMetrics {
 		None
 	}
 
-	///! Counts vault activity in categories GET, PUT and other
+	///! Counts node activity in categories GET, PUT and other
 	pub fn parse_activity_counts(&mut self, entry: &ActivityEntry) {
 		// TODO: may need to check entry.activity for 'success' but wait on sn_node issue #1126
 		if entry.activity.starts_with("Get") {
@@ -1036,7 +1036,7 @@ impl VaultMetrics {
 	}
 }
 
-///! Vault activity for vault activity_history
+///! Node activity for node activity_history
 pub struct ActivityEntry {
 	pub activity: String,
 	pub logstring: String,
@@ -1061,7 +1061,7 @@ impl ActivityEntry {
 	}
 }
 
-///! Decoded logfile entries for a vault log history
+///! Decoded logfile entries for a node log history
 pub struct LogEntry {
 	pub logstring: String,
 	pub category: String, // First word, "Running", "INFO", "WARN" etc
@@ -1073,8 +1073,8 @@ pub struct LogEntry {
 }
 
 impl LogEntry {
-	///! Decode vault logfile lines of the form:
-	///!	INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
+	///! Decode node logfile lines of the form:
+	///!	INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_node.rs:114]
 	///!	WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
 	///!
 	pub fn decode(line: &str) -> Option<LogEntry> {
@@ -1095,7 +1095,7 @@ impl LogEntry {
 	}
 
 	///! Parse a line of the form:
-	///!	INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_vault.rs:114]
+	///!	INFO 2020-07-08T19:58:26.841778689+01:00 [src/bin/safe_node.rs:114]
 	///!	WARN 2020-07-08T19:59:18.540118366+01:00 [src/data_handler/idata_handler.rs:744] 552f45..: Failed to get holders metadata from DB
 	fn parse_logfile_line(line: &str) -> Option<LogEntry> {
 		if let Some(captures) = LOG_LINE_PATTERN.captures(line) {
@@ -1140,7 +1140,7 @@ impl LogEntry {
 #[derive(PartialEq)]
 pub enum DashViewMain {
 	DashSummary,
-	DashVault,
+	DashNode,
 	DashDebug,
 }
 
@@ -1158,7 +1158,7 @@ lazy_static::lazy_static! {
 pub struct DashState {
 	pub main_view: DashViewMain,
 	pub active_timeline: usize,
-	pub dash_vault_focus: String,
+	pub dash_node_focus: String,
 
 	// For --debug-window option
 	pub debug_window_list: StatefulList<String>,
@@ -1171,9 +1171,9 @@ impl DashState {
 	pub fn new() -> DashState {
 
 		DashState {
-			main_view: DashViewMain::DashVault,
+			main_view: DashViewMain::DashNode,
 			active_timeline: 0,
-			dash_vault_focus: String::new(),
+			dash_node_focus: String::new(),
 
 			debug_window: false,
 			debug_window_has_focus: false,
@@ -1220,9 +1220,9 @@ pub fn set_main_view(view: DashViewMain, app: &mut App) {
 pub fn save_focus(app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashSummary => {} // TODO
-		DashViewMain::DashVault => {
+		DashViewMain::DashNode => {
 			if let Some(focus) = app.get_logfile_with_focus() {
-				app.dash_state.dash_vault_focus = focus;
+				app.dash_state.dash_node_focus = focus;
 			}
 		}
 		DashViewMain::DashDebug => {}
@@ -1232,8 +1232,8 @@ pub fn save_focus(app: &mut App) {
 pub fn restore_focus(app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashSummary => {} // TODO
-		DashViewMain::DashVault => {
-			app.set_logfile_with_focus(app.dash_state.dash_vault_focus.clone())
+		DashViewMain::DashNode => {
+			app.set_logfile_with_focus(app.dash_state.dash_node_focus.clone())
 		}
 		DashViewMain::DashDebug => {
 			if let Some(debug_logfile) = app.get_debug_dashboard_logfile() {

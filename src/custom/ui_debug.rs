@@ -15,7 +15,7 @@ pub fn draw_dashboard<B: Backend>(
 ) {
 	match dash_state.main_view {
 		DashViewMain::DashSummary => {}
-		DashViewMain::DashVault => {}
+		DashViewMain::DashNode => {}
 		DashViewMain::DashDebug => draw_debug_dashboard(f, dash_state, monitors),
 	}
 }
