@@ -5,7 +5,7 @@ Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
 and [linemux](https://github.com/jmagnuson/linemux) to monitor node logfiles on
 the local machine.
 
-**Status:** working on Windows, MacOS and Linux using 'local-test-network' tests.
+**Status:** working on Windows, MacOS and Linux using 'baby-fleming-nodes' tests.
 
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
 
@@ -76,7 +76,7 @@ You are now ready to install `vdash` and can test it by running a local test net
 
 In the terminal type the command and the paths of one or more node logfiles you want to monitor. For example:
 
-    vdash ~/.safe/node/local-node/safe_node.log
+    vdash ~/.safe/node/local-node/sn_node.log
 
 When the dashboard is active, pressing 's' or 'd' switches between summary and detail views.
 For more information:
@@ -88,21 +88,16 @@ For more information:
 
 The required level may change as things progress, so for now I recommend using a logging level of 'info' to keep resources minimal. The logfile will be larger and **vdash** become slower, but may have access to more metrics if you increase the logging level to 'debug', or even 'trace'.
 
-You control the node logging level by setting the environment variable `RUST_LOG` but be aware that setting this to one of  to one of 'warn', 'info', 'debug', or 'trace' will apply this to *all* modules used by `safe_node` code, not just the `safe_node` module. You can though set the default to one level and different levels for other modules.
+You control the node logging level by setting the environment variable `RUST_LOG` but be aware that setting this to one of  to one of 'warn', 'info', 'debug', or 'trace' will apply this to *all* modules used by `sn_node` code, not just the `sn_node` module. You can though set the default to one level and different levels for other modules.
 
 For example, to set the default level to 'debug' for everything, except for the `quinn` module which generates a lot of unnecessary INFO log messages, module use:
 
 ```sh
 safe node killall
-rm -f ~/.safe/node/local-node/safe_node.log
-RUST_LOG=debug,quinn=error safe node join
+rm -f ~/.safe/node/local-test-network/*/sn_node.log
+RUST_LOG=safe=trace safe node join
 ```
 Or
-```sh
-safe node killall
-rm -f ~/.safe/node/local-test-network/*/safe_node.log
-RUST_LOG=debug,quinn=error safe node run-baby-fleming -t
-```
 Note:
 - `save node killall` makes sure no existing nodes are still running, and
   deleting existing logfiles prevents you picking up statistics from previous
@@ -115,13 +110,13 @@ Note:
 	
 	Using Windows Command Line:
 	```
-	set RUST_LOG="safe=trace,quinn=trace"
+	set RUST_LOG="safe=trace"
 	safe node run-baby-fleming -t
 	```
 	
 	Using Windows PowerShell:
 	```
-	$env:RUST_LOG="safe=trace,quinn=trace"
+	$env:RUST_LOG="safe=trace"
 	safe node run-baby-fleming -t
 	```
 
@@ -129,19 +124,19 @@ Note:
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
     safe node killall
-    rm -f ~/.safe/node/local-test-network/*/safe_node.log
-    RUST_LOG=debug,quinn=error safe node run-baby-fleming -t
+    rm -f ~/.safe/node/local-test-network/*/sn_node.log
+    RUST_LOG=safe=trace safe node run-baby-fleming -t
     ```
 		
 	Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
 
 2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
     ```
-    vdash ~/.safe/node/local-test-network/*/safe_node.log
+    vdash ~/.safe/node/baby-fleming-nodes/*/sn_node.log
     ```
     Or with a live network:
     ```
-    vdash ~/.safe/node/local-node/safe_node.log
+    vdash ~/.safe/node/local-node/sn_node.log
     ```
 3. **Upload files using SAFE CLI:** in the SAFE CLI window you can perform operations on the local test network that will affect the node and the effects will be shown in `vdash`. For example, to [use the SAFE CLI to upload files](https://github.com/maidsafe/sn_api/tree/master/sn_cli#files):
     ```
@@ -225,4 +220,4 @@ Where `vdash` is headed:
 
 Everything is GPL3.0 unless otherwise stated. Any contributions are accepted on the condition they conform to this license.
 
-See also ./LICENSE
+See also [./LICENSE](./LICENSE)
