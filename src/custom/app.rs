@@ -898,8 +898,21 @@ impl NodeMetrics {
 	pub fn process_logfile_entry(&mut self, entry: &LogEntry) -> bool {
 		return self.parse_data_response(
 			&entry,
-			"Responded to our data handlers with: Response { response: Response::",
-		) || self.parse_states(&entry);
+			"Running as Node: SendToSection [ msg: MsgEnvelope { message: QueryResponse { response: QueryResponse::",
+		) || self.parse_puts(&entry) || self.parse_states(&entry);
+	}
+
+	///! Look for a PUT message
+	///! TODO: needs checking with MaidSafe (see https://safenetforum.org/t/safe-network-dev-update-december-17-2020/33156/89?u=happybeing)
+	fn parse_puts(&mut self, entry: &LogEntry) -> bool {
+		if entry.message.contains("Writing chunk succeeded") {
+			self.count_put(entry.time);
+			return true;
+		} else if entry.message.starts_with("MapStorage: Writing chunk PASSED") {
+			self.count_put(entry.time);
+			return true;
+		}
+		return false;
 	}
 
 	///! Update data metrics from a handler response logfile entry
@@ -950,7 +963,7 @@ impl NodeMetrics {
 
 		if let Some(agebracket) = self
 			.parse_word("Node promoted to ", &entry.logstring)
-			.or(self.parse_word("Initializing new Node as ", &entry.logstring))
+			.or(self.parse_word("We are ", &entry.logstring))
 		{
 			self.agebracket = match agebracket.as_str() {
 				"Infant" => NodeAgebracket::Infant,
@@ -999,7 +1012,8 @@ impl NodeMetrics {
 
 	///! Counts node activity in categories GET, PUT and other
 	pub fn parse_activity_counts(&mut self, entry: &ActivityEntry) {
-		// TODO: may need to check entry.activity for 'success' but wait on sn_node issue #1126
+		// TODO: updated for pre-Xmas release but needs reviewing. Do we need 'activity' at all now?
+		// TODO: [ed: earlier note...] may need to check entry.activity for 'success' but wait on sn_node issue #1126
 		if entry.activity.starts_with("Get") {
 			self.count_get(entry.time);
 		} else if entry.activity.starts_with("Mut") {
@@ -1039,6 +1053,7 @@ impl NodeMetrics {
 
 ///! Node activity for node activity_history
 pub struct ActivityEntry {
+	pub message: String,
 	pub activity: String,
 	pub logstring: String,
 	pub category: String, // First word, "Running", "INFO", "WARN" etc
@@ -1051,6 +1066,7 @@ pub struct ActivityEntry {
 impl ActivityEntry {
 	pub fn new(entry: &LogEntry, activity: &str) -> ActivityEntry {
 		ActivityEntry {
+			message: entry.message.clone(),
 			activity: activity.to_string(),
 			logstring: entry.logstring.clone(),
 			category: entry.category.clone(),

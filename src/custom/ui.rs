@@ -106,13 +106,13 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	);
 
 	push_subheading(&mut items, &"".to_string());
-	push_subheading(&mut items, &"Network".to_string());
-	push_metric(
-		&mut items,
-		&"Elders".to_string(),
-		&monitor.metrics.elders.to_string(),
-	);
 	// TODO re-instate when available
+	// push_subheading(&mut items, &"Network".to_string());
+	// push_metric(
+	// 	&mut items,
+	// 	&"Elders".to_string(),
+	// 	&monitor.metrics.elders.to_string(),
+	// );
 	// push_metric(
 	// 	&mut items,
 	// 	&"Adults".to_string(),
