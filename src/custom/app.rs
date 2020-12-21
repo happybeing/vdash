@@ -747,7 +747,6 @@ pub struct NodeMetrics {
 	pub activity_gets: u64,
 	pub activity_puts: u64,
 	pub activity_errors: u64,
-	pub activity_other: u64,
 
 	pub debug_logfile: Option<NamedTempFile>,
 	parser_output: String,
@@ -787,7 +786,6 @@ impl NodeMetrics {
 			activity_gets: 0,
 			activity_puts: 0,
 			activity_errors: 0,
-			activity_other: 0,
 
 			// State (node)
 			agebracket: NodeAgebracket::Unknown,
@@ -820,7 +818,6 @@ impl NodeMetrics {
 		self.activity_gets = 0;
 		self.activity_puts = 0;
 		self.activity_errors = 0;
-		self.activity_other = 0;
 	}
 
 	///! Process a line from a SAFE Node logfile.
@@ -899,13 +896,20 @@ impl NodeMetrics {
 		return self.parse_data_response(
 			&entry,
 			"Running as Node: SendToSection [ msg: MsgEnvelope { message: QueryResponse { response: QueryResponse::",
-		) || self.parse_puts(&entry) || self.parse_states(&entry);
+		) || self.parse_gets_and_puts(&entry) || self.parse_states(&entry);
 	}
 
 	///! Look for a PUT message
-	///! TODO: needs checking with MaidSafe (see https://safenetforum.org/t/safe-network-dev-update-december-17-2020/33156/89?u=happybeing)
-	fn parse_puts(&mut self, entry: &LogEntry) -> bool {
-		if entry.message.contains("Writing chunk succeeded") {
+	///! TODO: see forum conversation https://safenetforum.org/t/vdash-safe-node-dashboard-safe-vault-run-baby-fleming-t/32630/38
+	fn parse_gets_and_puts(&mut self, entry: &LogEntry) -> bool {
+		if entry.message.contains("Read data queried by message") {
+			self.count_get(entry.time);
+			return true;
+		} else if entry.message.contains("Wrote data from message") {
+			self.count_put(entry.time);
+			return true;
+			// TODO: delete the following checks once the new test network is out
+		} else if entry.message.contains("Writing chunk succeeded") {
 			self.count_put(entry.time);
 			return true;
 		} else if entry.message.starts_with("MapStorage: Writing chunk PASSED") {
@@ -927,7 +931,6 @@ impl NodeMetrics {
 					.as_ref();
 				if !response.is_empty() {
 					let activity_entry = ActivityEntry::new(entry, response);
-					self.parse_activity_counts(&activity_entry);
 					self.activity_history.push(activity_entry);
 					self.parser_output = format!("node activity: {}", response);
 				}
@@ -1008,19 +1011,6 @@ impl NodeMetrics {
 			}
 		}
 		None
-	}
-
-	///! Counts node activity in categories GET, PUT and other
-	pub fn parse_activity_counts(&mut self, entry: &ActivityEntry) {
-		// TODO: updated for pre-Xmas release but needs reviewing. Do we need 'activity' at all now?
-		// TODO: [ed: earlier note...] may need to check entry.activity for 'success' but wait on sn_node issue #1126
-		if entry.activity.starts_with("Get") {
-			self.count_get(entry.time);
-		} else if entry.activity.starts_with("Mut") {
-			self.count_put(entry.time);
-		} else {
-			self.activity_other += 1;
-		}
 	}
 
 	fn count_get(&mut self, time: Option<DateTime<Utc>>) {
