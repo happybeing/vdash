@@ -138,7 +138,7 @@ impl App {
 				}
 			}
 		}
-		
+
 		let activate_debug_dashboard = opt.debug_dashboard;
 		let mut app = App {
 			opt,
@@ -461,7 +461,7 @@ pub struct LogMonitor {
 	pub logfile: String,
 	pub chunk_store_fsstats: Option<FsStats>,
 	pub chunk_store_pathbuf: PathBuf,
-	pub chunk_store: ChunkStoreStatsAll,	
+	pub chunk_store: ChunkStoreStatsAll,
 	pub metrics: NodeMetrics,
 	pub metrics_status: StatefulList<String>,
 	pub is_debug_dashboard_log: bool,
@@ -485,14 +485,14 @@ impl LogMonitor {
 		if chunk_store_pathbuf.pop() {
 			chunk_store_pathbuf.push("chunks")
 		}
-	
+
 		LogMonitor {
 			index,
 			logfile: f,
 			max_content: max_lines,
 			chunk_store_fsstats: None,
 			chunk_store_pathbuf,
-			chunk_store: ChunkStoreStatsAll::new(),	
+			chunk_store: ChunkStoreStatsAll::new(),
 			metrics: NodeMetrics::new(&opt),
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,
@@ -899,10 +899,10 @@ impl NodeMetrics {
 		) || self.parse_gets_and_puts(&entry) || self.parse_states(&entry);
 	}
 
-	///! Look for a PUT message
+	///! TODO: Review and update these tests
 	///! TODO: see forum conversation https://safenetforum.org/t/vdash-safe-node-dashboard-safe-vault-run-baby-fleming-t/32630/38
 	fn parse_gets_and_puts(&mut self, entry: &LogEntry) -> bool {
-		if entry.message.contains("Read data queried by message") {
+		if entry.message.contains("Handling NodeDuty: ReadChunk") {
 			self.count_get(entry.time);
 			return true;
 		} else if entry.message.contains("Wrote data from message") {
@@ -964,6 +964,8 @@ impl NodeMetrics {
 			return true;
 		};
 
+		// TODO: review as things stabilise during Fleming testnets
+		// Pre-Fleming testnets code
 		if let Some(agebracket) = self
 			.parse_word("Node promoted to ", &entry.logstring)
 			.or(self.parse_word("We are ", &entry.logstring))
@@ -984,6 +986,26 @@ impl NodeMetrics {
 			}
 			return true;
 		};
+
+		// Fleming Testnet 3 based
+		if entry.logstring.contains("The network is not accepting nodes right now")
+		{
+			self.agebracket = NodeAgebracket::Infant;
+			self.parser_output = format!("Age updated to: Infant");
+			return true;
+		}
+
+		if entry.logstring.contains("Handling NodeDuty: WriteChunk") {
+			self.agebracket = NodeAgebracket::Adult;
+			self.parser_output = format!("Age updated to: Adult");
+			return true;
+		}
+
+		if entry.logstring.contains("as an Elder") {
+			self.agebracket = NodeAgebracket::Elder;
+			self.parser_output = format!("Age updated to: Elder");
+			return true;
+		}
 
 		false
 	}
