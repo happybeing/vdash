@@ -389,6 +389,7 @@ lazy_static::lazy_static! {
 		ChunkStoreSpec::new("immutable", "Immutable", true),
 		ChunkStoreSpec::new("mutable", "Mutable", true),
 		ChunkStoreSpec::new("sequence", "Sequence", true),
+		ChunkStoreSpec::new("register", "Register", true),
 		ChunkStoreSpec::new("login_packets", "Login Packets", true),
 	);
 
