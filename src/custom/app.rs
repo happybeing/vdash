@@ -743,6 +743,9 @@ pub struct NodeMetrics {
 
 	pub most_recent: Option<DateTime<Utc>>,
 	pub agebracket: NodeAgebracket,
+	pub section_prefix: String,
+	pub node_age: usize,
+	pub node_name: String,
 	pub adults: usize,
 	pub elders: usize,
 	pub activity_gets: u64,
@@ -790,6 +793,9 @@ impl NodeMetrics {
 
 			// State (node)
 			agebracket: NodeAgebracket::Unknown,
+			section_prefix: String::from(""),
+			node_age: 0,
+			node_name: String::from(""),
 
 			// State (network)
 			adults: 0,
@@ -814,6 +820,9 @@ impl NodeMetrics {
 
 	fn reset_metrics(&mut self) {
 		self.agebracket = NodeAgebracket::Infant;
+		self.section_prefix = String::from("");
+		self.node_age = 0;
+		self.node_name = String::from("");
 		self.adults = 0;
 		self.elders = 0;
 		self.activity_gets = 0;
@@ -865,7 +874,7 @@ impl NodeMetrics {
 	///! Returm a LogEntry and capture metadata for logfile node start:
 	///!	'Running safe-node v0.24.0'
 	pub fn parse_start(&mut self, line: &str) -> Option<LogEntry> {
-		let running_prefix = String::from("Running safe-node ");
+		let running_prefix = String::from("Running sn_node ");
 
 		if line.starts_with(&running_prefix) {
 			self.running_message = Some(line.to_string());
@@ -966,10 +975,11 @@ impl NodeMetrics {
 		};
 
 		// TODO: review as things stabilise during Fleming testnets
-		// Pre-Fleming testnets code
+		// Pre-Fleming testnets code with additions for Fleming T4.1
 		if let Some(agebracket) = self
 			.parse_word("Node promoted to ", &entry.logstring)
 			.or(self.parse_word("We are ", &entry.logstring))
+			.or(self.parse_word("New RoutingEvent received. Current role:", &entry.logstring))
 		{
 			self.agebracket = match agebracket.as_str() {
 				"Infant" => NodeAgebracket::Infant,
@@ -985,9 +995,32 @@ impl NodeMetrics {
 			} else {
 				self.parser_output = format!("FAILED to parse agebracket in: {}", &entry.logstring);
 			}
+
+			if let Some(section_prefix) = self.parse_word("section prefix:", &entry.logstring) {
+				self.parser_output = format!("section prefix: {}", &section_prefix);
+				self.section_prefix = section_prefix;
+			} else {
+				self.parser_output = format!("FAILED to parse section prefix in: {}", &entry.logstring);
+			}
+
+			if let Some(node_age) = self.parse_usize("age:", &entry.logstring) {
+				self.parser_output = format!("age: {}", node_age);
+				self.node_age = node_age;
+			} else {
+				self.parser_output = format!("FAILED to parse node age in: {}", &entry.logstring);
+			}
+
+			if let Some(node_name) = self.parse_word("node name:", &entry.logstring) {
+				self.parser_output = format!("node name: {}", &node_name);
+				self.node_name = node_name;
+			} else {
+				self.parser_output = format!("FAILED to parse node name in: {}", &entry.logstring);
+			}
+
 			return true;
 		};
 
+		// TODO: probably needs deprecating as of T4.1 except perhaps for this agebracket check which needs review
 		// Fleming Testnet 3 based
 		if entry.logstring.contains("The network is not accepting nodes right now")
 		{
@@ -1013,9 +1046,15 @@ impl NodeMetrics {
 
 	fn parse_usize(&mut self, prefix: &str, content: &str) -> Option<usize> {
 		if let Some(position) = content.find(prefix) {
-			match content[position + prefix.len()..].trim().parse::<usize>() {
-				Ok(value) => return Some(value),
-				Err(_e) => self.parser_output = format!("failed to parse usize from: '{}'", content),
+			let word: Vec<&str> = content[position + prefix.len()..]
+				.trim()
+				.splitn(2, |c| c == ' ' || c == ',')
+				.collect();
+			if word.len() > 0 {
+				match word[0].parse::<usize>() {
+					Ok(value) => return Some(value),
+					Err(_e) => self.parser_output = format!("failed to parse '{}' as usize from: '{}'", word[0], &content[position + prefix.len()..]),
+				}
 			}
 		}
 		None
@@ -1025,9 +1064,9 @@ impl NodeMetrics {
 		if let Some(start) = content.find(prefix) {
 			let word: Vec<&str> = content[start + prefix.len()..]
 				.trim_start()
-				.splitn(1, " ")
+				.splitn(2, |c| c == ' ' || c == ',')
 				.collect();
-			if word.len() == 1 {
+			if word.len() > 0 {
 				return Some(word[0].to_string());
 			} else {
 				self.parser_output = format!("failed to parse word at: '{}'", &content[start..]);

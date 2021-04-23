@@ -82,8 +82,23 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	push_subheading(&mut items, &"Node".to_string());
 	push_metric(
 		&mut items,
-		&"Agebracket".to_string(),
+		&"Role".to_string(),
 		&monitor.metrics.agebracket_string(),
+	);
+	push_metric(
+		&mut items,
+		&"Age".to_string(),
+		&monitor.metrics.node_age.to_string()
+	);
+	push_metric(
+		&mut items,
+		&"Name".to_string(),
+		&monitor.metrics.node_name,
+	);
+	push_metric(
+		&mut items,
+		&"Section".to_string(),
+		&monitor.metrics.section_prefix,
 	);
 
 	push_subheading(&mut items, &"".to_string());
@@ -168,7 +183,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 				.add_modifier(Modifier::BOLD),
 		);
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
-	
+
 	if monitor.chunk_store.chunk_store_stats.len() < 1 {
 		return;
 	}
@@ -189,7 +204,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		push_storage_subheading(&mut label_items, &"Chunks".to_string());
 		let mut gauges_column = columns[1];
 		gauges_column.height = 1;
-		
+
 		// One gauge gap for heading, and an extra gauge so the last one drawn doesn't expand to the bottom
 		let constraints = vec![Constraint::Length(1); monitor.chunk_store.chunk_store_stats.len() + 2];
 		let gauges = Layout::default()
@@ -224,14 +239,14 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 			&"Total Chunks".to_string(),
 			&total_string
 		);
-		
+
 		push_storage_metric(
 			&mut label_items,
 			&"Space Free".to_string(),
 			&limit_string
 		);
-		
-		
+
+
 		// Render labels
 		let labels_widget = List::new(label_items).block(
 			Block::default()
@@ -258,7 +273,7 @@ fn ratio(numerator: u64, denomimator: u64) -> f64 {
 	} else {
 		percent
 	}
-} 
+}
 
 fn push_storage_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 	items.push(
