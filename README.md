@@ -1,12 +1,20 @@
 # SAFE Network Node Dashboard
 
-`vdash` is a SAFE Network Node/Node dashboard for the terminal. It is written in
+`vdash` is a terminal based dashboard for monitoring SAFE Network Nodes. It is written in
 Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
 and [linemux](https://github.com/jmagnuson/linemux) to monitor node logfiles on
 the local machine.
 
-**Status:** working on Windows, MacOS and Linux using 'baby-fleming-nodes' tests.
+**Status:** working on Windows, MacOS and Linux and helping with Fleming testnets.
 
+`vdash` is already capable of monitoring multiple logfiles on the local machine, so it
+wouldn't be hard to monitor multiple remote nodes by having them publish updates to their
+logfiles (e.g. using a web server) and appending changes to local copies monitored by
+`vdash`, but this is not on the roadmap. There may even be existing tools that could do
+this so if anyone wants to look into that it would be great as I'm only making
+minor changes at the moment.
+
+Here's an early `vdash` (v0.2.0) working with a local testnet node:
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
 
 ## Features
@@ -14,7 +22,7 @@ the local machine.
 logfiles and display these with live updates in the terminal (see above).
 
 You can cycle through different Safe nodes using left/right arrow
-keys, and zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-'). 
+keys, and zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-').
 
 Press 'q' to quit.
 
@@ -49,7 +57,7 @@ until the 'itarget' feature becomes part of 'stable', so install Rust nightly
 using `rustup`:
 
     rustup toolchain install nightly
-    
+
 To build `vdash-crossterm` on Windows, clone vdash, build with `+nightly` and use the binary it creates under `./taget/release`:
 
     git clone https://github.com/happybeing/vdash
@@ -107,13 +115,13 @@ Note:
 - setting RUST_LOG ensures the logfiles contain the data which vdash needs, and
   excludes some that gets in the way.
 - On Windows to set RUST_LOG environment variable:
-	
+
 	Using Windows Command Line:
 	```
 	set RUST_LOG="safe=trace"
 	safe node run-baby-fleming -t
 	```
-	
+
 	Using Windows PowerShell:
 	```
 	$env:RUST_LOG="safe=trace"
@@ -127,7 +135,7 @@ Note:
     rm -f ~/.safe/node/local-test-network/*/sn_node.log
     RUST_LOG=safe=trace safe node run-baby-fleming -t
     ```
-		
+
 	Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
 
 2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
