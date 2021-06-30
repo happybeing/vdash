@@ -570,7 +570,7 @@ impl LogMonitor {
 use regex::Regex;
 lazy_static::lazy_static! {
 	static ref LOG_LINE_PATTERN: Regex =
-		Regex::new(r"(?P<module>^\[[A-Z,a-z,_]*\]) (?P<category>[A-Z]{4,6}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
+		Regex::new(r"(?P<module>^\[[A-Z,a-z,_,-]*\]) (?P<category>[A-Z]{4,6}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
 }
 
 #[derive(PartialEq)]
