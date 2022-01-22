@@ -46,7 +46,7 @@ use futures::{
 	select,
 };
 
-use tokio::stream::StreamExt;
+use tokio_stream::StreamExt;
 
 #[tokio::main]
 pub async fn main() -> std::io::Result<()> {
@@ -119,7 +119,7 @@ async fn terminal_main() -> std::io::Result<()> {
 							Key::Char('-')|
 							Key::Char('o')|
 							Key::Char('O') => app.scale_timeline_down(),
-	
+
 							Key::Down => app.handle_arrow_down(),
 							Key::Up => app.handle_arrow_up(),
 							Key::Right|

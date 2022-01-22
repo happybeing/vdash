@@ -53,7 +53,7 @@ enum Event<I> {
 	Tick,
 }
 
-use tokio::stream::StreamExt;
+use tokio_stream::StreamExt;
 use tokio::sync::mpsc;
 
 // RUSTFLAGS="-A unused" cargo run --bin logtail-crossterm --features="crossterm" /var/log/auth.log /var/log/dmesg
