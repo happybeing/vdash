@@ -96,7 +96,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 		pin_mut!(logfiles_future, events_future);
 
 		select! {
-			(e) = events_future => {
+			e = events_future => {
 			match e {
 				Some(Event::Input(event)) => {
 					match event.code {
@@ -135,7 +135,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Char('g') => set_main_view(DashViewMain::DashDebug, &mut app),
 						_ => {}
 					};
-					terminal.draw(|f| draw_dashboard(f, &mut app));
+					terminal.draw(|f| draw_dashboard(f, &mut app)).unwrap();
 				}
 
 				Some(Event::Tick) => {
@@ -149,7 +149,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 			}
 			},
 
-			(line) = logfiles_future => {
+			line = logfiles_future => {
 			match line {
 				Some(Ok(line)) => {
 					trace!("logfiles_future line");
@@ -194,12 +194,19 @@ fn initialise_events(tick_rate: u64) -> Rx {
 			// poll for tick rate duration, if no events, sent tick event.
 			if event::poll(tick_rate - last_tick.elapsed()).unwrap() {
 				if let CEvent::Key(key) = event::read().unwrap() {
-					tx.send(Event::Input(key));
+					match tx.send(Event::Input(key)) {
+						Ok(()) => {},
+						Err(e) => println!("send error: {}", e),
+
+					}
 				}
 			}
 			if last_tick.elapsed() >= tick_rate {
-				tx.send(Event::Tick);
-				last_tick = Instant::now();
+				match tx.send(Event::Tick) {
+					Ok(()) => last_tick = Instant::now(),
+					Err(e) => println!("send error: {}", e),
+
+				}
 			}
 
 			if last_tick.elapsed() >= tick_rate {

@@ -99,7 +99,7 @@ async fn terminal_main() -> std::io::Result<()> {
 		pin_mut!(events_future, logfiles_future);
 
 		select! {
-			(e) = events_future => {
+			e = events_future => {
 				match e {
 					Some(Event::Input(input)) => {
 						match input {
@@ -155,7 +155,7 @@ async fn terminal_main() -> std::io::Result<()> {
 					None => (),
 				}
 			},
-			(line) = logfiles_future => {
+			line = logfiles_future => {
 				trace!("logfiles_future line");
 				match line {
 					Some(Ok(line)) => {
