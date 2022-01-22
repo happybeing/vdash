@@ -61,7 +61,7 @@ impl<'a> Gauge2<'a> {
     pub fn ratio(mut self, ratio: f64) -> Gauge2<'a> {
         assert!(
             ratio <= 1.0 && ratio >= 0.0,
-            format!("Ratio ({}) should be between 0 and 1 inclusively.", ratio).to_string()
+            "{}", format!("Ratio ({}) should be between 0 and 1 inclusively.", ratio).to_string()
         );
         self.ratio = ratio;
         self
