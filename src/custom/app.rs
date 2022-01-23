@@ -570,7 +570,7 @@ impl LogMonitor {
 use regex::Regex;
 lazy_static::lazy_static! {
 	static ref LOG_LINE_PATTERN: Regex =
-		Regex::new(r"(?P<module>^\[[A-Z,a-z,_,-]*\]) (?P<category>[A-Z]{4,6}) (?P<time_string>[^ ]{35}) (?P<source>\[.*\]) (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
+		Regex::new(r" (?P<category>[A-Z]{4,6}) (?P<time_string>[^ ]{27}) (?P<source>\[.*\])(?P<message>.*)").expect("The regex failed to compile. This is a bug.");
 }
 
 #[derive(PartialEq)]
@@ -1164,11 +1164,14 @@ impl LogEntry {
 	}
 
 	///! Parse a line of the form:
-	///! 	[sn_node] INFO 2020-12-18T14:33:49.799447454+00:00 [src/node/mod.rs:97] Our Age: 5
-	///!	[sn_node] ERROR 2020-12-18T16:33:54.237345352+00:00 [src/utils.rs:52] Failed to load auto dump db at /home/mrh/.safe/node/baby-fleming-nodes/sn-node-genesis/transfers/f67c2e75cbce0a6097187cdf95be1c0963ad34105d643cbb00aa1f0e8b113761.db: No such file or directory (os error 2)
+	///! " INFO 2022-01-15T20:21:02.659471Z [sn/src/node/routing/core/mod.rs:L211]:"
+	///! " ERROR 2022-01-15T20:21:07.643598Z [sn/src/node/routing/api/dispatcher.rs:L450]:"
+	///!
+	///! Each of the above style lines will be followed by one or more 'message' lines,
+	///! for example:
+	///! "	 ➤ Writing our latest PrefixMap to disk"
 	fn parse_logfile_line(line: &str) -> Option<LogEntry> {
 		if let Some(captures) = LOG_LINE_PATTERN.captures(line) {
-			let module = captures.name("module").map_or("", |m| m.as_str());
 			let category = captures.name("category").map_or("", |m| m.as_str());
 			let time_string = captures.name("time_string").map_or("", |m| m.as_str());
 			let source = captures.name("source").map_or("", |m| m.as_str());
@@ -1189,8 +1192,8 @@ impl LogEntry {
 				}
 			};
 			let parser_output = format!(
-				"m: {}, c: {}, t: {}, s: {}, m: {}",
-				module, category, time_str, source, message
+				"c: {}, t: {}, s: {}, m: {}",
+				category, time_str, source, message
 			);
 
 			return Some(LogEntry {
