@@ -18,7 +18,7 @@ edition = "2018"
 default = ["termion", "crossterm"]
 
 [dependencies]
-tokio = { version = "0.2.22", features = ["sync", "macros"] }
+tokio = { version = "1.15.0", features = ["sync", "macros", "rt-multi-thread"] }
 tokio-stream = "0.1.8"
 tokio-macros = "0.3.1"
 termion = { version = "1.5", optional = true }
