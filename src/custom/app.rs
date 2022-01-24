@@ -148,7 +148,7 @@ impl App {
 			logfiles,
 			logfile_names,
 		};
-		app.update_timelines(Some(Utc::now()));
+		app.update_timelines(&Utc::now());
 
 		if !first_logfile.is_empty() {
 			app.dash_state.dash_node_focus = first_logfile.clone();
@@ -162,7 +162,7 @@ impl App {
 		Ok(app)
 	}
 
-	pub fn update_timelines(&mut self, now: Option<DateTime<Utc>>) {
+	pub fn update_timelines(&mut self, now: &DateTime<Utc>) {
 		for (_monitor_file, monitor) in self.monitors.iter_mut() {
 			monitor.metrics.update_timelines(now);
 		}
@@ -637,63 +637,55 @@ impl TimelineSet {
 	///! Update all bucket_sets with new current time
 	///!
 	///! Call significantly more frequently than the smallest BucketSet duration
-	fn update_current_time(&mut self, new_time: Option<DateTime<Utc>>) {
+	fn update_current_time(&mut self, new_time: &DateTime<Utc>) {
 		for (_name, bs) in self.bucket_sets.iter_mut() {
 			if let Some(mut bucket_time) = bs.bucket_time {
-				if let Some(new_time) = new_time {
-					let mut end_time = bucket_time + bs.bucket_duration;
+				let mut end_time = bucket_time + bs.bucket_duration;
 
-					while end_time.lt(&new_time) {
-						// Start new bucket
-						bs.bucket_time = Some(end_time);
-						bucket_time = end_time;
-						end_time = bucket_time + bs.bucket_duration;
+				while end_time.lt(&new_time) {
+					// Start new bucket
+					bs.bucket_time = Some(end_time);
+					bucket_time = end_time;
+					end_time = bucket_time + bs.bucket_duration;
 
-						bs.buckets.push(0);
-						if bs.buckets.len() > bs.max_buckets {
-							bs.buckets.remove(0);
-						}
+					bs.buckets.push(0);
+					if bs.buckets.len() > bs.max_buckets {
+						bs.buckets.remove(0);
 					}
 				}
-			} else {
-				bs.bucket_time = new_time;
 			}
 		}
 	}
 
-	fn increment_value(&mut self, time: Option<DateTime<Utc>>) {
+	fn increment_value(&mut self, time: &DateTime<Utc>) {
 		// debug_log!("increment_value()");
-		if let Some(time) = time {
-			for (_name, bs) in self.bucket_sets.iter_mut() {
-				// debug_log!(format!("name       : {}", _name).as_str());
-				let mut index = Some(bs.buckets.len() - 1);
-				// debug_log!(format!("time       : {}", time).as_str());
-				if let Some(bucket_time) = bs.bucket_time {
-				// debug_log!(format!("bucket_time: {}", bucket_time).as_str());
-					if time.lt(&bucket_time) {
-						// Use the closest bucket to this time
-						// debug_log!("increment (closest bucket)");
-						let time_difference = (bucket_time - time).num_nanoseconds();
-						let bucket_duration = bs.bucket_duration.num_nanoseconds();
-						if time_difference.and(bucket_duration).is_some() {
-							let buckets_behind = time_difference.unwrap() / bucket_duration.unwrap();
-							if buckets_behind as usize > bs.buckets.len() {
-								// debug_log!(format!("increment DISCARDED buckets_behind: {}", buckets_behind).as_str());
-								index = None;
-							} else {
-								// debug_log!(format!("increment INCLUDED buckets_behind: {}", buckets_behind).as_str());
-								index = Some(bs.buckets.len() - 1 - buckets_behind as usize);
-							}
+		for (_name, bs) in self.bucket_sets.iter_mut() {
+			// debug_log!(format!("name       : {}", _name).as_str());
+			let mut index = Some(bs.buckets.len() - 1);
+			// debug_log!(format!("time       : {}", time).as_str());
+			if let Some(bucket_time) = bs.bucket_time {
+			// debug_log!(format!("bucket_time: {}", bucket_time).as_str());
+				if time.lt(&bucket_time) {
+					// Use the closest bucket to this time
+					// debug_log!("increment (closest bucket)");
+					let time_difference = (bucket_time - *time).num_nanoseconds();
+					let bucket_duration = bs.bucket_duration.num_nanoseconds();
+					if time_difference.and(bucket_duration).is_some() {
+						let buckets_behind = time_difference.unwrap() / bucket_duration.unwrap();
+						if buckets_behind as usize > bs.buckets.len() {
+							// debug_log!(format!("increment DISCARDED buckets_behind: {}", buckets_behind).as_str());
+							index = None;
+						} else {
+							// debug_log!(format!("increment INCLUDED buckets_behind: {}", buckets_behind).as_str());
+							index = Some(bs.buckets.len() - 1 - buckets_behind as usize);
 						}
 					}
 				}
-				if let Some(index) = index {
-					// debug_log!(format!("increment index: {}", index).as_str());
-					bs.buckets[index] += 1;
-				}
 			}
-		} else {
-			debug_log!("increment FAIL");
+			if let Some(index) = index {
+				// debug_log!(format!("increment index: {}", index).as_str());
+				bs.buckets[index] += 1;
+			}
 		}
 	}
 }
@@ -741,7 +733,7 @@ pub struct NodeMetrics {
 	pub gets_timeline: TimelineSet,
 	pub errors_timeline: TimelineSet, // TODO add code to collect and display
 
-	pub most_recent: Option<DateTime<Utc>>,
+	pub entry_metadata: Option<LogMeta>,
 	pub agebracket: NodeAgebracket,
 	pub section_prefix: String,
 	pub node_age: usize,
@@ -778,7 +770,7 @@ impl NodeMetrics {
 			// Logfile entries
 			activity_history: Vec::<ActivityEntry>::new(),
 			log_history: Vec::<LogEntry>::new(),
-			most_recent: None,
+			entry_metadata: None,
 
 			// Timelines / Sparklines
 			puts_timeline,
@@ -805,7 +797,7 @@ impl NodeMetrics {
 			debug_logfile: None,
 			parser_output: String::from("-"),
 		};
-		metrics.update_timelines(Some(Utc::now()));
+		metrics.update_timelines(&Utc::now());
 		metrics
 	}
 
@@ -831,35 +823,36 @@ impl NodeMetrics {
 	}
 
 	///! Process a line from a SAFE Node logfile.
-	///! May add a LogEntry to the NodeMetrics::log_history vector.
-	///! Use a created LogEntry to update metrics.
+	///! May add a LogMeta to the NodeMetrics::log_history vector.
+	///! Use a created LogMeta to update metrics.
 	pub fn gather_metrics(&mut self, line: &str) -> Result<(), std::io::Error> {
-		// For debugging LogEntry::decode()
-		let mut parser_result = format!("LogEntry::decode() failed on: {}", line);
-		if let Some(mut entry) = LogEntry::decode(line).or_else(|| self.parse_start(line)) {
-			if entry.time.is_none() {
-				entry.time = self.most_recent;
-			} else {
-				self.most_recent = entry.time;
-			}
+		// let mut parser_result = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
 
-			self.update_timelines(self.most_recent);
-			self.parser_output = entry.parser_output.clone();
-			self.process_logfile_entry(&entry); // May overwrite self.parser_output
-			parser_result = self.parser_output.clone();
-			self.log_history.push(entry);
-
-			// TODO Trim log_history
+		if let Some(metadata) = LogEntry::decode_metadata(line) {
+			self.entry_metadata = Some(metadata);
 		}
+
+		if self.entry_metadata.is_none() {
+			return Ok(());	// Skip until start of first log message
+		}
+
+		let entry = LogEntry { logstring: String::from(line) };
+		let entry_metadata = self.entry_metadata.as_ref().unwrap().clone();
+		let entry_time = entry_metadata.time;
+
+		self.update_timelines(&entry_time);
+		self.parser_output = entry_metadata.parser_output.clone();
+		self.process_logfile_entry(&entry.logstring, &entry_metadata); // May overwrite self.parser_output
+		self.log_history.push(entry); // TODO Trim log_history
 
 		// --debug-dashboard - prints parser results for a single logfile
 		// to a temp logfile which is displayed in the adjacent window.
-		debug_log!(&parser_result);
+		debug_log!(&self.parser_output.clone());
 
 		Ok(())
 	}
 
-	pub fn update_timelines(&mut self, now: Option<DateTime<Utc>>) {
+	pub fn update_timelines(&mut self, now: &DateTime<Utc>) {
 		for timeline in &mut [
 			&mut self.puts_timeline,
 			&mut self.gets_timeline,
@@ -867,63 +860,62 @@ impl NodeMetrics {
 		]
 		.iter_mut()
 		{
-			timeline.update_current_time(now);
+			timeline.update_current_time(&now);
 		}
 	}
 
-	///! Returm a LogEntry and capture metadata for logfile node start:
+	///! Return a LogMeta and capture metadata for logfile node start:
 	///!	'Running safe-node v0.24.0'
-	pub fn parse_start(&mut self, line: &str) -> Option<LogEntry> {
-		let running_prefix = String::from("Running sn_node ");
+	// pub fn parse_start(&mut self, line: &str) -> Option<LogMeta> {
+	// 	let running_prefix = String::from("Running sn_node ");
 
-		if line.starts_with(&running_prefix) {
-			self.running_message = Some(line.to_string());
-			self.running_version = Some(line[running_prefix.len()..].to_string());
-			self.node_started = self.most_recent;
-			let parser_output = format!(
-				"START at {}",
-				self.most_recent
-					.map_or(String::from("None"), |m| format!("{}", m))
-			);
+	// 	if line.starts_with(&running_prefix) {
+	// 		self.running_message = Some(line.to_string());
+	// 		self.running_version = Some(line[running_prefix.len()..].to_string());
+	// 		self.node_started = self.entry_metadata.time;
+	// 		let parser_output = format!(
+	// 			"START at {}",
+	// 			self.entry_metadata
+	// 				.map_or(String::from("None"), |m| format!("{}", m))
+	// 		);
 
-			self.reset_metrics();
-			return Some(LogEntry {
-				logstring: String::from(line),
-				category: String::from("START"),
-				time: self.most_recent,
-				source: String::from(""),
-				message: line.to_string(),
-				parser_output,
-			});
-		}
+	// 		self.reset_metrics();
+	// 		return Some(LogMeta {
+	// 			category: String::from("START"),
+	// 			time: self.entry_metadata.time,
+	// 			source: String::from(""),
+	// 			message: line.to_string(),
+	// 			parser_output,
+	// 		});
+	// 	}
 
-		None
-	}
+	// 	None
+	// }
 
 	///! Process a logfile entry
 	///! Returns true if the line has been processed and can be discarded
-	pub fn process_logfile_entry(&mut self, entry: &LogEntry) -> bool {
+	pub fn process_logfile_entry(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
 		return self.parse_data_response(
-			&entry,
+			&line,
 			"Running as Node: SendToSection [ msg: MsgEnvelope { message: QueryResponse { response: QueryResponse::",
-		) || self.parse_gets_and_puts(&entry) || self.parse_states(&entry);
+		) || self.parse_gets_and_puts(&line, &entry_metadata.time) || self.parse_states(&line, &entry_metadata);
 	}
 
 	///! TODO: Review and update these tests
 	///! TODO: see forum conversation https://safenetforum.org/t/vdash-safe-node-dashboard-safe-vault-run-baby-fleming-t/32630/38
-	fn parse_gets_and_puts(&mut self, entry: &LogEntry) -> bool {
-		if entry.message.contains("Handling NodeDuty: ReadChunk") {
-			self.count_get(entry.time);
+	fn parse_gets_and_puts(&mut self, line: &String, entry_time: &DateTime<Utc>) -> bool {
+		if line.contains("Handling NodeDuty: ReadChunk") {
+			self.count_get(&entry_time);
 			return true;
-		} else if entry.message.contains("Wrote data from message") {
-			self.count_put(entry.time);
+		} else if line.contains("Wrote data from message") {
+			self.count_put(&entry_time);
 			return true;
 			// TODO: delete the following checks once the new test network is out
-		} else if entry.message.contains("Writing chunk succeeded") {
-			self.count_put(entry.time);
+		} else if line.contains("Writing chunk succeeded") {
+			self.count_put(&entry_time);
 			return true;
-		} else if entry.message.starts_with("MapStorage: Writing chunk PASSED") {
-			self.count_put(entry.time);
+		} else if line.starts_with("MapStorage: Writing chunk PASSED") {
+			self.count_put(&entry_time);
 			return true;
 		}
 		return false;
@@ -931,22 +923,22 @@ impl NodeMetrics {
 
 	///! Update data metrics from a handler response logfile entry
 	///! Returns true if the line has been processed and can be discarded
-	fn parse_data_response(&mut self, entry: &LogEntry, pattern: &str) -> bool {
-		if let Some(mut response_start) = entry.logstring.find(pattern) {
+	fn parse_data_response(&mut self, line: &String, pattern: &str) -> bool {
+		if let Some(mut response_start) = line.find(pattern) {
 			response_start += pattern.len();
 			let mut response = "";
 
-			if let Some(response_end) = entry.logstring[response_start..].find(",") {
-				response = entry.logstring.as_str()[response_start..response_start + response_end]
+			if let Some(response_end) = line[response_start..].find(",") {
+				response = line.as_str()[response_start..response_start + response_end]
 					.as_ref();
 				if !response.is_empty() {
-					let activity_entry = ActivityEntry::new(entry, response);
+					let activity_entry = ActivityEntry::new(&line, &self.entry_metadata.as_ref().unwrap(), response);
 					self.activity_history.push(activity_entry);
 					self.parser_output = format!("node activity: {}", response);
 				}
 			}
 			if response.is_empty() {
-				self.parser_output = format!("failed to parse_data_response: {}", entry.logstring);
+				self.parser_output = format!("failed to parse_data_response: {}", line);
 			};
 
 			return true;
@@ -956,19 +948,19 @@ impl NodeMetrics {
 
 	///! Capture state updates from a logfile entry
 	///! Returns true if the line has been processed and can be discarded
-	fn parse_states(&mut self, entry: &LogEntry) -> bool {
-		if entry.category.eq("ERROR") {
-			self.count_error(entry.time);
+	fn parse_states(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
+		if entry_metadata.category.eq("ERROR") {
+			self.count_error(&entry_metadata.time);
 		}
 
-		let &content = &entry.logstring.as_str();
+		let &content = &line.as_str();
 		if let Some(elders) = self.parse_usize("No. of Elders:", content) {
 			self.elders = elders;
 			self.parser_output = format!("ELDERS: {}", elders);
 			return true;
 		};
 
-		if let Some(adults) = self.parse_usize("No. of Adults:", &entry.logstring) {
+		if let Some(adults) = self.parse_usize("No. of Adults:", content) {
 			self.adults = adults;
 			self.parser_output = format!("ADULTS: {}", adults);
 			return true;
@@ -977,9 +969,9 @@ impl NodeMetrics {
 		// TODO: review as things stabilise during Fleming testnets
 		// Pre-Fleming testnets code with additions for Fleming T4.1
 		if let Some(agebracket) = self
-			.parse_word("Node promoted to ", &entry.logstring)
-			.or(self.parse_word("We are ", &entry.logstring))
-			.or(self.parse_word("New RoutingEvent received. Current role:", &entry.logstring))
+			.parse_word("Node promoted to ", content)
+			.or(self.parse_word("We are ", content))
+			.or(self.parse_word("New RoutingEvent received. Current role:", content))
 		{
 			self.agebracket = match agebracket.as_str() {
 				"Infant" => NodeAgebracket::Infant,
@@ -993,28 +985,28 @@ impl NodeMetrics {
 			if self.agebracket != NodeAgebracket::Unknown {
 				self.parser_output = format!("Node agebracket: {}", agebracket);
 			} else {
-				self.parser_output = format!("FAILED to parse agebracket in: {}", &entry.logstring);
+				self.parser_output = format!("FAILED to parse agebracket in: {}", content);
 			}
 
-			if let Some(section_prefix) = self.parse_word("section prefix:", &entry.logstring) {
+			if let Some(section_prefix) = self.parse_word("section prefix:", content) {
 				self.parser_output = format!("section prefix: {}", &section_prefix);
 				self.section_prefix = section_prefix;
 			} else {
-				self.parser_output = format!("FAILED to parse section prefix in: {}", &entry.logstring);
+				self.parser_output = format!("FAILED to parse section prefix in: {}", content);
 			}
 
-			if let Some(node_age) = self.parse_usize("age:", &entry.logstring) {
+			if let Some(node_age) = self.parse_usize("age:", content) {
 				self.parser_output = format!("age: {}", node_age);
 				self.node_age = node_age;
 			} else {
-				self.parser_output = format!("FAILED to parse node age in: {}", &entry.logstring);
+				self.parser_output = format!("FAILED to parse node age in: {}", content);
 			}
 
-			if let Some(node_name) = self.parse_word("node name:", &entry.logstring) {
+			if let Some(node_name) = self.parse_word("node name:", content) {
 				self.parser_output = format!("node name: {}", &node_name);
 				self.node_name = node_name;
 			} else {
-				self.parser_output = format!("FAILED to parse node name in: {}", &entry.logstring);
+				self.parser_output = format!("FAILED to parse node name in: {}", content);
 			}
 
 			return true;
@@ -1022,20 +1014,20 @@ impl NodeMetrics {
 
 		// TODO: probably needs deprecating as of T4.1 except perhaps for this agebracket check which needs review
 		// Fleming Testnet 3 based
-		if entry.logstring.contains("The network is not accepting nodes right now")
+		if content.contains("The network is not accepting nodes right now")
 		{
 			self.agebracket = NodeAgebracket::Infant;
 			self.parser_output = format!("Age updated to: Infant");
 			return true;
 		}
 
-		if entry.logstring.contains("Handling NodeDuty: WriteChunk") {
+		if content.contains("Handling NodeDuty: WriteChunk") {
 			self.agebracket = NodeAgebracket::Adult;
 			self.parser_output = format!("Age updated to: Adult");
 			return true;
 		}
 
-		if entry.logstring.contains("as an Elder") {
+		if content.contains("as an Elder") {
 			self.agebracket = NodeAgebracket::Elder;
 			self.parser_output = format!("Age updated to: Elder");
 			return true;
@@ -1075,23 +1067,23 @@ impl NodeMetrics {
 		None
 	}
 
-	fn count_get(&mut self, time: Option<DateTime<Utc>>) {
+	fn count_get(&mut self, time: &DateTime<Utc>) {
 		self.activity_gets += 1;
 		self.gets_timeline.increment_value(time);
 	}
 
-	fn count_put(&mut self, time: Option<DateTime<Utc>>) {
+	fn count_put(&mut self, time: &DateTime<Utc>) {
 		self.activity_puts += 1;
 		self.puts_timeline.increment_value(time);
 	}
 
-	fn count_error(&mut self, time: Option<DateTime<Utc>>) {
+	fn count_error(&mut self, time: &DateTime<Utc>) {
 		self.activity_errors += 1;
 		self.errors_timeline.increment_value(time);
 	}
 
 	///! TODO
-	pub fn parse_logentry_counts(&mut self, entry: &LogEntry) {
+	pub fn parse_logentry_counts(&mut self, entry: &LogMeta) {
 		// Categories ('INFO', 'WARN' etc)
 		if !entry.category.is_empty() {
 			let count = match self.category_count.get(&entry.category) {
@@ -1109,86 +1101,82 @@ pub struct ActivityEntry {
 	pub activity: String,
 	pub logstring: String,
 	pub category: String, // First word, "Running", "INFO", "WARN" etc
-	pub time: Option<DateTime<Utc>>,
+	pub time: DateTime<Utc>,
 	pub source: String,
 
 	pub parser_output: String,
 }
 
 impl ActivityEntry {
-	pub fn new(entry: &LogEntry, activity: &str) -> ActivityEntry {
+	pub fn new(line: &String, entry_metadata: &LogMeta, activity: &str) -> ActivityEntry {
 		ActivityEntry {
-			message: entry.message.clone(),
+			message: entry_metadata.message.clone(),
 			activity: activity.to_string(),
-			logstring: entry.logstring.clone(),
-			category: entry.category.clone(),
-			time: entry.time,
-			source: entry.source.clone(),
+			logstring: line.clone(),
+			category: entry_metadata.category.clone(),
+			time: entry_metadata.time,
+			source: entry_metadata.source.clone(),
 
 			parser_output: String::from(""),
 		}
 	}
 }
 
-///! Decoded logfile entries for a node log history
-pub struct LogEntry {
-	pub logstring: String,
-	pub category: String, // First word, "Running", "INFO", "WARN" etc
-	pub time: Option<DateTime<Utc>>,
+
+///! Metadata for a logfile line
+#[derive(Clone)]
+pub struct LogMeta {
+	pub category: String, // First word ('INFO', 'WARN' etc.)
+	pub time: DateTime<Utc>,
 	pub source: String,
 	pub message: String,
 
 	pub parser_output: String,
 }
 
-impl LogEntry {
-	///! Decode node logfile lines of the form:
-	///! 	[sn_node] INFO 2020-12-18T14:33:49.799447454+00:00 [src/node/mod.rs:97] Our Age: 5
-	///!	[sn_node] ERROR 2020-12-18T16:33:54.237345352+00:00 [src/utils.rs:52] Failed to load auto dump db at /home/mrh/.safe/node/baby-fleming-nodes/sn-node-genesis/transfers/f67c2e75cbce0a6097187cdf95be1c0963ad34105d643cbb00aa1f0e8b113761.db: No such file or directory (os error 2)
-	///!
-	pub fn decode(line: &str) -> Option<LogEntry> {
-		let mut _test_entry = LogEntry {
-			logstring: String::from(line),
-			category: String::from("test"),
-			time: None,
-			source: String::from(""),
-			message: String::from(""),
-			parser_output: String::from("decode()..."),
-		};
+impl LogMeta {
+	pub fn clone(&self) -> LogMeta {
+		LogMeta {
+			category: self.category.clone(),
+			time: self.time,
+			source: self.source.clone(),
+			message: self.message.clone(),
+			parser_output: self.parser_output.clone(),
+		}
+	}
+}
+///! Used to build a history of what is in the log, one LogMeta per line
+pub struct LogEntry {
+	pub logstring: String,			// One line of raw text from the logfile
+}
 
+impl LogEntry {
+	///! Decode metadata from logfile line when present. Example input lines:
+	///! " INFO 2022-01-15T20:21:02.659471Z [sn/src/node/routing/core/mod.rs:L211]:"
+	///! "	 ➤ Writing our latest PrefixMap to disk"
+	///! " ERROR 2022-01-15T20:21:07.643598Z [sn/src/node/routing/api/dispatcher.rs:L450]:"
+	fn decode_metadata(line: &str) -> Option<LogMeta> {
 		if line.is_empty() {
 			return None;
 		}
 
-		LogEntry::parse_logfile_line(line)
-	}
-
-	///! Parse a line of the form:
-	///! " INFO 2022-01-15T20:21:02.659471Z [sn/src/node/routing/core/mod.rs:L211]:"
-	///! " ERROR 2022-01-15T20:21:07.643598Z [sn/src/node/routing/api/dispatcher.rs:L450]:"
-	///!
-	///! Each of the above style lines will be followed by one or more 'message' lines,
-	///! for example:
-	///! "	 ➤ Writing our latest PrefixMap to disk"
-	fn parse_logfile_line(line: &str) -> Option<LogEntry> {
 		if let Some(captures) = LOG_LINE_PATTERN.captures(line) {
 			let category = captures.name("category").map_or("", |m| m.as_str());
 			let time_string = captures.name("time_string").map_or("", |m| m.as_str());
 			let source = captures.name("source").map_or("", |m| m.as_str());
 			let message = captures.name("message").map_or("", |m| m.as_str());
-			let mut time_str = String::from("None");
+			let time_str: String;
 
-			let mut time_utc: Option<DateTime<Utc>> = None;
+			let time_utc: DateTime<Utc>;
 
 			match DateTime::parse_from_str(time_string, "%+") {
 				Ok(time) => {
-					time_utc = Some(time.with_timezone(&Utc));
+					time_utc = time.with_timezone(&Utc);
 					time_str = format!("{}", time);
-					Some(time)
 				}
 				Err(e) => {
 					debug_log!(format!("ERROR parsing logfile time: {}", e).as_str());
-					None
+					return None
 				}
 			};
 			let parser_output = format!(
@@ -1196,8 +1184,7 @@ impl LogEntry {
 				category, time_str, source, message
 			);
 
-			return Some(LogEntry {
-				logstring: String::from(line),
+			return Some(LogMeta {
 				category: String::from(category),
 				time: time_utc,
 				source: String::from(source),

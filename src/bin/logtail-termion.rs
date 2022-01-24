@@ -140,7 +140,7 @@ async fn terminal_main() -> std::io::Result<()> {
 
 					Some(Event::Tick) => {
 						trace!("Event::Tick");
-						app.update_timelines(Some(Utc::now()));
+						app.update_timelines(&Utc::now());
 						app.update_chunk_store_stats();
 						match terminal.draw(|f| draw_dashboard(f, &mut app)) {
 							Ok(_) => {},
