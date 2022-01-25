@@ -638,11 +638,14 @@ impl TimelineSet {
 	///!
 	///! Call significantly more frequently than the smallest BucketSet duration
 	fn update_current_time(&mut self, new_time: &DateTime<Utc>) {
+		// debug_log!("update_current_time()");
 		for (_name, bs) in self.bucket_sets.iter_mut() {
 			if let Some(mut bucket_time) = bs.bucket_time {
 				let mut end_time = bucket_time + bs.bucket_duration;
+				// debug_log!(format!("end_time       : {}", end_time).as_str());
 
 				while end_time.lt(&new_time) {
+					// debug_log!("Start new bucket");
 					// Start new bucket
 					bs.bucket_time = Some(end_time);
 					bucket_time = end_time;
@@ -653,6 +656,8 @@ impl TimelineSet {
 						bs.buckets.remove(0);
 					}
 				}
+			} else {
+				bs.bucket_time = Some(*new_time);
 			}
 		}
 	}
