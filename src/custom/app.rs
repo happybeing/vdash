@@ -816,7 +816,7 @@ impl NodeMetrics {
 	}
 
 	fn reset_metrics(&mut self) {
-		self.agebracket = NodeAgebracket::Unkown;
+		self.agebracket = NodeAgebracket::Unknown;
 		self.section_prefix = String::from("");
 		self.node_age = 0;
 		self.node_name = String::from("");
@@ -907,19 +907,14 @@ impl NodeMetrics {
 	}
 
 	///! TODO: Review and update these tests
-	///! TODO: see forum conversation https://safenetforum.org/t/vdash-safe-node-dashboard-safe-vault-run-baby-fleming-t/32630/38
 	fn parse_gets_and_puts(&mut self, line: &String, entry_time: &DateTime<Utc>) -> bool {
-		if line.contains("Handling NodeDuty: ReadChunk") {
+		if line.contains("Getting chunk") {
 			self.count_get(&entry_time);
 			return true;
-		} else if line.contains("Wrote data from message") {
+		} else if line.contains("StoredNewChunk") {
 			self.count_put(&entry_time);
 			return true;
-			// TODO: delete the following checks once the new test network is out
-		} else if line.contains("Writing chunk succeeded") {
-			self.count_put(&entry_time);
-			return true;
-		} else if line.starts_with("MapStorage: Writing chunk PASSED") {
+		} else if line.contains("Editing Register success!") {
 			self.count_put(&entry_time);
 			return true;
 		}
