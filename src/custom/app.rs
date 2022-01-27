@@ -677,7 +677,7 @@ impl TimelineSet {
 					let bucket_duration = bs.bucket_duration.num_nanoseconds();
 					if time_difference.and(bucket_duration).is_some() {
 						let buckets_behind = time_difference.unwrap() / bucket_duration.unwrap();
-						if buckets_behind as usize > bs.buckets.len() {
+						if buckets_behind as usize >= bs.buckets.len() {
 							// debug_log!(format!("increment DISCARDED buckets_behind: {}", buckets_behind).as_str());
 							index = None;
 						} else {
