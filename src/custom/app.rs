@@ -576,7 +576,7 @@ lazy_static::lazy_static! {
 #[derive(PartialEq)]
 pub enum NodeAgebracket {
 	Unknown,
-	Infant,
+	Joining,
 	Adult,
 	Elder,
 }
@@ -808,7 +808,7 @@ impl NodeMetrics {
 
 	pub fn agebracket_string(&self) -> String {
 		match self.agebracket {
-			NodeAgebracket::Infant => "Infant".to_string(),
+			NodeAgebracket::Joining => "Joining".to_string(),
 			NodeAgebracket::Adult => "Adult".to_string(),
 			NodeAgebracket::Elder => "Elder".to_string(),
 			NodeAgebracket::Unknown => "Unknown".to_string(),
@@ -816,7 +816,7 @@ impl NodeMetrics {
 	}
 
 	fn reset_metrics(&mut self) {
-		self.agebracket = NodeAgebracket::Infant;
+		self.agebracket = NodeAgebracket::Unkown;
 		self.section_prefix = String::from("");
 		self.node_age = 0;
 		self.node_name = String::from("");
@@ -979,7 +979,6 @@ impl NodeMetrics {
 			.or(self.parse_word("New RoutingEvent received. Current role:", content))
 		{
 			self.agebracket = match agebracket.as_str() {
-				"Infant" => NodeAgebracket::Infant,
 				"Adult" => NodeAgebracket::Adult,
 				"Elder" => NodeAgebracket::Elder,
 				_ => {
@@ -1021,8 +1020,8 @@ impl NodeMetrics {
 		// Fleming Testnet 3 based
 		if content.contains("The network is not accepting nodes right now")
 		{
-			self.agebracket = NodeAgebracket::Infant;
-			self.parser_output = format!("Age updated to: Infant");
+			self.agebracket = NodeAgebracket::Joining;
+			self.parser_output = format!("Age-bracket updated to: Joining");
 			return true;
 		}
 
