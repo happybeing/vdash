@@ -969,16 +969,16 @@ impl NodeMetrics {
 		// TODO: review as things stabilise during Fleming testnets
 		// Pre-Fleming testnets code with additions for Fleming T4.1
 		if let Some(agebracket) = self
-			.parse_word("Node promoted to ", content)
-			.or(self.parse_word("We are ", content))
-			.or(self.parse_word("New RoutingEvent received. Current role:", content))
+			.parse_word("xNode promoted to ", content)
+			.or(self.parse_word("xWe are ", content))
+			.or(self.parse_word("xNew RoutingEvent received. Current role:", content))
 		{
 			self.agebracket = match agebracket.as_str() {
 				"Adult" => NodeAgebracket::Adult,
 				"Elder" => NodeAgebracket::Elder,
 				_ => {
 					debug_log!(self.parser_output.as_str());
-					NodeAgebracket::Unknown
+					NodeAgebracket::Joining
 				}
 			};
 			if self.agebracket != NodeAgebracket::Unknown {
@@ -994,13 +994,6 @@ impl NodeMetrics {
 				self.parser_output = format!("FAILED to parse section prefix in: {}", content);
 			}
 
-			if let Some(node_age) = self.parse_usize("age:", content) {
-				self.parser_output = format!("age: {}", node_age);
-				self.node_age = node_age;
-			} else {
-				self.parser_output = format!("FAILED to parse node age in: {}", content);
-			}
-
 			if let Some(node_name) = self.parse_word("node name:", content) {
 				self.parser_output = format!("node name: {}", &node_name);
 				self.node_name = node_name;
@@ -1013,23 +1006,47 @@ impl NodeMetrics {
 
 		// TODO: probably needs deprecating as of T4.1 except perhaps for this agebracket check which needs review
 		// Fleming Testnet 3 based
-		if content.contains("The network is not accepting nodes right now")
+		if content.contains("Sending aggregated JoinRequest")
 		{
 			self.agebracket = NodeAgebracket::Joining;
 			self.parser_output = format!("Age-bracket updated to: Joining");
 			return true;
 		}
 
-		if content.contains("Handling NodeDuty: WriteChunk") {
+		if content.contains("Joined the network") {
 			self.agebracket = NodeAgebracket::Adult;
 			self.parser_output = format!("Age updated to: Adult");
+
+			if let Some(node_name) = self.parse_word("➤", content) {
+				self.parser_output = format!("node name: {}", &node_name);
+				self.node_name = node_name;
+			}
+
 			return true;
 		}
 
-		if content.contains("as an Elder") {
+		if content.contains("Relocation: switching from") {
+			self.agebracket = NodeAgebracket::Adult;
+			self.parser_output = format!("Age updated to: Adult");
+			if let Some(new_node_name) = self.parse_word("to", content) {
+				self.node_name = new_node_name;
+				self.parser_output = format!("New node name: {}", &self.node_name);
+			}
+
+			return true;
+		}
+
+		if content.contains("PromotedToElder") {
 			self.agebracket = NodeAgebracket::Elder;
 			self.parser_output = format!("Age updated to: Elder");
 			return true;
+		}
+
+		if let Some(node_age) = self.parse_usize("Our AGE:", content) {
+			self.parser_output = format!("age: {}", node_age);
+			self.node_age = node_age;
+		} else {
+			self.parser_output = format!("FAILED to parse node age in: {}", content);
 		}
 
 		false
