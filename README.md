@@ -5,14 +5,14 @@ Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
 and [linemux](https://github.com/jmagnuson/linemux) to monitor node logfiles on
 the local machine.
 
-**Status:** working on Windows, MacOS and Linux and helping with Fleming testnets.
+**Status:** working on Windows, MacOS and Linux with local and public test networks.
 
-`vdash` is already capable of monitoring multiple logfiles on the local machine, so it
-wouldn't be hard to monitor multiple remote nodes by having them publish updates to their
-logfiles (e.g. using a web server) and appending changes to local copies monitored by
-`vdash`, but this is not on the roadmap. There may even be existing tools that could do
-this so if anyone wants to look into that it would be great as I'm only making
-minor changes at the moment.
+`vdash` is already capable of monitoring multiple logfiles on the local machine
+so it wouldn't be hard to monitor multiple remote nodes by having a script pull
+logfiles from remote nodes to local copies monitored by `vdash`, but this is not
+on the roadmap. There may be existing tools that could do this so if anyone
+wants to look into that it would be great as I'm only making minor changes at
+the moment.
 
 Here's an early `vdash` (v0.2.0) working with a local testnet node:
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
@@ -67,9 +67,9 @@ To build `vdash-crossterm` on Windows, clone vdash, build with `+nightly` and us
     ./target/release/vdash-crossterm --help
 
 ## Using vdash - SAFE Network Node Dashboard
-`vdash` is provides a terminal based graphical dashboard of SAFE Network Node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
+`vdash` provides a terminal based graphical dashboard of SAFE Network Node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
 
-**Status:** work-in-progress, not useful yet unless you want to help!
+**Status:** useful work-in-progress, help welcome!
 
 ## Get SAFE Network pre-requisites
 1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
@@ -92,22 +92,20 @@ For more information:
     vdash --help
 
 ### Node Setup
-**IMPORTANT:** You must ensure the node logfile includes the telemetry information used by vdash by setting the required logging level (e.g. 'info', or 'debug' etc).
-
-The required level may change as things progress, so for now I recommend using a logging level of 'info' to keep resources minimal. The logfile will be larger and **vdash** become slower, but may have access to more metrics if you increase the logging level to 'debug', or even 'trace'.
-
-You control the node logging level by setting the environment variable `RUST_LOG` but be aware that setting this to one of  to one of 'warn', 'info', 'debug', or 'trace' will apply this to *all* modules used by `sn_node` code, not just the `sn_node` module. You can though set the default to one level and different levels for other modules.
-
-For example, to set the default level to 'debug' for everything, except for the `quinn` module which generates a lot of unnecessary INFO log messages, module use:
+**IMPORTANT:** You must ensure the node logfile includes the telemetry information used by vdash by setting the logging level to 'trace' when you start your node (as in the example below). You control the node logging level by setting the environment variable `RUST_LOG`.
 
 ```sh
 safe node killall
-rm -f ~/.safe/node/local-test-network/*/sn_node.log
-RUST_LOG=safe=trace safe node join
+rm -f ~/.safe/node/local-test-network/*/sn_node.log*
+RUST_LOG=safe_network=trace safe node join
+```
+You can then run `vdash`, typically in a different terminal:
+```sh
+vdash ~/.safe/node/local-node/sn_node.log
 ```
 Or
 Note:
-- `save node killall` makes sure no existing nodes are still running, and
+- `safe node killall` makes sure no existing nodes are still running, and
   deleting existing logfiles prevents you picking up statistics from previous
   activity. If you leave the logfile in place then `vdash` will waste time
   processing that, although you can skip that process using a command line
@@ -118,22 +116,23 @@ Note:
 
 	Using Windows Command Line:
 	```
-	set RUST_LOG="safe=trace"
-	safe node run-baby-fleming -t
+	set RUST_LOG="safe_network=trace"
+	safe node join
 	```
 
 	Using Windows PowerShell:
 	```
-	$env:RUST_LOG="safe=trace"
-	safe node run-baby-fleming -t
+	$env:RUST_LOG="safe_network=trace"
+	safe node join
 	```
 
+Note: the examples use `safe node join` to start a node, but you will need to check you are using the correct parameters for your purpose. For example you might want to skip port forwarding etc.
 ### Using vdash With a Local Test Network
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
     ```
     safe node killall
-    rm -f ~/.safe/node/local-test-network/*/sn_node.log
-    RUST_LOG=safe=trace safe node run-baby-fleming -t
+    rm -f ~/.safe/node/baby-fleming-nodes/*/sn_node.log
+    RUST_LOG=safe_network=trace safe node run-baby-fleming -t
     ```
 
 	Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
@@ -163,16 +162,25 @@ git clone https://github.com/happybeing/vdash
 cd vdash
 ```
 
-### Build
-
-#### Linux / MacOS
+### Build - Linux / MacOS
 Build `vdash` with the termion backend (see [tui-rs](https://github.com/fdehau/tui-rs)).
 Note: MacOS is untested but may 'just work'.
 ```
 cargo build --features="termion" --features="vdash" --release
 ```
+If built for target 'musl' `vdash` uses considerably less memory:
 
-#### Windows 10
+```sh
+rustup target add x86_64-unknown-linux-musl
+cargo build --release --target x86_64-unknown-linux-musl
+```
+Comparing memory use (using `htop` on Linux):
+```sh
+VIRT   RES  SHR
+803M  9372 4716 x13 threads (release)
+32768 6848 2440 x13 threads (release/musl)
+```
+#### Build - Windows 10
 Builds `vdash` the crossterm backend (see [tui-rs](https://github.com/fdehau/tui-rs)), with the intention to support Windows.
 
 NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
