@@ -159,8 +159,9 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 }
 
 fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
-	let total_string = format_size(monitor.chunk_store.total_used, 1);
-	let limit_string = match &monitor.chunk_store_fsstats {
+	let used_string = format_size(monitor.metrics.used_space, 1);
+	let max_string = format_size(monitor.metrics.max_capacity, 1);
+	let device_limit_string = match &monitor.chunk_store_fsstats {
 		Some(fsstats) => {
 			let chunk_store_limit = fsstats.free_space();
 			format_size(chunk_store_limit, 1).to_string()
@@ -170,7 +171,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		}
 	};
 
-	let heading = format!("Node {:>2} Chunk Store:  {:>9} of {} limit", monitor.index+1, &total_string, &limit_string);
+	let heading = format!("Node {:>2} Chunk Store:  {:>9} of {} limit", monitor.index+1, &used_string, &max_string);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
 		.block(
 			Block::default()
@@ -183,10 +184,6 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 				.add_modifier(Modifier::BOLD),
 		);
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
-
-	if monitor.chunk_store.chunk_store_stats.len() < 1 {
-		return;
-	}
 
 	let columns = Layout::default()
 		.direction(Direction::Horizontal)
@@ -206,44 +203,37 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		gauges_column.height = 1;
 
 		// One gauge gap for heading, and an extra gauge so the last one drawn doesn't expand to the bottom
-		let constraints = vec![Constraint::Length(1); monitor.chunk_store.chunk_store_stats.len() + 2];
+		let constraints = vec![Constraint::Length(1); 1 + 2];
 		let gauges = Layout::default()
 			.direction(Direction::Vertical)
 			.constraints(constraints.as_ref())
 			.split(columns[1]);
 
-		// Metrics with label + gauge
-		let mut next_gauge: usize = 1;	// Start after the heading
-		for stat in monitor.chunk_store.chunk_store_stats.iter() {
-			// For labels column
-			push_storage_metric(
-				&mut label_items,
-				&stat.spec.ui_name,
-				&format_size(stat.space_used, 1)
-			);
+		push_storage_metric(
+			&mut label_items,
+			&"Chunk storage".to_string(),
+			&format_size(monitor.metrics.used_space, 1)
+		);
 
-			// Gauge2s column
-			let gauge = Gauge2::default()
-				.block(Block::default())
-				.gauge_style(Style::default().fg(Color::Yellow))
-				.ratio(ratio(stat.space_used, monitor.chunk_store.total_used));
-			f.render_widget(gauge, gauges[next_gauge]);
-			next_gauge += 1;
-		}
+		let gauge = Gauge2::default()
+			.block(Block::default())
+			.gauge_style(Style::default().fg(Color::Yellow))
+			.ratio(ratio(monitor.metrics.used_space, monitor.metrics.max_capacity));
+		f.render_widget(gauge, gauges[0]);
 
 		push_storage_subheading(&mut label_items, &"".to_string());
 		push_storage_subheading(&mut label_items, &"Device".to_string());
 
 		push_storage_metric(
 			&mut label_items,
-			&"Total Chunks".to_string(),
-			&total_string
+			&"Space Avail".to_string(),
+			&max_string
 		);
 
 		push_storage_metric(
 			&mut label_items,
 			&"Space Free".to_string(),
-			&limit_string
+			&device_limit_string
 		);
 
 

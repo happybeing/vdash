@@ -171,7 +171,6 @@ impl App {
 	pub fn update_chunk_store_stats(&mut self) {
 		for (_monitor_file, monitor) in self.monitors.iter_mut() {
 			monitor.update_chunk_store_fsstats();
-			update_chunk_store_stats(&monitor.chunk_store_pathbuf, &mut monitor.chunk_store);
 		}
 	}
 
@@ -366,92 +365,6 @@ fn exit_with_usage(reason: &str) -> Result<App, std::io::Error> {
 	return Err(Error::new(ErrorKind::Other, reason));
 }
 
-pub struct ChunkStoreSpec {
-	pub dir_name: String,
-	pub ui_name: String,
-	pub visible: bool,
-}
-
-impl ChunkStoreSpec {
-	pub fn new(dir_name: &str, ui_name: &str, visible: bool) -> ChunkStoreSpec {
-		ChunkStoreSpec {
-			dir_name: String::from(dir_name),
-			ui_name: String::from(ui_name),
-			visible,
-		}
-	}
-}
-
-// Directories should correspond with those in maidsafe/sn_node/src/chunk_store/mod.rs
-lazy_static::lazy_static! {
-	static ref CHUNK_STORES: Vec::<ChunkStoreSpec> = vec!(
-		ChunkStoreSpec::new("append_only", "Append Only", true),
-		ChunkStoreSpec::new("immutable", "Immutable", true),
-		ChunkStoreSpec::new("mutable", "Mutable", true),
-		ChunkStoreSpec::new("sequence", "Sequence", true),
-		ChunkStoreSpec::new("register", "Register", true),
-		ChunkStoreSpec::new("login_packets", "Login Packets", true),
-	);
-
-	static ref CHUNK_STORES_STATS_ALL: ChunkStoreStatsAll = ChunkStoreStatsAll::new();
-}
-
-pub struct ChunkStoreStat {
-	pub spec:	&'static ChunkStoreSpec,
-	pub space_used: u64,
-}
-
-pub struct ChunkStoreStatsAll {
-	pub chunk_store_stats: Vec<ChunkStoreStat>,
-	pub total_used: u64,
-}
-
-impl ChunkStoreStatsAll {
-	pub fn new() -> ChunkStoreStatsAll {
-		ChunkStoreStatsAll {
-			chunk_store_stats: Vec::<ChunkStoreStat>::new(),
-			total_used: 0,
-		}
-	}
-}
-
-const USED_SPACE_FILENAME: &str = "used_space";
-
-pub fn update_chunk_store_stats(chunk_stores_path: &PathBuf, chunk_store_stats: &mut ChunkStoreStatsAll) {
-	chunk_store_stats.chunk_store_stats = Vec::<ChunkStoreStat>::new();
-	chunk_store_stats.total_used = 0;
-
-	// let path_str = match chunk_stores_path.to_str() {
-	// 	Some(path_str) => path_str,
-	// 	None => "<Unknown chunk_stores_path>"
-	// };
-	// debug_log!(format!("update_chunk_store_stats() for {}", path_str).as_str());
-
-	for spec in CHUNK_STORES.iter() {
-		let mut chunks_dir = PathBuf::from(chunk_stores_path);
-		chunks_dir.push(spec.dir_name.clone());
-
-		let mut space_used: u64 = 0;
-		match OpenOptions::new()
-			.read(true)
-			.write(false)
-			.create(false)
-			.open(chunks_dir.join(USED_SPACE_FILENAME)) {
-				Ok(mut record) => {
-					let mut buffer = vec![];
-					let _ = record.read_to_end(&mut buffer).unwrap();
-					if let Ok(size) = bincode::deserialize::<u64>(&buffer) {
-						chunk_store_stats.total_used += size;
-						space_used = size;
-					};
-					// debug_log!(format!("stat {} used {} bytes", &spec.dir_name, space_used).as_str());
-					chunk_store_stats.chunk_store_stats.push(ChunkStoreStat {spec, space_used});
-				},
-				Err(_) => {},
-		}
-	}
-}
-
 use fs2::{statvfs, FsStats};
 
 pub struct LogMonitor {
@@ -462,7 +375,6 @@ pub struct LogMonitor {
 	pub logfile: String,
 	pub chunk_store_fsstats: Option<FsStats>,
 	pub chunk_store_pathbuf: PathBuf,
-	pub chunk_store: ChunkStoreStatsAll,
 	pub metrics: NodeMetrics,
 	pub metrics_status: StatefulList<String>,
 	pub is_debug_dashboard_log: bool,
@@ -484,7 +396,7 @@ impl LogMonitor {
 
 		let mut chunk_store_pathbuf = PathBuf::from(&f);
 		if chunk_store_pathbuf.pop() {
-			chunk_store_pathbuf.push("chunks")
+			chunk_store_pathbuf.push("chunkdb")
 		}
 
 		LogMonitor {
@@ -493,7 +405,6 @@ impl LogMonitor {
 			max_content: max_lines,
 			chunk_store_fsstats: None,
 			chunk_store_pathbuf,
-			chunk_store: ChunkStoreStatsAll::new(),
 			metrics: NodeMetrics::new(&opt),
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,
@@ -749,6 +660,9 @@ pub struct NodeMetrics {
 	pub activity_puts: u64,
 	pub activity_errors: u64,
 
+	pub used_space: u64,
+	pub max_capacity: u64,
+
 	pub debug_logfile: Option<NamedTempFile>,
 	parser_output: String,
 }
@@ -797,6 +711,10 @@ impl NodeMetrics {
 			// State (network)
 			adults: 0,
 			elders: 0,
+
+			// Disk use:
+			used_space: 0,
+			max_capacity: 0,
 
 			// Debug
 			debug_logfile: None,
@@ -953,7 +871,21 @@ impl NodeMetrics {
 			self.count_error(&entry_metadata.time);
 		}
 
+
 		let &content = &line.as_str();
+
+		// Overall storage use / size
+		if let Some(used_space) = self.parse_u64("Used space:", content) {
+			self.used_space = used_space;
+			self.parser_output = format!("Used space: {}", used_space);
+			return true;
+		};
+		if let Some(max_capacity) = self.parse_u64("Max capacity:", content) {
+			self.max_capacity = max_capacity;
+			self.parser_output = format!("Max capacity: {}", max_capacity);
+			return true;
+		};
+
 		if let Some(elders) = self.parse_usize("No. of Elders:", content) {
 			self.elders = elders;
 			self.parser_output = format!("ELDERS: {}", elders);
@@ -1004,8 +936,6 @@ impl NodeMetrics {
 			return true;
 		};
 
-		// TODO: probably needs deprecating as of T4.1 except perhaps for this agebracket check which needs review
-		// Fleming Testnet 3 based
 		if content.contains("Sending aggregated JoinRequest")
 		{
 			self.agebracket = NodeAgebracket::Joining;
@@ -1062,6 +992,22 @@ impl NodeMetrics {
 				match word[0].parse::<usize>() {
 					Ok(value) => return Some(value),
 					Err(_e) => self.parser_output = format!("failed to parse '{}' as usize from: '{}'", word[0], &content[position + prefix.len()..]),
+				}
+			}
+		}
+		None
+	}
+
+	fn parse_u64(&mut self, prefix: &str, content: &str) -> Option<u64> {
+		if let Some(position) = content.find(prefix) {
+			let word: Vec<&str> = content[position + prefix.len()..]
+				.trim()
+				.splitn(2, |c| c == ' ' || c == ',')
+				.collect();
+			if word.len() > 0 {
+				match word[0].parse::<u64>() {
+					Ok(value) => return Some(value),
+					Err(_e) => self.parser_output = format!("failed to parse '{}' as u64 from: '{}'", word[0], &content[position + prefix.len()..]),
 				}
 			}
 		}
