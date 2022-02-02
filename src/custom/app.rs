@@ -663,6 +663,19 @@ pub struct NodeMetrics {
 	pub used_space: u64,
 	pub max_capacity: u64,
 
+	pub global_cpu: f32,
+	pub load_avg_1: f32,
+	pub load_avg_5: f32,
+	pub load_avg_15: f32,
+
+	pub memory_total: u64,
+	pub memory_free: u64,
+	pub swap_total: u64,
+	pub swap_free: u64,
+
+	pub node_memory: u64,
+	pub node_cpu:	f32,
+
 	pub debug_logfile: Option<NamedTempFile>,
 	parser_output: String,
 }
@@ -715,6 +728,20 @@ impl NodeMetrics {
 			// Disk use:
 			used_space: 0,
 			max_capacity: 0,
+
+
+			global_cpu: 0.0,
+			load_avg_1: 0.0,
+			load_avg_5: 0.0,
+			load_avg_15: 0.0,
+
+			memory_total: 0,
+			memory_free: 0,
+			swap_total: 0,
+			swap_free: 0,
+
+			node_memory: 0,
+			node_cpu:	0.0,
 
 			// Debug
 			debug_logfile: None,
@@ -871,8 +898,47 @@ impl NodeMetrics {
 			self.count_error(&entry_metadata.time);
 		}
 
-
 		let &content = &line.as_str();
+
+		// System Load
+		if content.contains("log {system=System") {
+			let mut parser_output = String::from("System load:");
+			if let Some(global_cpu) = self.parse_float32("global CPU usage:", content) {
+				self.global_cpu = global_cpu;
+				parser_output = format!("{} gl_cpu: {}", &parser_output, global_cpu);
+			};
+			if let Some(load_avg_1) = self.parse_float32("one:", content) {
+				self.load_avg_1 = load_avg_1;
+				parser_output = format!("{} , LoadAvg one: {}", &parser_output, load_avg_1);
+			};
+			if let Some(load_avg_5) = self.parse_float32("five:", content) {
+				self.load_avg_5 = load_avg_5;
+				parser_output = format!("{} , five: {}", &parser_output, load_avg_5);
+			};
+			if let Some(load_avg_15) = self.parse_float32("fifteen:", content) {
+				self.load_avg_15 = load_avg_15;
+				parser_output = format!("{} , fifteen: {}", &parser_output, load_avg_15);
+			};
+
+			self.parser_output = parser_output;
+			return true;
+		}
+
+		// Node Resources
+		if content.contains("Node resource usage:") {
+			let mut parser_output = String::from("Node resources:");
+			if let Some(node_cpu) = self.parse_float32("cpu_usage:", content) {
+				self.node_cpu = node_cpu;
+				parser_output = format!("{}  cpu: {}", &parser_output, node_cpu);
+			};
+			if let Some(node_memory) = self.parse_u64("memory:", content) {
+				self.node_memory = node_memory;
+				parser_output = format!("{} , memory: {}", &parser_output, node_memory);
+			};
+
+			self.parser_output = parser_output;
+			return true;
+		}
 
 		// Overall storage use / size
 		if let Some(used_space) = self.parse_u64("Used space:", content) {
@@ -972,11 +1038,14 @@ impl NodeMetrics {
 			return true;
 		}
 
-		if let Some(node_age) = self.parse_usize("Our AGE:", content) {
-			self.parser_output = format!("age: {}", node_age);
-			self.node_age = node_age;
-		} else {
-			self.parser_output = format!("FAILED to parse node age in: {}", content);
+		if content.contains("Our AGE:") {
+			if let Some(node_age) = self.parse_usize("Our AGE:", content) {
+				self.parser_output = format!("age: {}", node_age);
+				self.node_age = node_age;
+			} else {
+				self.parser_output = format!("FAILED to parse node age in: {}", content);
+			}
+			return true;
 		}
 
 		false
@@ -1008,6 +1077,22 @@ impl NodeMetrics {
 				match word[0].parse::<u64>() {
 					Ok(value) => return Some(value),
 					Err(_e) => self.parser_output = format!("failed to parse '{}' as u64 from: '{}'", word[0], &content[position + prefix.len()..]),
+				}
+			}
+		}
+		None
+	}
+
+	fn parse_float32(&mut self, prefix: &str, content: &str) -> Option<f32> {
+		if let Some(position) = content.find(prefix) {
+			let word: Vec<&str> = content[position + prefix.len()..]
+				.trim()
+				.splitn(2, |c| c == ' ' || c == ',')
+				.collect();
+			if word.len() > 0 {
+				match word[0].parse::<f32>() {
+					Ok(value) => return Some(value),
+					Err(_e) => self.parser_output = format!("failed to parse '{}' as float from: '{}'", word[0], &content[position + prefix.len()..]),
 				}
 			}
 		}
