@@ -234,7 +234,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		.block(Block::default())
 		.gauge_style(Style::default().fg(Color::Yellow))
 		.ratio(ratio(monitor.metrics.used_space, monitor.metrics.max_capacity));
-	f.render_widget(gauge, gauges[0]);
+	f.render_widget(gauge, gauges[1]);
 
 	push_storage_subheading(&mut label_items, &"".to_string());
 	push_storage_subheading(&mut label_items, &"Device".to_string());
