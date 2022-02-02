@@ -675,6 +675,7 @@ pub struct NodeMetrics {
 
 	pub node_memory: u64,
 	pub node_cpu:	f32,
+	pub node_cpu_max:	f32,
 
 	pub debug_logfile: Option<NamedTempFile>,
 	parser_output: String,
@@ -741,7 +742,8 @@ impl NodeMetrics {
 			swap_free: 0,
 
 			node_memory: 0,
-			node_cpu:	0.0,
+			node_cpu: 0.0,
+			node_cpu_max: 0.0,
 
 			// Debug
 			debug_logfile: None,
@@ -929,7 +931,10 @@ impl NodeMetrics {
 			let mut parser_output = String::from("Node resources:");
 			if let Some(node_cpu) = self.parse_float32("cpu_usage:", content) {
 				self.node_cpu = node_cpu;
-				parser_output = format!("{}  cpu: {}", &parser_output, node_cpu);
+				if node_cpu > self.node_cpu_max {
+					self.node_cpu_max = node_cpu;
+				}
+				parser_output = format!("{}  cpu: {}, cpu_max {}", &parser_output, node_cpu, self.node_cpu_max);
 			};
 			if let Some(node_memory) = self.parse_u64("memory:", content) {
 				self.node_memory = node_memory;

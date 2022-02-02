@@ -158,6 +158,7 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	);
 }
 
+// TODO split into two sub functions, one for gauges, one for text strings
 fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	let used_string = format_size(monitor.metrics.used_space, 1);
 	let max_string = format_size(monitor.metrics.max_capacity, 1);
@@ -171,7 +172,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		}
 	};
 
-	let heading = format!("Node {:>2} Chunk Store:  {:>9} of {} limit", monitor.index+1, &used_string, &max_string);
+	let heading = format!("Node {:>2} Resources - Chunk Store:  {:>9} of {} limit", monitor.index+1, &used_string, &max_string);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
 		.block(
 			Block::default()
@@ -185,9 +186,23 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		);
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.content.state);
 
+	// Two rows top=gauges / bottom=text
+	let rows = Layout::default()
+		.direction(Direction::Vertical)
+		.margin(1)
+		.constraints(
+			[
+				Constraint::Length(7),
+				Constraint::Min(3),
+			]
+			.as_ref(),
+		)
+		.split(area);
+
+	// Two columns for label+value | bar
 	let columns = Layout::default()
 		.direction(Direction::Horizontal)
-		.margin(1)
+		.margin(0)
 		.constraints(
 			[
 				Constraint::Length(27),
@@ -195,56 +210,87 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 			]
 			.as_ref(),
 		)
-		.split(area);
+		.split(rows[0]);
 
-		let mut label_items = Vec::<ListItem>::new();
-		push_storage_subheading(&mut label_items, &"Chunks".to_string());
-		let mut gauges_column = columns[1];
-		gauges_column.height = 1;
+	let mut label_items = Vec::<ListItem>::new();
+	push_storage_subheading(&mut label_items, &"Chunks".to_string());
+	let mut gauges_column = columns[1];
+	gauges_column.height = 1;
 
-		// One gauge gap for heading, and an extra gauge so the last one drawn doesn't expand to the bottom
-		let constraints = vec![Constraint::Length(1); 1 + 2];
-		let gauges = Layout::default()
-			.direction(Direction::Vertical)
-			.constraints(constraints.as_ref())
-			.split(columns[1]);
+	// One gauge gap for heading, and an extra gauge so the last one drawn doesn't expand to the bottom
+	let constraints = vec![Constraint::Length(1); 1 + 2];
+	let gauges = Layout::default()
+		.direction(Direction::Vertical)
+		.constraints(constraints.as_ref())
+		.split(columns[1]);
 
-		push_storage_metric(
-			&mut label_items,
-			&"Chunk storage".to_string(),
-			&format_size(monitor.metrics.used_space, 1)
-		);
+	push_storage_metric(
+		&mut label_items,
+		&"Chunk storage".to_string(),
+		&format_size(monitor.metrics.used_space, 1)
+	);
 
-		let gauge = Gauge2::default()
-			.block(Block::default())
-			.gauge_style(Style::default().fg(Color::Yellow))
-			.ratio(ratio(monitor.metrics.used_space, monitor.metrics.max_capacity));
-		f.render_widget(gauge, gauges[0]);
+	let gauge = Gauge2::default()
+		.block(Block::default())
+		.gauge_style(Style::default().fg(Color::Yellow))
+		.ratio(ratio(monitor.metrics.used_space, monitor.metrics.max_capacity));
+	f.render_widget(gauge, gauges[0]);
 
-		push_storage_subheading(&mut label_items, &"".to_string());
-		push_storage_subheading(&mut label_items, &"Device".to_string());
+	push_storage_subheading(&mut label_items, &"".to_string());
+	push_storage_subheading(&mut label_items, &"Device".to_string());
 
-		push_storage_metric(
-			&mut label_items,
-			&"Space Avail".to_string(),
-			&max_string
-		);
+	push_storage_metric(
+		&mut label_items,
+		&"Space Avail".to_string(),
+		&max_string
+	);
 
-		push_storage_metric(
-			&mut label_items,
-			&"Space Free".to_string(),
-			&device_limit_string
-		);
+	push_storage_metric(
+		&mut label_items,
+		&"Space Free".to_string(),
+		&device_limit_string
+	);
+
+	// Render labels
+	let labels_widget = List::new(label_items).block(
+		Block::default()
+			.borders(Borders::NONE)
+	);
+	f.render_widget(labels_widget, columns[0]);
 
 
-		// Render labels
-		let labels_widget = List::new(label_items).block(
-			Block::default()
-				.borders(Borders::NONE)
-		);
-		f.render_widget(labels_widget, columns[0]);
+	let mut text_items = Vec::<ListItem>::new();
+	push_storage_subheading(&mut text_items, &"Load".to_string());
 
-	}
+	let node_text = format!("{:<13}: CPU {} (MAX {}) Memory {}",
+		"Node",
+		monitor.metrics.node_cpu,
+		monitor.metrics.node_cpu_max,
+		monitor.metrics.node_memory
+	);
+	text_items.push(
+		ListItem::new(vec![Spans::from(node_text.clone())])
+			.style(Style::default().fg(Color::Blue)),
+	);
+
+	let system_text = format!("{:<13}: CPU {} LoadAvg {} {} {}",
+		"System",
+		monitor.metrics.global_cpu,
+		monitor.metrics.load_avg_1,
+		monitor.metrics.load_avg_5,
+		monitor.metrics.load_avg_15,
+	);
+	text_items.push(
+		ListItem::new(vec![Spans::from(system_text.clone())])
+			.style(Style::default().fg(Color::Blue)),
+	);
+	// Render labels
+	let text_widget = List::new(text_items).block(
+		Block::default()
+			.borders(Borders::NONE)
+	);
+	f.render_widget(text_widget, rows[1]);
+}
 
 // Return string representation in TB, MB, KB or bytes depending on magnitude
 fn format_size(bytes: u64, fractional_digits: usize) -> String {
