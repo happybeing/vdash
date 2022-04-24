@@ -97,7 +97,7 @@ For more information:
 ```sh
 safe node killall
 rm -f ~/.safe/node/local-test-network/*/sn_node.log*
-RUST_LOG=safe_network=trace safe node join
+RUST_LOG=sn_node=trace safe node join
 ```
 You can then run `vdash`, typically in a different terminal:
 ```sh
@@ -116,13 +116,13 @@ Note:
 
 	Using Windows Command Line:
 	```
-	set RUST_LOG="safe_network=trace"
+	set RUST_LOG="sn_node=trace"
 	safe node join
 	```
 
 	Using Windows PowerShell:
 	```
-	$env:RUST_LOG="safe_network=trace"
+	$env:RUST_LOG="sn_node=trace"
 	safe node join
 	```
 
@@ -132,7 +132,7 @@ Note: the examples use `safe node join` to start a node, but you will need to ch
     ```
     safe node killall
     rm -f ~/.safe/node/baby-fleming-nodes/*/sn_node.log
-    RUST_LOG=safe_network=trace safe node run-baby-fleming -t
+    RUST_LOG=sn_node=trace safe node run-baby-fleming -t
     ```
 
 	Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
