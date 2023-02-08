@@ -5,8 +5,8 @@ use linemux::MuxedLines;
 use std::collections::HashMap;
 
 use chrono::{DateTime, Duration, Utc};
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Error, ErrorKind, Write};
+use std::fs::{File};
+use std::io::{Error, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
