@@ -795,6 +795,7 @@ impl NodeMetrics {
 		self.update_timelines(&entry_time);
 		self.parser_output = entry_metadata.parser_output.clone();
 		self.process_logfile_entry(&entry.logstring, &entry_metadata); // May overwrite self.parser_output
+
 		self.log_history.push(entry); // TODO Trim log_history
 
 		// --debug-dashboard - prints parser results for a single logfile
@@ -817,32 +818,29 @@ impl NodeMetrics {
 	}
 
 	///! Return a LogMeta and capture metadata for logfile node start:
-	///!	'Running safe-node v0.24.0'
-	// pub fn parse_start(&mut self, line: &str) -> Option<LogMeta> {
-	// 	let running_prefix = String::from("Running sn_node ");
+	///!	'Running sn_node v0.74.4'
+	pub fn parse_start(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
+		let running_prefix = String::from("Running sn_node ");
 
-	// 	if line.starts_with(&running_prefix) {
-	// 		self.running_message = Some(line.to_string());
-	// 		self.running_version = Some(line[running_prefix.len()..].to_string());
-	// 		self.node_started = self.entry_metadata.time;
-	// 		let parser_output = format!(
-	// 			"START at {}",
-	// 			self.entry_metadata
-	// 				.map_or(String::from("None"), |m| format!("{}", m))
-	// 		);
+		if line.starts_with(&running_prefix) {
+			let message = line.to_string();
+			let version = String::from(line[running_prefix.len()..].to_string());
+			self.node_started = Some(entry_metadata.time);
+			self.parser_output = format!(
+				"START node {} at {}",
+				String::from(version.clone()),
+				self.node_started
+					.map_or(String::from("None"), |m| format!("{}", m))
+			);
 
-	// 		self.reset_metrics();
-	// 		return Some(LogMeta {
-	// 			category: String::from("START"),
-	// 			time: self.entry_metadata.time,
-	// 			source: String::from(""),
-	// 			message: line.to_string(),
-	// 			parser_output,
-	// 		});
-	// 	}
+			self.running_message = Some(message);
+			self.running_version = Some(version);
+			self.reset_metrics();
+			return true;
+		}
 
-	// 	None
-	// }
+		false
+	}
 
 	///! Process a logfile entry
 	///! Returns true if the line has been processed and can be discarded
@@ -850,7 +848,10 @@ impl NodeMetrics {
 		return self.parse_data_response(
 			&line,
 			"Running as Node: SendToSection [ msg: MsgEnvelope { message: QueryResponse { response: QueryResponse::",
-		) || self.parse_gets_and_puts(&line, &entry_metadata.time) || self.parse_states(&line, &entry_metadata);
+		)
+		|| self.parse_gets_and_puts(&line, &entry_metadata.time)
+		|| self.parse_states(&line, &entry_metadata)
+		|| self.parse_start(&line, &entry_metadata);
 	}
 
 	///! TODO: Review and update these tests
