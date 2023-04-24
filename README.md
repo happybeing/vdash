@@ -1,6 +1,6 @@
-# SAFE Network Node Dashboard
+# Safe Network node Dashboard
 
-`vdash` is a terminal based dashboard for monitoring SAFE Network Nodes. It is written in
+`vdash` is a terminal based dashboard for monitoring Safe Network nodes. It is written in
 Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
 and [linemux](https://github.com/jmagnuson/linemux) to monitor node logfiles on
 the local machine.
@@ -27,7 +27,7 @@ keys, and zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-').
 Press 'q' to quit.
 
 Feature requests and discussion are currently summarised in the opening post of
-the Safe Network forum topic: [Node Dashboard ideas
+the Safe Network forum topic: [node Dashboard ideas
 please!](https://safenetforum.org/t/node-dashboard-ideas-please/32572?u=happybeing).
 
 For more details and progress see [Roadmap](#roadmap) (below).
@@ -66,17 +66,17 @@ To build `vdash-crossterm` on Windows, clone vdash, build with `+nightly` and us
 
     ./target/release/vdash-crossterm --help
 
-## Using vdash - SAFE Network Node Dashboard
-`vdash` provides a terminal based graphical dashboard of SAFE Network Node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
+## Using vdash - a Safe Network node Dashboard
+`vdash` provides a terminal based graphical dashboard of Safe Network node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
 
 **Status:** useful work-in-progress, help welcome!
 
-## Get SAFE Network pre-requisites
+## Get Safe Network pre-requisites
 1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-2. **Get the SAFE CLI:** either download using an install script or build the SAFE CLI locally. Instructions for both options are [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#safe-network-cli).
+2. **Get the Safe CLI:** either download using an install script or build the Safe CLI locally. Instructions for both options are [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#safe-network-cli).
 
-3. **Get the SAFE Node:** when you have the SAFE CLI working you can install the node software with the command ` safe node install` (details [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#node-install)).
+3. **Get the Safe node:** when you have the Safe CLI working you can install the node software with the command ` safe node install` (details [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#node-install)).
 
 You are now ready to install `vdash` and can test it by running a local test network.
 
@@ -84,32 +84,35 @@ You are now ready to install `vdash` and can test it by running a local test net
 
 In the terminal type the command and the paths of one or more node logfiles you want to monitor. For example:
 
-    vdash ~/.safe/node/local-node/sn_node.log
+    vdash ~/.safe/node/local-node/safenode.log
 
 When the dashboard is active, pressing 's' or 'd' switches between summary and detail views.
 For more information:
 
     vdash --help
 
-### Node Setup
+### Safe Node Setup
+**IMPORTANT:** Ignore this section until the Safe Network CLI has been restored to work with the changes being implemented to Safe Network code in 2023/Q2. For now, see **Using vdash With a Local Test Network** below.
+
 **IMPORTANT:** You must ensure the node logfile includes the telemetry information used by vdash by setting the logging level to 'trace' when you start your node (as in the example below). You control the node logging level by setting the environment variable `RUST_LOG`.
 
 ```sh
-safe node killall
-rm -f ~/.safe/node/local-test-network/*/sn_node.log*
-RUST_LOG=sn_node=trace safe node join
+killall safenode
+rm -f ~/.safe/node/local-test-network/
+RUST_LOG=safenode,safe safenode
 ```
-You can then run `vdash`, typically in a different terminal:
+To start a node using `safenode` you should check you are using the correct parameters for your system setup.
+
+When your node has started run `vdash`, typically in a different terminal:
 ```sh
-vdash ~/.safe/node/local-node/sn_node.log
+vdash ~/.safe/node/local-node/safenode.log
 ```
-Or
 Note:
-- `safe node killall` makes sure no existing nodes are still running, and
-  deleting existing logfiles prevents you picking up statistics from previous
-  activity. If you leave the logfile in place then `vdash` will waste time
-  processing that, although you can skip that process using a command line
-  option.
+
+- `killall safenode` makes sure no existing nodes are still running, and
+  deleting the `local-test-network` directory prevents you picking up statistics from previous logfiles. If you leave the logfile in place then `vdash` will waste time
+  processing that, although you can skip that process using a command line option.
+
 - setting RUST_LOG ensures the logfiles contain the data which vdash needs, and
   excludes some that gets in the way.
 - On Windows to set RUST_LOG environment variable:
@@ -126,35 +129,36 @@ Note:
 	safe node join
 	```
 
-Note: the examples use `safe node join` to start a node, but you will need to check you are using the correct parameters for your purpose. For example you might want to skip port forwarding etc.
 ### Using vdash With a Local Test Network
-1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), but I suggest using the `-t` option to create an account and authorise the CLI with it altogether. As here:
-    ```
-    safe node killall
-    rm -f ~/.safe/node/baby-fleming-nodes/*/sn_node.log
-    RUST_LOG=sn_node=trace safe node run-baby-fleming -t
-    ```
 
-	Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
 
-2. **Run vdash:** in a different terminal window (so you can continue to use the safe-cli in the first terminal), start `vdash` with:
+1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), for example:
+    ```sh
+    rm -rf ~/.safe/node/local-test-network/
+    cd safe_network
+    killall safenode || true && RUST_LOG=safenode,safe cargo run --bin testnet -- -b --interval 100
     ```
-    vdash ~/.safe/node/baby-fleming-nodes/*/sn_node.log
+    Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
+
+2. **Run vdash:** in a different terminal window, start `vdash` with:
+    You can then run `vdash`, typically in a different terminal:
+    ```sh
+    vdash ~/.safe/node/local-test-network/safenode-*/safenode.log
     ```
     Or with a live network:
     ```
-    vdash ~/.safe/node/local-node/sn_node.log
+    vdash ~/.safe/node/local-node/safenode.log
     ```
-3. **Upload files using SAFE CLI:** in the SAFE CLI window you can perform operations on the local test network that will affect the node and the effects will be shown in `vdash`. For example, to [use the SAFE CLI to upload files](https://github.com/maidsafe/sn_api/tree/master/sn_cli#files):
+3. **Upload files using Safe CLI:** using the Safe CLI you can perform operations on the local test network that will affect the node and the effects will be shown in `vdash`. For example, to [use the Safe CLI to upload files](https://github.com/maidsafe/sn_api/tree/master/sn_cli#files):
     ```
     safe files put ./<some-directory>/ --recursive
     ```
 
-If you want to try `vdash` with a live network, check to see if one is running at the SAFE Network community forum: https://safenetforum.org
+If you want to try `vdash` with a live network, check to see if one is running at the Safe Network community forum: https://safenetforum.org
 
 ## Build
 
-See [Get SAFE Network Pre-requisites](#get-safe-network-pre-requisites).
+See [Get Safe Network Pre-requisites](#get-safe-network-pre-requisites).
 
 ### Get code
 ```
@@ -216,7 +220,7 @@ Where `vdash` is headed:
     - [x] change timeline scaling to use +/- an i/o keys rather than s, m, d etc
     - [ ] optimise redraw rate limit
     - [ ] make a CLI option for redraw rate limit
-  - [ ] track sn_node [issue #1126](https://github.com/maidsafe/sn_node/issues/1126) (maintain Get/Put response in)
+  - [ ] track safenode [issue #1126](https://github.com/maidsafe/safenode/issues/1126) (maintain Get/Put response in)
   - [x] implement storage 'meter'
     - [x] code to get node storage used
     - [x] code to get free space on same device
