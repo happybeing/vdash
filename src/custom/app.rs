@@ -859,10 +859,11 @@ impl NodeMetrics {
 		if line.contains("Getting chunk") {
 			self.count_get(&entry_time);
 			return true;
-		} else if line.contains("StoredNewChunk") {
+		} else if line.contains("Storing chunk") {
 			self.count_put(&entry_time);
 			return true;
 		} else if line.contains("Editing Register success!") {
+			// TODO update when Register ops are TRACE/INFO (currently DEBUG in )
 			self.count_put(&entry_time);
 			return true;
 		}
