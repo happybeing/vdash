@@ -485,11 +485,11 @@ lazy_static::lazy_static! {
 }
 
 #[derive(PartialEq)]
-pub enum NodeAgebracket {
-	Unknown,
-	Joining,
-	Adult,
-	Elder,
+pub enum NodeStatus {
+	Started,
+	Connecting,
+	Connected,
+	Stopped,
 }
 
 ///! Maintains one or more 'marching bucket' histories for
@@ -650,7 +650,7 @@ pub struct NodeMetrics {
 	pub errors_timeline: TimelineSet, // TODO add code to collect and display
 
 	pub entry_metadata: Option<LogMeta>,
-	pub agebracket: NodeAgebracket,
+	pub node_status: NodeStatus,
 	pub section_prefix: String,
 	pub node_age: usize,
 	pub node_name: String,
@@ -717,7 +717,7 @@ impl NodeMetrics {
 			activity_errors: 0,
 
 			// State (node)
-			agebracket: NodeAgebracket::Unknown,
+			node_status: NodeStatus::Stopped,
 			section_prefix: String::from(""),
 			node_age: 0,
 			node_name: String::from(""),
@@ -753,17 +753,17 @@ impl NodeMetrics {
 		metrics
 	}
 
-	pub fn agebracket_string(&self) -> String {
-		match self.agebracket {
-			NodeAgebracket::Joining => "Joining".to_string(),
-			NodeAgebracket::Adult => "Adult".to_string(),
-			NodeAgebracket::Elder => "Elder".to_string(),
-			NodeAgebracket::Unknown => "Unknown".to_string(),
+	pub fn node_status_string(&self) -> String {
+		match self.node_status {
+			NodeStatus::Connecting => "Connecting".to_string(),
+			NodeStatus::Connected => "Connected".to_string(),
+			NodeStatus::Stopped => "Stopped".to_string(),
+			NodeStatus::Started => "Started".to_string(),
 		}
 	}
 
 	fn reset_metrics(&mut self) {
-		self.agebracket = NodeAgebracket::Unknown;
+		self.node_status = NodeStatus::Started;
 		self.section_prefix = String::from("");
 		self.node_age = 0;
 		self.node_name = String::from("");
@@ -820,9 +820,10 @@ impl NodeMetrics {
 	///! Return a LogMeta and capture metadata for logfile node start:
 	///!	'Running sn_node v0.74.4'
 	pub fn parse_start(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
-		let running_prefix = String::from("Running sn_node ");
+		let running_prefix = String::from("Running safenode ");
 
 		if line.starts_with(&running_prefix) {
+			self.node_status = NodeStatus::Started;
 			let message = line.to_string();
 			let version = String::from(line[running_prefix.len()..].to_string());
 			self.node_started = Some(entry_metadata.time);
@@ -928,6 +929,34 @@ impl NodeMetrics {
 			return true;
 		}
 
+		// Node Status
+		if content.contains("Getting closest peers") {
+			self.node_status = NodeStatus::Connecting;
+			self.parser_output = String::from("Node status: Connecting");
+			return true;
+		}
+
+		if content.contains("Connected to the Network") {
+			self.node_status = NodeStatus::Connected;
+			self.parser_output = String::from("Node status: Connected");
+			return true;
+		}
+
+		if content.contains("Node events channel closed") {
+			self.node_status = NodeStatus::Stopped;
+			self.parser_output = String::from("Node status: Disconnected");
+			return true;
+		}
+
+		if content.contains("Skipping ") {
+			let mut parser_output = String::from("Connected ({} lag)");
+			if let Some(events_skipped) = self.parse_usize("Skipping ", content) {
+				parser_output = format!("{} ({})", &parser_output, events_skipped);
+			};
+			self.parser_output = parser_output;
+			return true;
+		}
+
 		// Node Resources
 		if content.contains("Node resource usage:") {
 			let mut parser_output = String::from("Node resources:");
@@ -973,23 +1002,23 @@ impl NodeMetrics {
 
 		// TODO: review as things stabilise during Fleming testnets
 		// Pre-Fleming testnets code with additions for Fleming T4.1
-		if let Some(agebracket) = self
+		if let Some(node_status) = self
 			.parse_word("xNode promoted to ", content)
 			.or(self.parse_word("xWe are ", content))
 			.or(self.parse_word("xNew RoutingEvent received. Current role:", content))
 		{
-			self.agebracket = match agebracket.as_str() {
-				"Adult" => NodeAgebracket::Adult,
-				"Elder" => NodeAgebracket::Elder,
+			self.node_status = match node_status.as_str() {
+				"Connected" => NodeStatus::Connected,
+				"Stopped" => NodeStatus::Stopped,
 				_ => {
 					debug_log!(self.parser_output.as_str());
-					NodeAgebracket::Joining
+					NodeStatus::Connecting
 				}
 			};
-			if self.agebracket != NodeAgebracket::Unknown {
-				self.parser_output = format!("Node agebracket: {}", agebracket);
+			if self.node_status != NodeStatus::Started {
+				self.parser_output = format!("Node node_status: {}", node_status);
 			} else {
-				self.parser_output = format!("FAILED to parse agebracket in: {}", content);
+				self.parser_output = format!("FAILED to parse node_status in: {}", content);
 			}
 
 			if let Some(section_prefix) = self.parse_word("section prefix:", content) {
@@ -1011,14 +1040,14 @@ impl NodeMetrics {
 
 		if content.contains("Sending aggregated JoinRequest")
 		{
-			self.agebracket = NodeAgebracket::Joining;
-			self.parser_output = format!("Age-bracket updated to: Joining");
+			self.node_status = NodeStatus::Connecting;
+			self.parser_output = format!("Age-bracket updated to: Connecting");
 			return true;
 		}
 
 		if content.contains("Joined the network") {
-			self.agebracket = NodeAgebracket::Adult;
-			self.parser_output = format!("Age updated to: Adult");
+			self.node_status = NodeStatus::Connected;
+			self.parser_output = format!("Age updated to: Connected");
 
 			if let Some(node_name) = self.parse_word("➤", content) {
 				self.parser_output = format!("node name: {}", &node_name);
@@ -1029,8 +1058,8 @@ impl NodeMetrics {
 		}
 
 		if content.contains("Relocation: switching from") {
-			self.agebracket = NodeAgebracket::Adult;
-			self.parser_output = format!("Age updated to: Adult");
+			self.node_status = NodeStatus::Connected;
+			self.parser_output = format!("Age updated to: Connected");
 			if let Some(new_node_name) = self.parse_word("to", content) {
 				self.node_name = new_node_name;
 				self.parser_output = format!("New node name: {}", &self.node_name);
@@ -1040,8 +1069,8 @@ impl NodeMetrics {
 		}
 
 		if content.contains("PromotedToElder") {
-			self.agebracket = NodeAgebracket::Elder;
-			self.parser_output = format!("Age updated to: Elder");
+			self.node_status = NodeStatus::Stopped;
+			self.parser_output = format!("Age updated to: Stopped");
 			return true;
 		}
 

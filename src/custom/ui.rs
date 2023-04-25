@@ -82,23 +82,8 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	push_subheading(&mut items, &"Node".to_string());
 	push_metric(
 		&mut items,
-		&"Role".to_string(),
-		&monitor.metrics.agebracket_string(),
-	);
-	push_metric(
-		&mut items,
-		&"Age".to_string(),
-		&monitor.metrics.node_age.to_string()
-	);
-	push_metric(
-		&mut items,
-		&"Name".to_string(),
-		&monitor.metrics.node_name,
-	);
-	push_metric(
-		&mut items,
-		&"Section".to_string(),
-		&monitor.metrics.section_prefix,
+		&"Status".to_string(),
+		&monitor.metrics.node_status_string(),
 	);
 
 	push_subheading(&mut items, &"".to_string());
