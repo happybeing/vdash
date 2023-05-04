@@ -845,7 +845,7 @@ impl NodeMetrics {
 		if line.contains("Getting chunk") {
 			self.count_get(&entry_time);
 			return true;
-		} else if line.contains("Storing chunk") {
+		} else if line.contains("Putting data") {
 			self.count_put(&entry_time);
 			return true;
 		} else if line.contains("Editing Register success!") {
