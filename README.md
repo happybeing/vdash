@@ -94,12 +94,12 @@ For more information:
 ### Safe Node Setup
 **IMPORTANT:** Ignore this section until the Safe Network CLI has been restored to work with the changes being implemented to Safe Network code in 2023/Q2. For now, see **Using vdash With a Local Test Network** below.
 
-**IMPORTANT:** You must ensure the node logfile includes the telemetry information used by vdash by setting the logging level to 'trace' when you start your node (as in the example below). You control the node logging level by setting the environment variable `RUST_LOG`.
+**IMPORTANT:** You must ensure the node logfile includes the telemetry information used by vdash by setting the logging level to 'trace' when you start your node (as in the example below). You control the node logging level by setting the environment variable `SN_LOG`.
 
 ```sh
 killall safenode
 rm -f ~/.safe/node/local-test-network/
-RUST_LOG=safenode,safe safenode
+SN_LOG=all safenode
 ```
 To start a node using `safenode` you should check you are using the correct parameters for your system setup.
 
@@ -113,19 +113,19 @@ Note:
   deleting the `local-test-network` directory prevents you picking up statistics from previous logfiles. If you leave the logfile in place then `vdash` will waste time
   processing that, although you can skip that process using a command line option.
 
-- setting RUST_LOG ensures the logfiles contain the data which vdash needs, and
+- setting SN_LOG ensures the logfiles contain the data which vdash needs, and
   excludes some that gets in the way.
-- On Windows to set RUST_LOG environment variable:
+- On Windows to set SN_LOG environment variable:
 
 	Using Windows Command Line:
 	```
-	set RUST_LOG="sn_node=trace"
+	set SN_LOG="all"
 	safe node join
 	```
 
 	Using Windows PowerShell:
 	```
-	$env:RUST_LOG="sn_node=trace"
+	$env:SN_LOG="all"
 	safe node join
 	```
 
@@ -136,9 +136,9 @@ Note:
     ```sh
     rm -rf ~/.safe/node/local-test-network/
     cd safe_network
-    killall safenode || true && RUST_LOG=safenode,safe cargo run --bin testnet -- -b --interval 100
+    killall safenode || true && SN_LOG=all cargo run --bin testnet -- -b --interval 100
     ```
-    Windows: see "Note" immediately above for how to set RUST_LOG on Windows.
+    Windows: see "Note" immediately above for how to set SN_LOG on Windows.
 
 2. **Run vdash:** in a different terminal window, start `vdash` with:
     You can then run `vdash`, typically in a different terminal:
