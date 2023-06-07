@@ -658,19 +658,24 @@ pub struct NodeMetrics {
 	pub used_space: u64,
 	pub max_capacity: u64,
 
-	pub global_cpu: f32,
-	pub load_avg_1: f32,
-	pub load_avg_5: f32,
-	pub load_avg_15: f32,
+	pub system_cpu: f32,
+	pub system_memory: f32,
+	pub system_memory_used_mb: f32,
+	pub system_memory_usage_percent: f32,
 
-	pub memory_total: u64,
-	pub memory_free: u64,
-	pub swap_total: u64,
-	pub swap_free: u64,
+	pub interface_name: String,
+	pub bytes_received: u64,
+	pub bytes_transmitted: u64,
+	pub total_mb_received: f32,
+	pub total_mb_transmitted: f32,
 
-	pub node_memory: u64,
-	pub node_cpu:	f32,
-	pub node_cpu_max:	f32,
+	pub memory_used_mb: f32,
+	pub cpu_usage_percent:	f32,
+	pub cpu_usage_percent_max:	f32,
+	pub bytes_read: u64,
+	pub bytes_written: u64,
+	pub total_mb_read: f32,
+	pub total_mb_written: f32,
 
 	pub debug_logfile: Option<NamedTempFile>,
 	parser_output: String,
@@ -721,19 +726,24 @@ impl NodeMetrics {
 			max_capacity: 0,
 
 
-			global_cpu: 0.0,
-			load_avg_1: 0.0,
-			load_avg_5: 0.0,
-			load_avg_15: 0.0,
+			system_cpu: 0.0,
+			system_memory: 0.0,
+			system_memory_used_mb: 0.0,
+			system_memory_usage_percent: 0.0,
 
-			memory_total: 0,
-			memory_free: 0,
-			swap_total: 0,
-			swap_free: 0,
+			interface_name: String::from("unknown"),
+			bytes_received: 0,
+			bytes_transmitted: 0,
+			total_mb_received: 0.0,
+			total_mb_transmitted: 0.0,
 
-			node_memory: 0,
-			node_cpu: 0.0,
-			node_cpu_max: 0.0,
+			memory_used_mb: 0.0,
+			cpu_usage_percent: 0.0,
+			cpu_usage_percent_max: 0.0,
+			bytes_read: 0,
+			bytes_written: 0,
+			total_mb_read: 0.0,
+			total_mb_written: 0.0,
 
 			// Debug
 			debug_logfile: None,
@@ -890,30 +900,6 @@ impl NodeMetrics {
 
 		let &content = &line.as_str();
 
-		// System Load
-		if content.contains("log {system=System") {
-			let mut parser_output = String::from("System load:");
-			if let Some(global_cpu) = self.parse_float32("global CPU usage:", content) {
-				self.global_cpu = global_cpu;
-				parser_output = format!("{} gl_cpu: {}", &parser_output, global_cpu);
-			};
-			if let Some(load_avg_1) = self.parse_float32("one:", content) {
-				self.load_avg_1 = load_avg_1;
-				parser_output = format!("{} , LoadAvg one: {}", &parser_output, load_avg_1);
-			};
-			if let Some(load_avg_5) = self.parse_float32("five:", content) {
-				self.load_avg_5 = load_avg_5;
-				parser_output = format!("{} , five: {}", &parser_output, load_avg_5);
-			};
-			if let Some(load_avg_15) = self.parse_float32("fifteen:", content) {
-				self.load_avg_15 = load_avg_15;
-				parser_output = format!("{} , fifteen: {}", &parser_output, load_avg_15);
-			};
-
-			self.parser_output = parser_output;
-			return true;
-		}
-
 		// Node Status
 		if content.contains("Getting closest peers") {
 			self.node_status = NodeStatus::Connecting;
@@ -942,19 +928,77 @@ impl NodeMetrics {
 			return true;
 		}
 
-		// Node Resources
-		if content.contains("Node resource usage:") {
-			let mut parser_output = String::from("Node resources:");
-			if let Some(node_cpu) = self.parse_float32("cpu_usage:", content) {
-				self.node_cpu = node_cpu;
-				if node_cpu > self.node_cpu_max {
-					self.node_cpu_max = node_cpu;
-				}
-				parser_output = format!("{}  cpu: {}, cpu_max {}", &parser_output, node_cpu, self.node_cpu_max);
+		// Metrics
+		if content.contains("sn_logging::metrics") {
+			// System
+			let mut parser_output = String::from("system_cpu_usage_percent:");
+			if let Some(system_cpu) = self.parse_float32("system_cpu_usage_percent\":", content) {
+				self.system_cpu = system_cpu;
+				parser_output = format!("{} gl_cpu: {}", &parser_output, system_cpu);
 			};
-			if let Some(node_memory) = self.parse_u64("memory:", content) {
-				self.node_memory = node_memory;
-				parser_output = format!("{} , memory: {}", &parser_output, node_memory);
+			if let Some(system_memory) = self.parse_float32("system_total_memory_mb\":", content) {
+				self.system_memory = system_memory;
+				parser_output = format!("{} , System Memory: {}", &parser_output, system_memory);
+			};
+			if let Some(system_memory_used_mb) = self.parse_float32("system_memory_used_mb\":", content) {
+				self.system_memory_used_mb = system_memory_used_mb;
+				parser_output = format!("{} , System Memory Use (MB): {}", &parser_output, system_memory_used_mb);
+			};
+			if let Some(system_memory_usage_percent) = self.parse_float32("system_memory_usage_percent\":", content) {
+				self.system_memory_usage_percent = system_memory_usage_percent;
+				parser_output = format!("{} , System Memory Use (%): {}", &parser_output, system_memory_usage_percent);
+			};
+
+			// Networking
+			if let Some(interface_name) = self.parse_word("interface_name\":", content) {
+				self.interface_name = String::from(interface_name.clone());
+				parser_output = format!("{} , interface_name: {}", &parser_output, interface_name);
+			};
+			if let Some(bytes_received) = self.parse_u64("bytes_received\":", content) {
+				self.bytes_received = bytes_received;
+				parser_output = format!("{} , bytes_received: {}", &parser_output, bytes_received);
+			};
+			if let Some(bytes_transmitted) = self.parse_u64("bytes_transmitted\":", content) {
+				self.bytes_transmitted = bytes_transmitted;
+				parser_output = format!("{} , bytes_transmitted: {}", &parser_output, bytes_transmitted);
+			};
+			if let Some(total_mb_received) = self.parse_float32("total_mb_received\":", content) {
+				self.total_mb_received = total_mb_received;
+				parser_output = format!("{} , total_mb_received: {}", &parser_output, total_mb_received);
+			};
+			if let Some(total_mb_transmitted) = self.parse_float32("total_mb_transmitted\":", content) {
+				self.total_mb_transmitted = total_mb_transmitted;
+				parser_output = format!("{} , total_mb_transmitted: {}", &parser_output, total_mb_transmitted);
+			};
+
+			// Node Resources
+			if let Some(cpu_usage_percent) = self.parse_float32("\"cpu_usage_percent\":", content) {	// TODO prefix char for cpu_usage_percent
+
+				self.cpu_usage_percent = cpu_usage_percent;
+				if cpu_usage_percent > self.cpu_usage_percent_max {
+					self.cpu_usage_percent_max = cpu_usage_percent;
+				}
+				parser_output = format!("{}  cpu: {}, cpu_max {}", &parser_output, cpu_usage_percent, self.cpu_usage_percent_max);
+			};
+			if let Some(memory_used_mb) = self.parse_float32("\"memory_used_mb\":", content) {	// TODO prefix char for memory_used_mb
+				self.memory_used_mb = memory_used_mb;
+				parser_output = format!("{} , memory: {}", &parser_output, memory_used_mb);
+			};
+			if let Some(bytes_read) = self.parse_u64("bytes_read\":", content) {
+				self.bytes_read = bytes_read;
+				parser_output = format!("{} , bytes_read: {}", &parser_output, bytes_read);
+			};
+			if let Some(bytes_written) = self.parse_u64("bytes_written\":", content) {
+				self.bytes_written = bytes_written;
+				parser_output = format!("{} , bytes_written: {}", &parser_output, bytes_written);
+			};
+			if let Some(total_mb_read) = self.parse_float32("total_mb_read\":", content) {
+				self.total_mb_read = total_mb_read;
+				parser_output = format!("{} , total_mb_read: {}", &parser_output, total_mb_read);
+			};
+			if let Some(total_mb_written) = self.parse_float32("total_mb_written\":", content) {
+				self.total_mb_written = total_mb_written;
+				parser_output = format!("{} , total_mb_written: {}", &parser_output, total_mb_written);
 			};
 
 			self.parser_output = parser_output;

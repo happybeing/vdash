@@ -198,7 +198,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		.split(rows[0]);
 
 	let mut label_items = Vec::<ListItem>::new();
-	push_storage_subheading(&mut label_items, &"Chunks".to_string());
+	push_storage_subheading(&mut label_items, &"Storage".to_string());
 	let mut gauges_column = columns[1];
 	gauges_column.height = 1;
 
@@ -221,9 +221,6 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		.ratio(ratio(monitor.metrics.used_space, monitor.metrics.max_capacity));
 	f.render_widget(gauge, gauges[1]);
 
-	push_storage_subheading(&mut label_items, &"".to_string());
-	push_storage_subheading(&mut label_items, &"Device".to_string());
-
 	push_storage_metric(
 		&mut label_items,
 		&"Space Avail".to_string(),
@@ -234,6 +231,29 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		&mut label_items,
 		&"Space Free".to_string(),
 		&device_limit_string
+	);
+
+	// push_storage_subheading(&mut label_items, &"".to_string());
+	push_storage_subheading(&mut label_items, &"Process".to_string());
+
+	let bytes_read_text = format!("{}",
+		monitor.metrics.bytes_read,
+	);
+
+	push_storage_metric(
+		&mut label_items,
+		&"Bytes Read".to_string(),
+		&bytes_read_text
+	);
+
+	let bytes_written_text = format!("{}",
+		monitor.metrics.bytes_written,
+	);
+
+	push_storage_metric(
+		&mut label_items,
+		&"Bytes Written".to_string(),
+		&bytes_written_text
 	);
 
 	// Render labels
@@ -247,23 +267,23 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 	let mut text_items = Vec::<ListItem>::new();
 	push_storage_subheading(&mut text_items, &"Load".to_string());
 
-	let node_text = format!("{:<13}: CPU {} (MAX {}) Memory {}",
+	let node_text = format!("{:<13}: CPU {:5.2} (MAX {:2.2}) MEM {:.0}MB",
 		"Node",
-		monitor.metrics.node_cpu,
-		monitor.metrics.node_cpu_max,
-		monitor.metrics.node_memory
+		monitor.metrics.cpu_usage_percent,
+		monitor.metrics.cpu_usage_percent_max,
+		monitor.metrics.memory_used_mb,
 	);
 	text_items.push(
 		ListItem::new(vec![Spans::from(node_text.clone())])
 			.style(Style::default().fg(Color::Blue)),
 	);
 
-	let system_text = format!("{:<13}: CPU {} LoadAvg {} {} {}",
+	let system_text = format!("{:<13}: CPU {:5.2} MEM {:.0}/{:.0}MB {:.1}%",
 		"System",
-		monitor.metrics.global_cpu,
-		monitor.metrics.load_avg_1,
-		monitor.metrics.load_avg_5,
-		monitor.metrics.load_avg_15,
+		monitor.metrics.system_cpu,
+		monitor.metrics.system_memory_used_mb,
+		monitor.metrics.system_memory,
+		monitor.metrics.system_memory_usage_percent,
 	);
 	text_items.push(
 		ListItem::new(vec![Spans::from(system_text.clone())])
