@@ -177,14 +177,14 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		.margin(1)
 		.constraints(
 			[
-				Constraint::Length(7),
-				Constraint::Min(3),
+				Constraint::Length(2),	// Rows for storage gauges
+				Constraint::Min(8),		// Rows for other metrics
 			]
 			.as_ref(),
 		)
 		.split(area);
 
-	// Two columns for label+value | bar
+	// Storage: two columns for label+value | bar
 	let columns = Layout::default()
 		.direction(Direction::Horizontal)
 		.margin(0)
@@ -197,8 +197,8 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		)
 		.split(rows[0]);
 
-	let mut label_items = Vec::<ListItem>::new();
-	push_storage_subheading(&mut label_items, &"Storage".to_string());
+	let mut storage_items = Vec::<ListItem>::new();
+	push_storage_subheading(&mut storage_items, &"Storage".to_string());
 	let mut gauges_column = columns[1];
 	gauges_column.height = 1;
 
@@ -210,7 +210,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		.split(columns[1]);
 
 	push_storage_metric(
-		&mut label_items,
+		&mut storage_items,
 		&"Chunk storage".to_string(),
 		&format_size(monitor.metrics.used_space, 1)
 	);
@@ -221,53 +221,76 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		.ratio(ratio(monitor.metrics.used_space, monitor.metrics.max_capacity));
 	f.render_widget(gauge, gauges[1]);
 
-	push_storage_metric(
-		&mut label_items,
-		&"Space Avail".to_string(),
-		&max_string
-	);
+	// TODO lobby to re-instate in node logfile
+	// push_storage_metric(
+	// 	&mut storage_items,
+	// 	&"Space Avail".to_string(),
+	// 	&max_string
+	// );
 
-	push_storage_metric(
-		&mut label_items,
-		&"Space Free".to_string(),
-		&device_limit_string
-	);
+	// push_storage_metric(
+	// 	&mut storage_items,
+	// 	&"Space Free".to_string(),
+	// 	&device_limit_string
+	// );
 
-	// push_storage_subheading(&mut label_items, &"".to_string());
-	push_storage_subheading(&mut label_items, &"Process".to_string());
-
-	let bytes_read_text = format!("{}",
-		monitor.metrics.bytes_read,
-	);
-
-	push_storage_metric(
-		&mut label_items,
-		&"Bytes Read".to_string(),
-		&bytes_read_text
-	);
-
-	let bytes_written_text = format!("{}",
-		monitor.metrics.bytes_written,
-	);
-
-	push_storage_metric(
-		&mut label_items,
-		&"Bytes Written".to_string(),
-		&bytes_written_text
-	);
-
-	// Render labels
-	let labels_widget = List::new(label_items).block(
+	let storage_text_widget = List::new(storage_items).block(
 		Block::default()
 			.borders(Borders::NONE)
 	);
-	f.render_widget(labels_widget, columns[0]);
-
+	f.render_widget(storage_text_widget, columns[0]);
 
 	let mut text_items = Vec::<ListItem>::new();
+	// push_storage_subheading(&mut text_items, &"".to_string());
+	push_storage_subheading(&mut text_items, &"Network".to_string());
+
+	const UPDATE_INTERVAL: u64 = 5;	// Match value in s from maidsafe/safe_network/sn_logging/metrics.rs
+
+	let current_rx_text = format!("{:9} B/s",
+		monitor.metrics.bytes_written / UPDATE_INTERVAL,
+	);
+
+	push_storage_metric(
+		&mut text_items,
+		&"Current Rx".to_string(),
+		&current_rx_text
+	);
+
+	let current_tx_text = format!("{:9} B/s",
+		monitor.metrics.bytes_read / UPDATE_INTERVAL,
+	);
+
+	push_storage_metric(
+		&mut text_items,
+		&"Current Tx".to_string(),
+		&current_tx_text
+	);
+
+	let total_rx_text = format!("{:<13}: {:.0} / {:.0} MB",
+		"Total Rx",
+		monitor.metrics.total_mb_read,
+		monitor.metrics.total_mb_received,
+	);
+
+	text_items.push(
+		ListItem::new(vec![Spans::from(total_rx_text.clone())])
+			.style(Style::default().fg(Color::Blue)),
+	);
+
+	let total_tx_text = format!("{:<13}: {:.0} / {:.0} MB",
+		"Total Tx",
+		monitor.metrics.total_mb_written,
+		monitor.metrics.total_mb_transmitted,
+	);
+
+	text_items.push(
+		ListItem::new(vec![Spans::from(total_tx_text.clone())])
+			.style(Style::default().fg(Color::Blue)),
+	);
+
 	push_storage_subheading(&mut text_items, &"Load".to_string());
 
-	let node_text = format!("{:<13}: CPU {:5.2} (MAX {:2.2}) MEM {:.0}MB",
+	let node_text = format!("{:<13}: CPU {:8.2} (MAX {:2.2}) MEM {:.0}MB",
 		"Node",
 		monitor.metrics.cpu_usage_percent,
 		monitor.metrics.cpu_usage_percent_max,
@@ -278,7 +301,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 			.style(Style::default().fg(Color::Blue)),
 	);
 
-	let system_text = format!("{:<13}: CPU {:5.2} MEM {:.0}/{:.0}MB {:.1}%",
+	let system_text = format!("{:<13}: CPU {:8.2} MEM {:.0} / {:.0} MB {:.1}%",
 		"System",
 		monitor.metrics.system_cpu,
 		monitor.metrics.system_memory_used_mb,
@@ -289,7 +312,8 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		ListItem::new(vec![Spans::from(system_text.clone())])
 			.style(Style::default().fg(Color::Blue)),
 	);
-	// Render labels
+
+	// Render text
 	let text_widget = List::new(text_items).block(
 		Block::default()
 			.borders(Borders::NONE)

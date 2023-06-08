@@ -1024,7 +1024,7 @@ impl NodeMetrics {
 		if let Some(position) = content.find(prefix) {
 			let word: Vec<&str> = content[position + prefix.len()..]
 				.trim()
-				.splitn(2, |c| c == ' ' || c == ',')
+				.splitn(2, |c| c == ' ' || c == ',' || c== '}')
 				.collect();
 			if word.len() > 0 {
 				match word[0].parse::<usize>() {
@@ -1040,7 +1040,7 @@ impl NodeMetrics {
 		if let Some(position) = content.find(prefix) {
 			let word: Vec<&str> = content[position + prefix.len()..]
 				.trim()
-				.splitn(2, |c| c == ' ' || c == ',')
+				.splitn(2, |c| c == ' ' || c == ',' || c== '}')
 				.collect();
 			if word.len() > 0 {
 				match word[0].parse::<u64>() {
@@ -1056,7 +1056,7 @@ impl NodeMetrics {
 		if let Some(position) = content.find(prefix) {
 			let word: Vec<&str> = content[position + prefix.len()..]
 				.trim()
-				.splitn(2, |c| c == ' ' || c == ',')
+				.splitn(2, |c| c == ' ' || c == ',' || c== '}')
 				.collect();
 			if word.len() > 0 {
 				match word[0].parse::<f32>() {
@@ -1072,7 +1072,7 @@ impl NodeMetrics {
 		if let Some(start) = content.find(prefix) {
 			let word: Vec<&str> = content[start + prefix.len()..]
 				.trim_start()
-				.splitn(2, |c| c == ' ' || c == ',')
+				.splitn(2, |c| c == ' ' || c == ',' || c== '}')
 				.collect();
 			if word.len() > 0 {
 				return Some(word[0].to_string());
