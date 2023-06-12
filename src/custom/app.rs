@@ -852,15 +852,18 @@ impl NodeMetrics {
 
 	///! TODO: Review and update these tests
 	fn parse_gets_and_puts(&mut self, line: &String, entry_time: &DateTime<Utc>) -> bool {
-		if line.contains("Getting chunk") {
+		if line.contains("Retrieved record from disk") {
 			self.count_get(&entry_time);
+			self.node_status = NodeStatus::Connected;
 			return true;
-		} else if line.contains("Putting data") {
+		} else if line.contains("Wrote record to disk") {
 			self.count_put(&entry_time);
+			self.node_status = NodeStatus::Connected;
 			return true;
 		} else if line.contains("Editing Register success!") {
 			// TODO update when Register ops are TRACE/INFO (currently DEBUG in )
 			self.count_put(&entry_time);
+			self.node_status = NodeStatus::Connected;
 			return true;
 		}
 		return false;
@@ -908,7 +911,7 @@ impl NodeMetrics {
 		}
 
 		if content.contains("Connected to the Network") {
-			self.node_status = NodeStatus::Connected;
+			self.node_status = NodeStatus::Connected; // Also set by some other matches
 			self.parser_output = String::from("Node status: Connected");
 			return true;
 		}
