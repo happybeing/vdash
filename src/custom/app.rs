@@ -643,7 +643,6 @@ pub struct NodeMetrics {
 	pub running_version: Option<String>,
 	pub category_count: HashMap<String, usize>,
 	pub activity_history: Vec<ActivityEntry>,
-	pub log_history: Vec<LogEntry>,
 
 	pub puts_timeline: TimelineSet,
 	pub gets_timeline: TimelineSet,
@@ -702,7 +701,6 @@ impl NodeMetrics {
 
 			// Logfile entries
 			activity_history: Vec::<ActivityEntry>::new(),
-			log_history: Vec::<LogEntry>::new(),
 			entry_metadata: None,
 
 			// Timelines / Sparklines
@@ -770,7 +768,6 @@ impl NodeMetrics {
 	}
 
 	///! Process a line from a SAFE Node logfile.
-	///! May add a LogMeta to the NodeMetrics::log_history vector.
 	///! Use a created LogMeta to update metrics.
 	pub fn gather_metrics(&mut self, line: &str) -> Result<(), std::io::Error> {
 		// let mut parser_result = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
@@ -790,8 +787,6 @@ impl NodeMetrics {
 		self.update_timelines(&entry_time);
 		self.parser_output = entry_metadata.parser_output.clone();
 		self.process_logfile_entry(&entry.logstring, &entry_metadata); // May overwrite self.parser_output
-
-		self.log_history.push(entry); // TODO Trim log_history
 
 		// --debug-dashboard - prints parser results for a single logfile
 		// to a temp logfile which is displayed in the adjacent window.
