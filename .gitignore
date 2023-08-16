@@ -1,6 +1,8 @@
 /target
+/heaptrack
 src/main-tui.rs
 jotter.txt
 test.log
 terminalizer/
 junk*/
+
