@@ -87,6 +87,17 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	);
 
 	push_subheading(&mut items, &"".to_string());
+	let chunk_fee_txt = format!("{} ({}-{}) nSNT/MB",
+		monitor.metrics.verification_fee.to_string(),
+		monitor.metrics.verification_fee_min.to_string(),
+		monitor.metrics.verification_fee_max.to_string(),
+	);
+
+	push_metric(&mut items,
+	&"Chunk fee".to_string(),
+	&chunk_fee_txt);
+
+	push_subheading(&mut items, &"".to_string());
 	push_metric(
 		&mut items,
 		&"GETS".to_string(),

@@ -654,6 +654,10 @@ pub struct NodeMetrics {
 	pub activity_puts: u64,
 	pub activity_errors: u64,
 
+	pub verification_fee: u64,
+	pub verification_fee_min: u64,
+	pub verification_fee_max: u64,
+
 	pub used_space: u64,
 	pub max_capacity: u64,
 
@@ -714,6 +718,11 @@ impl NodeMetrics {
 			activity_puts: 0,
 			activity_errors: 0,
 
+			// Storage Payment
+			verification_fee: 0,
+			verification_fee_min: 0,
+			verification_fee_max: 0,
+
 			// State (node)
 			node_status: NodeStatus::Stopped,
 
@@ -765,6 +774,9 @@ impl NodeMetrics {
 		self.activity_gets = 0;
 		self.activity_puts = 0;
 		self.activity_errors = 0;
+		self.verification_fee = 0;
+		self.verification_fee_min = 0;
+		self.verification_fee_max = 0;
 	}
 
 	///! Process a line from a SAFE Node logfile.
@@ -1003,6 +1015,22 @@ impl NodeMetrics {
 			return true;
 		}
 
+		// Storage Payment
+		if content.contains("Verification fee") {
+			if let Some(verification_fee) = self.parse_u64("Token(", content) {
+				self.verification_fee = verification_fee;
+				if verification_fee > self.verification_fee_max {
+					self.verification_fee_max = verification_fee;
+				}
+				if self.verification_fee_min == 0 || verification_fee < self.verification_fee_min {
+					self.verification_fee_min = verification_fee;
+				}
+
+				self.parser_output = format!("Verification fee: {}", verification_fee);
+			};
+			return true;
+		}
+
 		// Overall storage use / size
 		if let Some(used_space) = self.parse_u64("Used space:", content) {
 			self.used_space = used_space;
@@ -1038,7 +1066,7 @@ impl NodeMetrics {
 		if let Some(position) = content.find(prefix) {
 			let word: Vec<&str> = content[position + prefix.len()..]
 				.trim()
-				.splitn(2, |c| c == ' ' || c == ',' || c== '}')
+				.splitn(2, |c| c == ' ' || c == ',' || c== '}' || c== ')')
 				.collect();
 			if word.len() > 0 {
 				match word[0].parse::<u64>() {
