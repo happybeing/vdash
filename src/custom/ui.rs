@@ -147,7 +147,7 @@ fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	let used_string = format_size(monitor.metrics.used_space, 1);
 	let max_string = format_size(monitor.metrics.max_capacity, 1);
-	let device_limit_string = match &monitor.chunk_store_fsstats {
+	// let device_limit_string = match &monitor.chunk_store_fsstats {
 		Some(fsstats) => {
 			let chunk_store_limit = fsstats.free_space();
 			format_size(chunk_store_limit, 1).to_string()
