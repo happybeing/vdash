@@ -863,7 +863,7 @@ impl NodeMetrics {
 			self.count_get(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
-		} else if line.contains("Wrote record to disk") {
+		} else if line.contains("Wrote record") {
 			self.count_put(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
