@@ -88,9 +88,9 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 
 	push_subheading(&mut items, &"".to_string());
 	let chunk_fee_txt = format!("{} ({}-{}) nSNT/MB",
-		monitor.metrics.verification_fee.to_string(),
-		monitor.metrics.verification_fee_min.to_string(),
-		monitor.metrics.verification_fee_max.to_string(),
+		monitor.metrics.storage_cost.to_string(),
+		monitor.metrics.storage_cost_min.to_string(),
+		monitor.metrics.storage_cost_max.to_string(),
 	);
 
 	push_metric(&mut items,
@@ -421,7 +421,6 @@ fn draw_timeline<B: Backend>(
 
 		use crate::custom::timelines::MinMeanMax;
 
-// TODO create a colour index for timelines in app_timelines.rs and use in draw_sparkline() below
 // TODO add new keyboard cmds (m,M,t,T) to README and vdash topic OP
 		let mut index = dash_state.top_timeline_index();
 		for i in 1 ..= NUM_TIMELINES_VISIBLE {
@@ -429,11 +428,6 @@ fn draw_timeline<B: Backend>(
 			if index >= monitor.metrics.app_timelines.get_num_timelines() {
 				index = 1;
 			}
-
-			// TODO Rework how to get correct timeline and buckets dep on app.mmm_ui_mode
-
-			// TODO get timeline and use to generate correct title from timeline name and mmm status
-			// TODO also get buckets from timeline instead of app_timelines?
 
 			if let Some(timeline) = monitor.metrics.app_timelines.get_timeline_by_index(index) {
 				let mmm_text = if timeline.is_mmm {
@@ -445,8 +439,8 @@ fn draw_timeline<B: Backend>(
 				} else { "" };
 
 				let display_name = format!("{}{}", timeline.name, mmm_text);
-
 				if let Some(buckets) = timeline.get_buckets(active_timescale_name, Some(mmm_ui_mode)) {
+					// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
 					draw_sparkline(f, chunks[i-1], &buckets, &display_name, timeline.colour);
 				};
 			}

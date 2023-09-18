@@ -33,6 +33,7 @@ macro_rules! debug_log {
 		}
 	};
 }
+pub use crate::debug_log;
 
 pub unsafe fn debug_log(message: &str) {
 	// --debug-window - prints parser results for a single logfile
@@ -537,9 +538,9 @@ pub struct NodeMetrics {
 	pub activity_puts: u64,
 	pub activity_errors: u64,
 
-	pub verification_fee: u64,
-	pub verification_fee_min: u64,
-	pub verification_fee_max: u64,
+	pub storage_cost: u64,
+	pub storage_cost_min: u64,
+	pub storage_cost_max: u64,
 
 	pub used_space: u64,
 	pub max_capacity: u64,
@@ -589,9 +590,9 @@ impl NodeMetrics {
 			activity_errors: 0,
 
 			// Storage Payment
-			verification_fee: 0,
-			verification_fee_min: 0,
-			verification_fee_max: 0,
+			storage_cost: 0,
+			storage_cost_min: 0,
+			storage_cost_max: 0,
 
 			// State (node)
 			node_status: NodeStatus::Stopped,
@@ -644,9 +645,9 @@ impl NodeMetrics {
 		self.activity_gets = 0;
 		self.activity_puts = 0;
 		self.activity_errors = 0;
-		self.verification_fee = 0;
-		self.verification_fee_min = 0;
-		self.verification_fee_max = 0;
+		self.storage_cost = 0;
+		self.storage_cost_min = 0;
+		self.storage_cost_max = 0;
 	}
 
 	///! Process a line from a SAFE Node logfile.
@@ -714,13 +715,13 @@ impl NodeMetrics {
 			&line,
 			"Running as Node: SendToSection [ msg: MsgEnvelope { message: QueryResponse { response: QueryResponse::",
 		)
-		|| self.parse_gets_and_puts(&line, &entry_metadata.time)
+		|| self.parse_timed_data(&line, &entry_metadata.time)
 		|| self.parse_states(&line, &entry_metadata)
 		|| self.parse_start(&line, &entry_metadata);
 	}
 
 	///! TODO: Review and update these tests
-	fn parse_gets_and_puts(&mut self, line: &String, entry_time: &DateTime<Utc>) -> bool {
+	fn parse_timed_data(&mut self, line: &String, entry_time: &DateTime<Utc>) -> bool {
 		if line.contains("Retrieved record from disk") {
 			self.count_get(&entry_time);
 			self.node_status = NodeStatus::Connected;
@@ -734,7 +735,15 @@ impl NodeMetrics {
 			self.count_put(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
+		} else if line.contains("Cost is now") {
+			if let Some(storage_cost) = self.parse_u64("Cost is now ", line) {
+				self.count_storage_cost(entry_time, storage_cost);
+				self.parser_output = format!("Storage cost: {}", storage_cost);
+			};
+			return true;
 		}
+
+
 		return false;
 	}
 
@@ -877,22 +886,6 @@ impl NodeMetrics {
 			return true;
 		}
 
-		// Storage Payment
-		if content.contains("Verification fee") {
-			if let Some(verification_fee) = self.parse_u64("Token(", content) {
-				self.verification_fee = verification_fee;
-				if verification_fee > self.verification_fee_max {
-					self.verification_fee_max = verification_fee;
-				}
-				if self.verification_fee_min == 0 || verification_fee < self.verification_fee_min {
-					self.verification_fee_min = verification_fee;
-				}
-
-				self.parser_output = format!("Verification fee: {}", verification_fee);
-			};
-			return true;
-		}
-
 		// Overall storage use / size
 		if let Some(used_space) = self.parse_u64("Used space:", content) {
 			self.used_space = used_space;
@@ -989,6 +982,20 @@ impl NodeMetrics {
 		self.activity_errors += 1;
 		if let Some(timeline) = self.app_timelines.get_timeline_by_key(ERRORS_TIMELINE_KEY) {
 			timeline.increment_value(time);
+		}
+	}
+
+	fn count_storage_cost(&mut self, time: &DateTime<Utc>, storage_cost: u64) {
+		self.storage_cost = storage_cost;
+		if storage_cost > self.storage_cost_max {
+			self.storage_cost_max = storage_cost;
+		}
+		if self.storage_cost_min == 0 || storage_cost < self.storage_cost_min {
+			self.storage_cost_min = storage_cost;
+		}
+
+		if let Some(timeline) = self.app_timelines.get_timeline_by_key(STORAGE_FEE_TIMELINE_KEY) {
+			timeline.sample_value(time, storage_cost);
 		}
 	}
 

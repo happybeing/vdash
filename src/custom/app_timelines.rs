@@ -20,18 +20,18 @@ lazy_static::lazy_static! {
 /// keys (used to access timelines)
 pub const GETS_TIMELINE_KEY: &str = "gets";
 pub const PUTS_TIMELINE_KEY: &str = "puts";
-pub const ERRORS_TIMELINE_KEY: &str = "errors";
 pub const STORAGE_FEE_TIMELINE_KEY: &str = "storage";
 pub const EARNINGS_TIMELINE_KEY: &str = "earnings";
+pub const ERRORS_TIMELINE_KEY: &str = "errors";
 
 /// Defines the Timelines available for display
-pub const APP_TIMELINES: [(&str, &str, bool, Color); 5] = [
+pub const APP_TIMELINES: [(&str, &str, bool, Color); 4] = [
 //  (key, UI name, is_mmm)
     (GETS_TIMELINE_KEY, "GETS", false, Color::Green),
     (PUTS_TIMELINE_KEY, "PUTS", false, Color::Yellow),
-    (ERRORS_TIMELINE_KEY, "ERRORS", false, Color::Red),
     (STORAGE_FEE_TIMELINE_KEY, "Storage Fee", true, Color::LightBlue),
-    (EARNINGS_TIMELINE_KEY, "Earnings", false, Color::LightCyan),
+    // (EARNINGS_TIMELINE_KEY, "Earnings", false, Color::LightCyan),
+    (ERRORS_TIMELINE_KEY, "ERRORS", false, Color::Red),
 ];
 
 /// Holds the Timeline structs for a node, as used by this app

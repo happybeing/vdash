@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Duration, Utc};
 use tui::style::Color;
 
+use crate::custom::app::debug_log;
 
 ///! Maintains one or more 'marching bucket' histories for
 ///! a given metric, each with its own duration and granularity.
@@ -57,9 +58,9 @@ impl Timeline {
 		&self.name
 	}
 
-	pub fn add_bucket_set(&mut self, name: &'static str, duration: Duration, max_buckets: usize) {
+	pub fn add_bucket_set(&mut self, name: &'static str, duration: Duration, num_buckets: usize) {
 		self.buckets
-			.insert(name, Buckets::new(duration, max_buckets, self.is_mmm));
+			.insert(name, Buckets::new(duration, num_buckets, self.is_mmm));
 	}
 
 	pub fn get_bucket_set(&mut self, timescale_name: &str) -> Option<&mut Buckets> {
@@ -93,14 +94,22 @@ impl Timeline {
 	}
 
 	pub fn increment_value(&mut self, time: &DateTime<Utc>) {
-		self.add_value(time, 1);
+		self.update_value(time, 1, true);
 	}
 
-	pub fn add_value(&mut self, time: &DateTime<Utc>, value: u64) {
-		// debug_log!("increment_value()");
+	pub fn accumulate_value(&mut self, time: &DateTime<Utc>, value: u64) {
+		self.update_value(time, value, true);
+	}
+
+	pub fn sample_value(&mut self, time: &DateTime<Utc>, value: u64) {
+		self.update_value(time, value, false);
+	}
+
+	fn update_value(&mut self, time: &DateTime<Utc>, value: u64, is_cumulative: bool) {
+		debug_log!("update_value()");
 		for (_name, bs) in self.buckets.iter_mut() {
 			// debug_log!(format!("name       : {}", _name).as_str());
-			let mut index = Some(bs.buckets.len() - 1);
+			let mut index = Some(bs.num_buckets() - 1);
 			// debug_log!(format!("time       : {}", time).as_str());
 			if let Some(bucket_time) = bs.bucket_time {
 			// debug_log!(format!("bucket_time: {}", bucket_time).as_str());
@@ -111,21 +120,24 @@ impl Timeline {
 					let bucket_duration = bs.bucket_duration.num_nanoseconds();
 					if time_difference.and(bucket_duration).is_some() {
 						let buckets_behind = time_difference.unwrap() / bucket_duration.unwrap();
-						if buckets_behind as usize >= bs.buckets.len() {
-							// debug_log!(format!("increment DISCARDED buckets_behind: {}", buckets_behind).as_str());
+						if buckets_behind as usize >= bs.num_buckets() {
+							debug_log!(format!("increment DISCARDED buckets_behind: {}", buckets_behind).as_str());
 							index = None;
 						} else {
 							// debug_log!(format!("increment INCLUDED buckets_behind: {}", buckets_behind).as_str());
-							index = Some(bs.buckets.len() - 1 - buckets_behind as usize);
+							if bs.num_buckets() > 1 {
+								index = Some(bs.num_buckets() - 1 - buckets_behind as usize);
+							}
 						}
 					}
 				}
 			}
 			if let Some(index) = index {
 				// debug_log!(format!("increment index: {}", index).as_str());
-				bs.bucket_add_value(index, value);
+				bs.bucket_update_value(index, value, is_cumulative);
 			}
 		}
+		debug_log!("update_value() DONE");
 	}
 }
 
@@ -137,7 +149,7 @@ pub struct Buckets {
 	pub bucket_time: Option<DateTime<Utc>>,
 	pub total_duration: Duration,
 	pub bucket_duration: Duration,
-	pub max_buckets: usize,
+	pub num_buckets: usize,
 	pub is_mmm: bool,
 
 	// if !is_mmm we only use buckets
@@ -154,14 +166,14 @@ pub struct Buckets {
 }
 
 impl Buckets {
-	pub fn new(bucket_duration: Duration, max_buckets: usize, is_mmm: bool) -> Buckets {
-		let value_buckets_size =  if is_mmm { 0 } else { max_buckets };
-		let mmm_buckets_size =  if is_mmm { max_buckets } else { 0 };
+	pub fn new(bucket_duration: Duration, num_buckets: usize, is_mmm: bool) -> Buckets {
+		let value_buckets_size =  if is_mmm { 1 } else { num_buckets };
+		let mmm_buckets_size =  if is_mmm { num_buckets } else { 1 };
 
 		return Buckets {
 			bucket_duration,
-			max_buckets,
-			total_duration: bucket_duration * max_buckets as i32,
+			num_buckets,
+			total_duration: bucket_duration * num_buckets as i32,
 
 			bucket_time: None,
 
@@ -180,6 +192,7 @@ impl Buckets {
 
 	/// Update all buckets with current time
 	pub fn update_current_time(&mut self, new_time: &DateTime<Utc>) {
+		// debug_log!("update_current_time()");
 		if let Some(mut bucket_time) = self.bucket_time {
 			let mut end_time = bucket_time + self.bucket_duration;
 			// debug_log!(format!("end_time       : {}", end_time).as_str());
@@ -200,31 +213,35 @@ impl Buckets {
 							&mut self.buckets_max].iter_mut() {
 
 						buckets.push(0);
-						if buckets.len() > self.max_buckets {
+						if buckets.len() > self.num_buckets {
 							buckets.remove(0);
 						}
-																}
-					self.buckets_need_init.push(1);
-					if self.buckets_need_init.len() > self.max_buckets {
-						self.buckets_need_init.remove(0);
 					}
 
+					self.buckets_need_init.push(1);
+					if self.buckets_need_init.len() > self.num_buckets {
+						self.buckets_need_init.remove(0);
+					}
 				} else  {
 					self.buckets.push(0);
-					if self.buckets.len() > self.max_buckets {
+					if self.buckets.len() > self.num_buckets {
 						self.buckets.remove(0);
 					}
 				}
 			}
-			} else {
+		} else {
 			self.bucket_time = Some(*new_time);
 		}
 
 	}
 
-	pub fn bucket_add_value(&mut self, index: usize, value: u64) {
+	pub fn bucket_update_value(&mut self, index: usize, value: u64, is_cumulative: bool) {
+		debug_log!(format!("bucket_update_value(index:{}, value:{}, is_cum:{}) is_mmm:{}", index, value, is_cumulative, self.is_mmm).as_str());
 		if self.is_mmm {
+			// debug_log!(format!("is_mmm: bucket_update_value(index:{}, value:{}, is_cum:{})", index, value, is_cumulative).as_str());
 			if self.buckets_need_init[index] == 1  {
+				debug_log!("is_mmm: doing init");
+
 				self.buckets_need_init[index] = 0;
 
 				self.buckets_count[index] = 0;
@@ -239,10 +256,21 @@ impl Buckets {
 
 			if value < self.buckets_min[index] { self.buckets_min[index] = value }
 			if value > self.buckets_max[index] { self.buckets_max[index] = value }
+
+			// self.buckets_min[last] = 10;
+			// self.buckets_mean[last] = 20;
+			// self.buckets_max[last] = 30;
 		} else {
-			self.buckets[index] += value;
+			if is_cumulative {
+				self.buckets[index] += value;
+			} else {
+				self.buckets[index] = value;
+			}
+
 		}
 	}
+
+	pub fn num_buckets(&self) -> usize { return self.num_buckets; }
 
 	pub fn buckets(&self, mmm_ui_mode: Option<&MinMeanMax>) -> &Vec<u64> {
 		if self.is_mmm {
