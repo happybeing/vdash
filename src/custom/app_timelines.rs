@@ -29,7 +29,7 @@ pub const APP_TIMELINES: [(&str, &str, bool, Color); 4] = [
 //  (key, UI name, is_mmm)
     (GETS_TIMELINE_KEY, "GETS", false, Color::Green),
     (PUTS_TIMELINE_KEY, "PUTS", false, Color::Yellow),
-    (STORAGE_FEE_TIMELINE_KEY, "Storage Fee", true, Color::LightBlue),
+    (STORAGE_FEE_TIMELINE_KEY, "Storage Cost", true, Color::LightBlue),
     // (EARNINGS_TIMELINE_KEY, "Earnings", false, Color::LightCyan),
     (ERRORS_TIMELINE_KEY, "ERRORS", false, Color::Red),
 ];

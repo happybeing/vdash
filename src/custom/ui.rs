@@ -94,7 +94,7 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	);
 
 	push_metric(&mut items,
-	&"Chunk fee".to_string(),
+	&"Storage Cost".to_string(),
 	&chunk_fee_txt);
 
 	push_subheading(&mut items, &"".to_string());
