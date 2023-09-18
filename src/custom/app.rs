@@ -4,14 +4,16 @@
 use linemux::MuxedLines;
 use std::collections::HashMap;
 
-use std::fs::{File};
+use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
 
-use crate::custom::timelines::{ Timeline };
+use crate::custom::timelines::MinMeanMax;
+use crate::custom::app_timelines::{AppTimelines, TIMESCALES, APP_TIMELINES};
+use crate::custom::app_timelines::{GETS_TIMELINE_KEY, PUTS_TIMELINE_KEY, ERRORS_TIMELINE_KEY, STORAGE_FEE_TIMELINE_KEY, EARNINGS_TIMELINE_KEY};
 use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
 use crate::shared::util::StatefulList;
 
@@ -323,18 +325,45 @@ impl App {
 	}
 
 	pub fn scale_timeline_up(&mut self) {
-		if self.dash_state.active_timeline == 0 {
+		if self.dash_state.active_timescale == 0 {
 			return;
 		}
-		self.dash_state.active_timeline -= 1;
+		self.dash_state.active_timescale -= 1;
 	}
 
 	pub fn scale_timeline_down(&mut self) {
-		if self.dash_state.active_timeline == TIMELINES.len()-1 {
+		if self.dash_state.active_timescale == TIMESCALES.len()-1 {
 			return;
 		}
-		self.dash_state.active_timeline += 1;
+		self.dash_state.active_timescale += 1;
 	}
+
+    pub fn top_timeline_next(&mut self) {
+        if self.dash_state.top_timeline < APP_TIMELINES.len() {
+            self.dash_state.top_timeline += 1;
+        }
+        else {
+            self.dash_state.top_timeline = 0;
+        }
+    }
+
+    pub fn top_timeline_previous(&mut self) {
+        if self.dash_state.top_timeline > 0 {
+            self.dash_state.top_timeline -= 1;
+        }
+        else {
+            self.dash_state.top_timeline = APP_TIMELINES.len() - 1;
+        }
+    }
+
+    // Rotate UI display state through Min, Mean, Max values
+    pub fn bump_mmm_ui_mode(&mut self) {
+        self.dash_state.bump_mmm_ui_mode();
+    }
+
+    pub fn mmm_ui_mode(&mut self) -> &MinMeanMax {
+        return self.dash_state.mmm_ui_mode();
+    }
 }
 
 /// Move selection forward or back without wrapping at start or end
@@ -500,9 +529,7 @@ pub struct NodeMetrics {
 	pub category_count: HashMap<String, usize>,
 	pub activity_history: Vec<ActivityEntry>,
 
-	pub puts_timeline: Timeline,
-	pub gets_timeline: Timeline,
-	pub errors_timeline: Timeline, // TODO add code to collect and display
+	pub app_timelines: AppTimelines,
 
 	pub entry_metadata: Option<LogMeta>,
 	pub node_status: NodeStatus,
@@ -542,17 +569,6 @@ pub struct NodeMetrics {
 
 impl NodeMetrics {
 	fn new(opt: &Opt) -> NodeMetrics {
-		let mut puts_timeline = Timeline::new("PUTS".to_string());
-		let mut gets_timeline = Timeline::new("GETS".to_string());
-		let mut errors_timeline = Timeline::new("ERRORS".to_string());
-		for timeline in [&mut puts_timeline, &mut gets_timeline, &mut errors_timeline].iter_mut() {
-			for i in 0..TIMELINES.len() {
-				if let Some(spec) = TIMELINES.get(i) {
-					timeline.add_bucket_set(spec.0, spec.1, opt.timeline_steps);
-				}
-			}
-		}
-
 		let mut metrics = NodeMetrics {
 			// Start
 			node_started: None,
@@ -563,10 +579,8 @@ impl NodeMetrics {
 			activity_history: Vec::<ActivityEntry>::new(),
 			entry_metadata: None,
 
-			// Timelines / Sparklines
-			puts_timeline,
-			gets_timeline,
-			errors_timeline,
+			// A predefined set of Timelines (Sparklines)
+			app_timelines: AppTimelines::new(opt),
 
 			// Counts
 			category_count: HashMap::new(),
@@ -664,15 +678,7 @@ impl NodeMetrics {
 	}
 
 	pub fn update_timelines(&mut self, now: &DateTime<Utc>) {
-		for timeline in &mut [
-			&mut self.puts_timeline,
-			&mut self.gets_timeline,
-			&mut self.errors_timeline,
-		]
-		.iter_mut()
-		{
-			timeline.update_current_time(&now);
-		}
+		self.app_timelines.update_timelines(now);
 	}
 
 	///! Return a LogMeta and capture metadata for logfile node start:
@@ -967,17 +973,23 @@ impl NodeMetrics {
 
 	fn count_get(&mut self, time: &DateTime<Utc>) {
 		self.activity_gets += 1;
-		self.gets_timeline.increment_value(time);
+		if let Some(timeline) = self.app_timelines.get_timeline_by_key(GETS_TIMELINE_KEY) {
+			timeline.increment_value(time);
+		}
 	}
 
 	fn count_put(&mut self, time: &DateTime<Utc>) {
 		self.activity_puts += 1;
-		self.puts_timeline.increment_value(time);
+		if let Some(timeline) = self.app_timelines.get_timeline_by_key(PUTS_TIMELINE_KEY) {
+			timeline.increment_value(time);
+		}
 	}
 
 	fn count_error(&mut self, time: &DateTime<Utc>) {
 		self.activity_errors += 1;
-		self.errors_timeline.increment_value(time);
+		if let Some(timeline) = self.app_timelines.get_timeline_by_key(ERRORS_TIMELINE_KEY) {
+			timeline.increment_value(time);
+		}
 	}
 
 	///! TODO
@@ -1102,21 +1114,12 @@ pub enum DashViewMain {
 	DashDebug,
 }
 
-lazy_static::lazy_static! {
-	pub static ref TIMELINES: std::vec::Vec<(&'static str, Duration)> = vec!(
-		("1 second columns", Duration::seconds(1)),
-		("1 minute columns", Duration::minutes(1)),
-		("1 hour columns", Duration::hours(1)),
-		("1 day columns", Duration::days(1)),
-		("1 week columns", Duration::days(7)),
-		("1 year columns", Duration::days(365)),
-	);
-}
-
 pub struct DashState {
 	pub main_view: DashViewMain,
-	pub active_timeline: usize,
+	pub active_timescale: usize,
 	pub dash_node_focus: String,
+    pub mmm_ui_mode:   MinMeanMax,
+    pub top_timeline: usize,  // Timeline to show at top of UI
 
 	// For --debug-window option
 	pub debug_window_list: StatefulList<String>,
@@ -1130,8 +1133,10 @@ impl DashState {
 
 		DashState {
 			main_view: DashViewMain::DashNode,
-			active_timeline: 0,
+			active_timescale: 0,
 			dash_node_focus: String::new(),
+			mmm_ui_mode: MinMeanMax::Mean,
+            top_timeline: 0,
 
 			debug_window: false,
 			debug_window_has_focus: false,
@@ -1153,6 +1158,29 @@ impl DashState {
 			self.debug_window_list.state.select(Some(len - 1));
 		}
 	}
+
+	pub fn get_active_timescale_name(&self) -> Option<&'static str> {
+		return match TIMESCALES.get(self.active_timescale) {
+			None => {
+				// debug_log!("ERROR getting active timescale name");
+				return None;
+			}
+			Some((name, _)) => Some(name),
+		};
+	}
+
+    // Rotate UI display state through Min, Mean, Max values
+    pub fn bump_mmm_ui_mode(&mut self) {
+        match &self.mmm_ui_mode {
+            MinMeanMax::Min => self.mmm_ui_mode = MinMeanMax::Mean,
+            MinMeanMax::Mean => self.mmm_ui_mode = MinMeanMax::Max,
+            MinMeanMax::Max => self.mmm_ui_mode = MinMeanMax::Min,
+        }
+    }
+
+	pub fn top_timeline_index(&self)  -> usize { return self.top_timeline; }
+	pub fn mmm_ui_mode(&self) -> &MinMeanMax { &self.mmm_ui_mode }
+
 }
 
 pub struct DashVertical {

@@ -126,6 +126,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Char('o')|
 						KeyCode::Char('O') => app.scale_timeline_down(),
 
+						KeyCode::Char('m')|
+						KeyCode::Char('M') => app.bump_mmm_ui_mode(),
+
+						KeyCode::Char('t') => app.top_timeline_next(),
+						KeyCode::Char('T') => app.top_timeline_previous(),
+
 						KeyCode::Down => app.handle_arrow_down(),
 						KeyCode::Up => app.handle_arrow_up(),
 						KeyCode::Right|

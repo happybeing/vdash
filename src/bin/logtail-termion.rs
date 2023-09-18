@@ -120,6 +120,12 @@ async fn terminal_main() -> std::io::Result<()> {
 							Key::Char('o')|
 							Key::Char('O') => app.scale_timeline_down(),
 
+							Key::Char('m')|
+							Key::Char('M') => app.bump_mmm_ui_mode(),
+
+							Key::Char('t') => app.top_timeline_next(),
+							Key::Char('T') => app.top_timeline_previous(),
+
 							Key::Down => app.handle_arrow_down(),
 							Key::Up => app.handle_arrow_up(),
 							Key::Right|

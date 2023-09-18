@@ -2,7 +2,7 @@
 ///
 /// Edit src/custom/ui.rs to create a customised fork of logtail-dash
 
-use super::app::{TIMELINES, App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
+use super::app::{App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
 
 #[path = "../widgets/mod.rs"]
@@ -15,7 +15,7 @@ use tui::{
 	backend::Backend,
 	layout::{Constraint, Direction, Layout, Rect},
 	style::{Color, Modifier, Style},
-	text::{Spans},
+	text::Spans,
 	widgets::{Block, Borders, List, ListItem},
 	Frame,
 };
@@ -366,86 +366,118 @@ fn push_storage_metric(items: &mut Vec<ListItem>, metric: &String, value: &Strin
 	);
 }
 
+// TODO use (new) methods to access active_timescale_name and buckets via app_timelines
 fn draw_timeline<B: Backend>(
 	f: &mut Frame<B>,
 	area: Rect,
 	dash_state: &mut DashState,
 	monitor: &mut LogMonitor,
 ) {
-	let active_timeline_name = match TIMELINES.get(dash_state.active_timeline) {
-		None => {
-			// debug_log!("ERROR getting active timeline name");
-			return;
+	if let Some(active_timescale_name) = dash_state.get_active_timescale_name() {
+		let window_widget = Block::default()
+			.borders(Borders::ALL)
+			.title(format!("Timeline - {}", active_timescale_name).to_string());
+		f.render_widget(window_widget, area);
+
+		// For debugging the bucket state
+		//
+		// if let Some(b_time) = monitor.metrics.sparkline_bucket_time {
+		// 	dash_state._debug_window(format!("sparkline_b_time: {}", b_time).as_str());
+		// 	dash_state._debug_window(
+			// 		format!(
+				// 			"sparkline_b_width: {}",
+		// 			monitor.metrics.sparkline_bucket_width
+		// 		)
+		// 		.as_str(),
+		// 	);
+		// }
+
+		// let mut i = 0;
+		// while i < monitor.metrics.puts_sparkline.len() {
+		// 	dash_state._debug_window(
+		// 		format!(
+		// 			"{:>2}: {:>2} puts, {:>2} gets",
+		// 			i, monitor.metrics.puts_sparkline[i], monitor.metrics.gets_sparkline[i]
+		// 		)
+		// 		.as_str(),
+		// 	);
+		// 	i += 1;
+		// }
+
+		const NUM_TIMELINES_VISIBLE: usize = 3;
+
+		let chunks = Layout::default()
+			.direction(Direction::Vertical)
+			.margin(1)
+			.constraints(
+				[
+					Constraint::Percentage(33),
+					Constraint::Percentage(33),
+					Constraint::Percentage(33),
+				]
+				.as_ref(),
+			)
+			.split(area);
+
+		use crate::custom::timelines::MinMeanMax;
+
+// TODO create a colour index for timelines in app_timelines.rs and use in draw_sparkline() below
+// TODO add new keyboard cmds (m,M,t,T) to README and vdash topic OP
+		let mut index = dash_state.top_timeline_index();
+		for i in 1 ..= NUM_TIMELINES_VISIBLE {
+			let mmm_ui_mode = dash_state.mmm_ui_mode();
+			if index >= monitor.metrics.app_timelines.get_num_timelines() {
+				index = 1;
+			}
+
+			// TODO Rework how to get correct timeline and buckets dep on app.mmm_ui_mode
+
+			// TODO get timeline and use to generate correct title from timeline name and mmm status
+			// TODO also get buckets from timeline instead of app_timelines?
+
+			if let Some(timeline) = monitor.metrics.app_timelines.get_timeline_by_index(index) {
+				let mmm_text = if timeline.is_mmm {
+					match mmm_ui_mode {
+						MinMeanMax::Min => {" (min)"}
+						MinMeanMax::Mean => {" (mean)"}
+						MinMeanMax::Max => {" (max)"}
+					}
+				} else { "" };
+
+				let display_name = format!("{}{}", timeline.name, mmm_text);
+
+				if let Some(buckets) = timeline.get_buckets(active_timescale_name, Some(mmm_ui_mode)) {
+					draw_sparkline(f, chunks[i-1], &buckets, &display_name, timeline.colour);
+				};
+			}
+			index += 1;
+
+		// TODO delete...
+		// if let Some(bucket_set) = monitor
+		// 	.metrics
+		// 	.puts_timeline
+		// 	.get_bucket_set(active_timescale_name)
+		// 	{
+		// 	draw_sparkline(f, chunks[0], &bucket_set.buckets(), &"PUTS", Color::Yellow);
+		// };
+
+		// if let Some(bucket_set) = monitor
+		// 	.metrics
+		// 	.gets_timeline
+		// 	.get_bucket_set(active_timescale_name)
+		// {
+		// 	draw_sparkline(f, chunks[1], &bucket_set.buckets(), &"GETS", Color::Green);
+		// };
+
+		// if let Some(bucket_set) = monitor
+		// 	.metrics
+		// 	.errors_timeline
+		// 	.get_bucket_set(active_timescale_name)
+		// {
+		// 	draw_sparkline(f, chunks[2], &bucket_set.buckets(), &"ERRORS", Color::Red);
+		// };
 		}
-		Some((name, _)) => name,
-	};
-
-	let window_widget = Block::default()
-		.borders(Borders::ALL)
-		.title(format!("Timeline - {}", active_timeline_name).to_string());
-	f.render_widget(window_widget, area);
-
-	// For debugging the bucket state
-	//
-	// if let Some(b_time) = monitor.metrics.sparkline_bucket_time {
-	// 	dash_state._debug_window(format!("sparkline_b_time: {}", b_time).as_str());
-	// 	dash_state._debug_window(
-	// 		format!(
-	// 			"sparkline_b_width: {}",
-	// 			monitor.metrics.sparkline_bucket_width
-	// 		)
-	// 		.as_str(),
-	// 	);
-	// }
-
-	// let mut i = 0;
-	// while i < monitor.metrics.puts_sparkline.len() {
-	// 	dash_state._debug_window(
-	// 		format!(
-	// 			"{:>2}: {:>2} puts, {:>2} gets",
-	// 			i, monitor.metrics.puts_sparkline[i], monitor.metrics.gets_sparkline[i]
-	// 		)
-	// 		.as_str(),
-	// 	);
-	// 	i += 1;
-	// }
-
-	let chunks = Layout::default()
-		.direction(Direction::Vertical)
-		.margin(1)
-		.constraints(
-			[
-				Constraint::Percentage(33),
-				Constraint::Percentage(33),
-				Constraint::Percentage(33),
-			]
-			.as_ref(),
-		)
-		.split(area);
-
-	if let Some(bucket_set) = monitor
-		.metrics
-		.puts_timeline
-		.get_bucket_set(active_timeline_name)
-	{
-		draw_sparkline(f, chunks[0], &bucket_set.buckets(), &"PUTS", Color::Yellow);
-	};
-
-	if let Some(bucket_set) = monitor
-		.metrics
-		.gets_timeline
-		.get_bucket_set(active_timeline_name)
-	{
-		draw_sparkline(f, chunks[1], &bucket_set.buckets(), &"GETS", Color::Green);
-	};
-
-	if let Some(bucket_set) = monitor
-		.metrics
-		.errors_timeline
-		.get_bucket_set(active_timeline_name)
-	{
-		draw_sparkline(f, chunks[2], &bucket_set.buckets(), &"ERRORS", Color::Red);
-	};
+	}
 }
 
 fn draw_sparkline<B: Backend>(
