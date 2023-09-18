@@ -21,10 +21,20 @@ Here's an early `vdash` (v0.2.0) working with a local testnet node:
 `vdash` will load historic metrics from one or more Safe node
 logfiles and display these with live updates in the terminal (see above).
 
-You can cycle through different Safe nodes using left/right arrow
-keys, and zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-').
+**'<-' and '->':** When monitoring multiple `safenode` logfiles you can cycle through
+the different nodes using left/right arrow keys.
 
-Press 'q' to quit.
+**'i' and 'o':** Zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-').
+
+**'t' and 'T':** Three timelines are visible at any one time but you can cycle
+through all timelines to bring them all into view by pressing 't' (forward) and 'T'
+(backward).
+
+**'m' or 'M':** The Storage Cost timeline displays minimum, mean and maximum
+values in each time-slot. To cycle through the min, mean and max displays
+press 'm' or 'M'.
+
+**'q':** Press 'q' to quit.
 
 Feature requests and discussion are currently summarised in the opening post of
 the Safe Network forum topic: [node Dashboard ideas
