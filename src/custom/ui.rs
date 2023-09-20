@@ -4,6 +4,7 @@
 
 use super::app::{App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
+use chrono::{Utc};
 
 #[path = "../widgets/mod.rs"]
 pub mod widgets;
@@ -79,7 +80,19 @@ fn draw_node<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashStat
 fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
+
 	push_subheading(&mut items, &"Node".to_string());
+
+	let mut node_uptime_txt = String::from("Start time unknown");
+	if let Some(node_start_time) = monitor.metrics.node_started {
+		node_uptime_txt = crate::custom::timelines::get_duration_text(Utc::now() - node_start_time);
+	}
+	push_metric(
+		&mut items,
+		&"Node Uptime".to_string(),
+		&node_uptime_txt,
+	);
+
 	push_metric(
 		&mut items,
 		&"Status".to_string(),

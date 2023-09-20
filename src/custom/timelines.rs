@@ -4,6 +4,16 @@ use tui::style::Color;
 
 use crate::custom::app::debug_log;
 
+pub fn get_duration_text(duration: Duration) -> String {
+	return if duration.num_weeks() > 104 { format!("{} years", duration.num_days()/365) } else if
+			duration.num_weeks() > 4 { format!("{} weeks", duration.num_weeks()) } else if
+			duration.num_hours() > 48 { format!("{} days", duration.num_days()) } else if
+			duration.num_hours() > 2 { format!("{} hours", duration.num_hours()) } else if
+			duration.num_minutes() > 5 { format!("{} minutes", duration.num_minutes()) } else if
+			duration.num_seconds() > 0 { format!("{} seconds", duration.num_seconds()) } else
+			{ String::from("this(zero duration)") };
+}
+
 ///! Maintains one or more 'marching bucket' histories for
 ///! a given metric, each with its own duration and granularity.
 ///!
@@ -315,14 +325,7 @@ impl Buckets {
 					duration = self.bucket_duration;
 				}
 			};
-			return if
-				duration.num_weeks() > 104 { format!("{} years", duration.num_days()/365) } else if
-				duration.num_weeks() > 4 { format!("{} weeks", duration.num_weeks()) } else if
-				duration.num_hours() > 48 { format!("{} days", duration.num_days()) } else if
-				duration.num_hours() > 2 { format!("{} hours", duration.num_hours()) } else if
-				duration.num_minutes() > 5 { format!("{} minutes", duration.num_minutes()) } else if
-				duration.num_seconds() > 0 { format!("{} seconds", duration.num_seconds()) } else
-				{ String::from("this(zero duration)") };
+			return get_duration_text(duration);
 		};
 
 		return String::from("(zero duration)");
@@ -343,3 +346,4 @@ impl Buckets {
 		}
 	}
 }
+
