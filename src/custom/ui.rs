@@ -87,12 +87,18 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	);
 
 	push_subheading(&mut items, &"".to_string());
-	let chunk_fee_txt = format!("{} ({}-{}) nSNT/MB",
+	let storage_payments_txt = format!("{} nanos",
+		monitor.metrics.storage_payments.to_string(),
+	);
+	push_metric(&mut items,
+		&"Earnings".to_string(),
+		&storage_payments_txt);
+
+	let chunk_fee_txt = format!("{} ({}-{}) nanos/MB",
 		monitor.metrics.storage_cost.to_string(),
 		monitor.metrics.storage_cost_min.to_string(),
 		monitor.metrics.storage_cost_max.to_string(),
 	);
-
 	push_metric(&mut items,
 	&"Storage Cost".to_string(),
 	&chunk_fee_txt);
@@ -366,7 +372,6 @@ fn push_storage_metric(items: &mut Vec<ListItem>, metric: &String, value: &Strin
 	);
 }
 
-// TODO use (new) methods to access active_timescale_name and buckets via app_timelines
 fn draw_timeline<B: Backend>(
 	f: &mut Frame<B>,
 	area: Rect,
@@ -421,7 +426,6 @@ fn draw_timeline<B: Backend>(
 
 		use crate::custom::timelines::MinMeanMax;
 
-// TODO add new keyboard cmds (m,M,t,T) to README and vdash topic OP
 		let mut index = dash_state.top_timeline_index();
 		for i in 1 ..= NUM_TIMELINES_VISIBLE {
 			let mmm_ui_mode = dash_state.mmm_ui_mode();
@@ -432,44 +436,28 @@ fn draw_timeline<B: Backend>(
 			if let Some(timeline) = monitor.metrics.app_timelines.get_timeline_by_index(index) {
 				let mmm_text = if timeline.is_mmm {
 					match mmm_ui_mode {
-						MinMeanMax::Min => {" (min)"}
-						MinMeanMax::Mean => {" (mean)"}
-						MinMeanMax::Max => {" (max)"}
+						MinMeanMax::Min => {" Min "}
+						MinMeanMax::Mean => {" Mean"}
+						MinMeanMax::Max => {" Max "}
 					}
 				} else { "" };
 
-				let display_name = format!("{}{}", timeline.name, mmm_text);
-				if let Some(buckets) = timeline.get_buckets(active_timescale_name, Some(mmm_ui_mode)) {
-					// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
-					draw_sparkline(f, chunks[i-1], &buckets, &display_name, timeline.colour);
+				if let Some(bucket_set) = timeline.get_bucket_set(active_timescale_name) {
+					if let Some(buckets) = timeline.get_buckets(active_timescale_name, Some(mmm_ui_mode)) {
+						// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
+						let duration_text = bucket_set.get_duration_text();
+						let label_stats = if timeline.is_cumulative {
+							format!("{} in {}", bucket_set.values_total, duration_text)
+						} else {
+							let min = if bucket_set.values_min == u64::MAX {0} else {bucket_set.values_min};
+							format!("range {}-{} in {}", min,  bucket_set.values_max, duration_text)
+						};
+						let timeline_label = format!("{}{}: {}", timeline.name, mmm_text, label_stats);
+						draw_sparkline(f, chunks[i-1], &buckets, &timeline_label, timeline.colour);
+					};
 				};
 			}
 			index += 1;
-
-		// TODO delete...
-		// if let Some(bucket_set) = monitor
-		// 	.metrics
-		// 	.puts_timeline
-		// 	.get_bucket_set(active_timescale_name)
-		// 	{
-		// 	draw_sparkline(f, chunks[0], &bucket_set.buckets(), &"PUTS", Color::Yellow);
-		// };
-
-		// if let Some(bucket_set) = monitor
-		// 	.metrics
-		// 	.gets_timeline
-		// 	.get_bucket_set(active_timescale_name)
-		// {
-		// 	draw_sparkline(f, chunks[1], &bucket_set.buckets(), &"GETS", Color::Green);
-		// };
-
-		// if let Some(bucket_set) = monitor
-		// 	.metrics
-		// 	.errors_timeline
-		// 	.get_bucket_set(active_timescale_name)
-		// {
-		// 	draw_sparkline(f, chunks[2], &bucket_set.buckets(), &"ERRORS", Color::Red);
-		// };
 		}
 	}
 }

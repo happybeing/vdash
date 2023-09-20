@@ -538,6 +538,8 @@ pub struct NodeMetrics {
 	pub activity_puts: u64,
 	pub activity_errors: u64,
 
+	pub storage_payments: u64,
+
 	pub storage_cost: u64,
 	pub storage_cost_min: u64,
 	pub storage_cost_max: u64,
@@ -589,7 +591,8 @@ impl NodeMetrics {
 			activity_puts: 0,
 			activity_errors: 0,
 
-			// Storage Payment
+			// Storage Payments
+			storage_payments: 0,
 			storage_cost: 0,
 			storage_cost_min: 0,
 			storage_cost_max: 0,
@@ -667,13 +670,15 @@ impl NodeMetrics {
 		let entry_metadata = self.entry_metadata.as_ref().unwrap().clone();
 		let entry_time = entry_metadata.time;
 
+		debug_log!(format!("gather_metrics() entry_time: {:?}", entry_time).as_str());
+
 		self.update_timelines(&entry_time);
 		self.parser_output = entry_metadata.parser_output.clone();
 		self.process_logfile_entry(&entry.logstring, &entry_metadata); // May overwrite self.parser_output
 
 		// --debug-dashboard - prints parser results for a single logfile
 		// to a temp logfile which is displayed in the adjacent window.
-		debug_log!(&self.parser_output.clone());
+		//debug_log!(&self.parser_output.clone());
 
 		Ok(())
 	}
@@ -741,9 +746,13 @@ impl NodeMetrics {
 				self.parser_output = format!("Storage cost: {}", storage_cost);
 			};
 			return true;
+		} else if line.contains("nanos accepted for record") {
+			if 	let Some(storage_payment) = self.parse_u64("Payment of ", line) {
+				self.count_storage_payment(entry_time, storage_payment);
+				self.parser_output = format!("Payment received: {}", storage_payment);
+				return true;
+			};
 		}
-
-
 		return false;
 	}
 
@@ -985,6 +994,13 @@ impl NodeMetrics {
 		}
 	}
 
+	fn count_storage_payment(&mut self, time: &DateTime<Utc>, storage_payment: u64) {
+		self.storage_payments += storage_payment;
+		if let Some(timeline) = self.app_timelines.get_timeline_by_key(EARNINGS_TIMELINE_KEY) {
+			timeline.update_value(time, storage_payment);
+		}
+	}
+
 	fn count_storage_cost(&mut self, time: &DateTime<Utc>, storage_cost: u64) {
 		self.storage_cost = storage_cost;
 		if storage_cost > self.storage_cost_max {
@@ -995,7 +1011,7 @@ impl NodeMetrics {
 		}
 
 		if let Some(timeline) = self.app_timelines.get_timeline_by_key(STORAGE_FEE_TIMELINE_KEY) {
-			timeline.sample_value(time, storage_cost);
+			timeline.update_value(time, storage_cost);
 		}
 	}
 

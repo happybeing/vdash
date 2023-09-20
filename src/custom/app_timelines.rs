@@ -20,18 +20,18 @@ lazy_static::lazy_static! {
 /// keys (used to access timelines)
 pub const GETS_TIMELINE_KEY: &str = "gets";
 pub const PUTS_TIMELINE_KEY: &str = "puts";
-pub const STORAGE_FEE_TIMELINE_KEY: &str = "storage";
 pub const EARNINGS_TIMELINE_KEY: &str = "earnings";
+pub const STORAGE_FEE_TIMELINE_KEY: &str = "storage";
 pub const ERRORS_TIMELINE_KEY: &str = "errors";
 
 /// Defines the Timelines available for display
-pub const APP_TIMELINES: [(&str, &str, bool, Color); 4] = [
-//  (key, UI name, is_mmm)
-    (GETS_TIMELINE_KEY, "GETS", false, Color::Green),
-    (PUTS_TIMELINE_KEY, "PUTS", false, Color::Yellow),
-    (STORAGE_FEE_TIMELINE_KEY, "Storage Cost", true, Color::LightBlue),
-    // (EARNINGS_TIMELINE_KEY, "Earnings", false, Color::LightCyan),
-    (ERRORS_TIMELINE_KEY, "ERRORS", false, Color::Red),
+pub const APP_TIMELINES: [(&str, &str, bool, bool, Color); 5] = [
+//  (key, UI name, is_mmm, is_cumulative, colour)
+    (GETS_TIMELINE_KEY, "GETS", false, true, Color::Green),
+    (PUTS_TIMELINE_KEY, "PUTS", false, true, Color::Yellow),
+    (EARNINGS_TIMELINE_KEY, "Earnings", false, true, Color::LightCyan),
+    (STORAGE_FEE_TIMELINE_KEY, "Storage Cost", true, false, Color::LightBlue),
+    (ERRORS_TIMELINE_KEY, "ERRORS", false, true, Color::Red),
 ];
 
 /// Holds the Timeline structs for a node, as used by this app
@@ -47,8 +47,8 @@ impl AppTimelines {
             timelines: HashMap::<&'static str, Timeline>::new(),
 		};
 
-        for (key, name, is_mmm, colour) in APP_TIMELINES {
-            app_timelines.timelines.insert(key, Timeline::new(name.to_string(), is_mmm, colour));
+        for (key, name, is_mmm, is_cumulative, colour) in APP_TIMELINES {
+            app_timelines.timelines.insert(key, Timeline::new(name.to_string(), is_mmm, is_cumulative, colour));
         }
 
         for (_, timeline) in app_timelines.timelines.iter_mut() {
@@ -73,13 +73,13 @@ impl AppTimelines {
     }
 
     pub fn get_timeline_by_index(&self, index: usize) -> Option<&Timeline> {
-        let (key, _, _, _) = APP_TIMELINES[index];
+        let (key, _, _, _, _) = APP_TIMELINES[index];
         return self.timelines.get(key);
     }
 
     // Gets the set of buckets for the index'th Timeline, selecting with Min, Mean, Max if appropriate
-    pub fn get_timeline_buckets(&mut self, index: usize, timescale_name: &str) -> Option<&mut Buckets> {
-        let (key, _, _, _) = APP_TIMELINES[index];
+    pub fn get_timeline_buckets(&mut self, index: usize, timescale_name: &str) -> Option<&Buckets> {
+        let (key, _, _, _, _) = APP_TIMELINES[index];
         if let Some(timeline) = self.timelines.get_mut(key) {
             return timeline.get_bucket_set(timescale_name);
         }
