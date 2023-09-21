@@ -123,14 +123,14 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	push_subheading(&mut items, &"".to_string());
 	push_metric(
 		&mut items,
-		&"GETS".to_string(),
-		&monitor.metrics.activity_gets.to_string(),
+		&"PUTS".to_string(),
+		&monitor.metrics.activity_puts.to_string(),
 	);
 
 	push_metric(
 		&mut items,
-		&"PUTS".to_string(),
-		&monitor.metrics.activity_puts.to_string(),
+		&"GETS".to_string(),
+		&monitor.metrics.activity_gets.to_string(),
 	);
 
 	push_metric(

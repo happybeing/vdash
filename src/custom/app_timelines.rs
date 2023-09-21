@@ -30,10 +30,10 @@ pub const ERRORS_TIMELINE_KEY: &str = "errors";
 /// Defines the Timelines available for display
 pub const APP_TIMELINES: [(&str, &str, &str, bool, bool, Color); 5] = [
 //  (key, UI name, units_text, is_mmm, is_cumulative, colour)
-    (GETS_TIMELINE_KEY, "GETS", "", false, true, Color::Green),
-    (PUTS_TIMELINE_KEY, "PUTS",  "",false, true, Color::Yellow),
     (EARNINGS_TIMELINE_KEY, "Earnings", EARNINGS_UNITS_TEXT, false, true, Color::LightCyan),
     (STORAGE_COST_TIMELINE_KEY, "Storage Cost", STORAGE_COST_UNITS_TEXT, true, false, Color::LightBlue),
+    (PUTS_TIMELINE_KEY, "PUTS",  "",false, true, Color::Yellow),
+    (GETS_TIMELINE_KEY, "GETS", "", false, true, Color::Green),
     (ERRORS_TIMELINE_KEY, "ERRORS", "", false, true, Color::Red),
 ];
 
