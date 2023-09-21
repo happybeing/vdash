@@ -14,6 +14,14 @@ pub fn get_duration_text(duration: Duration) -> String {
 			{ String::from("this(zero duration)") };
 }
 
+pub fn get_max_buckets_value(buckets: &Vec<u64>) -> u64 {
+	let mut max: u64 = 0;
+	for i in 0 .. buckets.len() - 1 {
+		if buckets[i] > max { max = buckets[i]; }
+	}
+	return max;
+}
+
 ///! Maintains one or more 'marching bucket' histories for
 ///! a given metric, each with its own duration and granularity.
 ///!
@@ -49,6 +57,7 @@ pub enum MinMeanMax {
 
 pub struct Timeline {
 	pub name: String,
+	pub units_text: String,
 	pub is_mmm: bool,
 	pub is_cumulative:	bool,
 	pub colour: Color,
@@ -56,9 +65,10 @@ pub struct Timeline {
 }
 
 impl Timeline {
-	pub fn new(name: String, is_mmm: bool, is_cumulative: bool, colour: Color) -> Timeline {
+	pub fn new(name: String, units_text: String, is_mmm: bool, is_cumulative: bool, colour: Color) -> Timeline {
 		Timeline {
 			name,
+			units_text,
 			is_mmm,
 			is_cumulative,
 			buckets: HashMap::<&'static str, Buckets>::new(),

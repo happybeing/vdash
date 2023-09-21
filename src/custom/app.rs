@@ -13,7 +13,7 @@ use tempfile::NamedTempFile;
 
 use crate::custom::timelines::MinMeanMax;
 use crate::custom::app_timelines::{AppTimelines, TIMESCALES, APP_TIMELINES};
-use crate::custom::app_timelines::{GETS_TIMELINE_KEY, PUTS_TIMELINE_KEY, ERRORS_TIMELINE_KEY, STORAGE_FEE_TIMELINE_KEY, EARNINGS_TIMELINE_KEY};
+use crate::custom::app_timelines::{GETS_TIMELINE_KEY, PUTS_TIMELINE_KEY, ERRORS_TIMELINE_KEY, STORAGE_COST_TIMELINE_KEY, EARNINGS_TIMELINE_KEY};
 use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
 use crate::shared::util::StatefulList;
 
@@ -725,7 +725,6 @@ impl NodeMetrics {
 		|| self.parse_start(&line, &entry_metadata);
 	}
 
-	///! TODO: Review and update these tests
 	fn parse_timed_data(&mut self, line: &String, entry_time: &DateTime<Utc>) -> bool {
 		if line.contains("Retrieved record from disk") {
 			self.count_get(&entry_time);
@@ -735,8 +734,7 @@ impl NodeMetrics {
 			self.count_put(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
-		} else if line.contains("Editing Register success!") {
-			// TODO update when Register ops are TRACE/INFO (currently DEBUG in )
+		} else if line.contains("Editing Register success") {
 			self.count_put(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
@@ -1010,7 +1008,7 @@ impl NodeMetrics {
 			self.storage_cost_min = storage_cost;
 		}
 
-		if let Some(timeline) = self.app_timelines.get_timeline_by_key(STORAGE_FEE_TIMELINE_KEY) {
+		if let Some(timeline) = self.app_timelines.get_timeline_by_key(STORAGE_COST_TIMELINE_KEY) {
 			timeline.update_value(time, storage_cost);
 		}
 	}

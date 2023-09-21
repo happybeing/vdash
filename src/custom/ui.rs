@@ -21,6 +21,8 @@ use tui::{
 	Frame,
 };
 
+use crate::custom::timelines::{get_duration_text, get_max_buckets_value};
+
 pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashSummary => {} //draw_summary_dash(f, dash_state, monitors),
@@ -85,7 +87,7 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 
 	let mut node_uptime_txt = String::from("Start time unknown");
 	if let Some(node_start_time) = monitor.metrics.node_started {
-		node_uptime_txt = crate::custom::timelines::get_duration_text(Utc::now() - node_start_time);
+		node_uptime_txt = get_duration_text(Utc::now() - node_start_time);
 	}
 	push_metric(
 		&mut items,
@@ -100,17 +102,19 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	);
 
 	push_subheading(&mut items, &"".to_string());
-	let storage_payments_txt = format!("{} nanos",
+	let storage_payments_txt = format!("{}{}",
 		monitor.metrics.storage_payments.to_string(),
+		crate::custom::app_timelines::EARNINGS_UNITS_TEXT,
 	);
 	push_metric(&mut items,
 		&"Earnings".to_string(),
 		&storage_payments_txt);
 
-	let chunk_fee_txt = format!("{} ({}-{}) nanos/MB",
+	let chunk_fee_txt = format!("{} ({}-{}){}",
 		monitor.metrics.storage_cost.to_string(),
 		monitor.metrics.storage_cost_min.to_string(),
 		monitor.metrics.storage_cost_max.to_string(),
+		crate::custom::app_timelines::STORAGE_COST_UNITS_TEXT,
 	);
 	push_metric(&mut items,
 	&"Storage Cost".to_string(),
@@ -460,12 +464,18 @@ fn draw_timeline<B: Backend>(
 						// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
 						let duration_text = bucket_set.get_duration_text();
 						let label_stats = if timeline.is_cumulative {
-							format!("{} in {}", bucket_set.values_total, duration_text)
+							format!("{}{} in {}", bucket_set.values_total, timeline.units_text, duration_text)
 						} else {
 							let min = if bucket_set.values_min == u64::MAX {0} else {bucket_set.values_min};
-							format!("range {}-{} in {}", min,  bucket_set.values_max, duration_text)
+							format!("range {}-{}{} in {}", min,  bucket_set.values_max, timeline.units_text, duration_text)
 						};
-						let timeline_label = format!("{}{}: {}", timeline.name, mmm_text, label_stats);
+						let max_bucket_value = get_max_buckets_value(buckets);
+						let label_scale = if max_bucket_value > 0 {
+							format!( " (vertical scale: 0-{}{})", max_bucket_value, timeline.units_text)
+						} else {
+							String::from("")
+						};
+						let timeline_label = format!("{}{}: {}{}", timeline.name, mmm_text, label_stats, label_scale);
 						draw_sparkline(f, chunks[i-1], &buckets, &timeline_label, timeline.colour);
 					};
 				};
