@@ -745,7 +745,7 @@ impl NodeMetrics {
 			};
 			return true;
 		} else if line.contains("nanos accepted for record") {
-			if 	let Some(storage_payment) = self.parse_u64("Payment of ", line) {
+			if 	let Some(storage_payment) = self.parse_u64("Payment of NanoTokens(", line) {
 				self.count_storage_payment(entry_time, storage_payment);
 				self.parser_output = format!("Payment received: {}", storage_payment);
 				return true;

@@ -286,7 +286,7 @@ impl Buckets {
 	pub fn bucket_update_value(&mut self, index: usize, value: u64, is_cumulative: bool) {
 		// debug_log!(format!("bucket_update_value(index:{}, value:{}, is_cum:{}) is_mmm:{}", index, value, is_cumulative, self.is_mmm).as_str());
 		if self.is_mmm {
-			// debug_log!(format!("is_mmm: bucket_update_value(index:{}, value:{}, is_cum:{})", index, value, is_cumulative).as_str());
+			debug_log!(format!("is_mmm: bucket_update_value(index:{}, value:{}, is_cum:{})", index, value, is_cumulative).as_str());
 			if self.buckets_need_init[index] == 1  {
 				// debug_log!("is_mmm: doing init");
 
