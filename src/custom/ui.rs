@@ -447,7 +447,7 @@ fn draw_timeline<B: Backend>(
 		for i in 1 ..= NUM_TIMELINES_VISIBLE {
 			let mmm_ui_mode = dash_state.mmm_ui_mode();
 			if index >= monitor.metrics.app_timelines.get_num_timelines() {
-				index = 1;
+				index = 0;
 			}
 
 			if let Some(timeline) = monitor.metrics.app_timelines.get_timeline_by_index(index) {
@@ -464,10 +464,10 @@ fn draw_timeline<B: Backend>(
 						// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
 						let duration_text = bucket_set.get_duration_text();
 						let label_stats = if timeline.is_cumulative {
-							format!("{}{} in {}", bucket_set.values_total, timeline.units_text, duration_text)
+							format!("{}{} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
 						} else {
 							let min = if bucket_set.values_min == u64::MAX {0} else {bucket_set.values_min};
-							format!("range {}-{}{} in {}", min,  bucket_set.values_max, timeline.units_text, duration_text)
+							format!("range {}-{}{} in last {}", min,  bucket_set.values_max, timeline.units_text, duration_text)
 						};
 						let max_bucket_value = get_max_buckets_value(buckets);
 						let label_scale = if max_bucket_value > 0 {
