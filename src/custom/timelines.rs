@@ -113,7 +113,7 @@ impl Timeline {
 	///!
 	///! Call significantly more frequently than the smallest Buckets duration
 	pub fn update_current_time(&mut self, new_time: &DateTime<Utc>) {
-		debug_log!(format!("timeline::update_current_time() new_time: {:?}", new_time).as_str());
+		// debug_log!(format!("timeline::update_current_time() new_time: {:?}", new_time).as_str());
 		for (_name, bs) in self.buckets.iter_mut() {
 			bs.update_current_time(new_time, self.is_cumulative);
 		}
@@ -221,12 +221,12 @@ impl Buckets {
 
 	/// Update all buckets with current time
 	pub fn update_current_time(&mut self, new_time: &DateTime<Utc>, is_cumulative: bool) {
-		debug_log!(format!("Buckets::update_current_time() new_time: {:?}", new_time).as_str());
-		if let Some(earliest_time) = self.earliest_time {
-			debug_log!(format!("self.earliest_time: {:?}", earliest_time).as_str());
-		} else {
-			debug_log!(format!("self.earliest_time: None").as_str());
-		}
+		// debug_log!(format!("Buckets::update_current_time() new_time: {:?}", new_time).as_str());
+		// if let Some(earliest_time) = self.earliest_time {
+		// 	debug_log!(format!("self.earliest_time: {:?}", earliest_time).as_str());
+		// } else {
+		// 	debug_log!(format!("self.earliest_time: None").as_str());
+		// }
 		if let Some(mut bucket_time) = self.bucket_time {
 			let mut end_time = bucket_time + self.bucket_duration;
 			// debug_log!(format!("end_time       : {}", end_time).as_str());
