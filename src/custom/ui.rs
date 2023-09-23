@@ -21,7 +21,7 @@ use tui::{
 	Frame,
 };
 
-use crate::custom::timelines::{get_duration_text, get_max_buckets_value};
+use crate::custom::timelines::{get_duration_text, get_min_buckets_value, get_max_buckets_value};
 
 pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 	match app.dash_state.main_view {
@@ -463,13 +463,15 @@ fn draw_timeline<B: Backend>(
 					if let Some(buckets) = timeline.get_buckets(active_timescale_name, Some(mmm_ui_mode)) {
 						// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
 						let duration_text = bucket_set.get_duration_text();
+
+						let max_bucket_value = get_max_buckets_value(buckets);
+						let min_bucket_value = get_min_buckets_value(buckets);
 						let label_stats = if timeline.is_cumulative {
 							format!("{}{} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
 						} else {
 							let min = if bucket_set.values_min == u64::MAX {0} else {bucket_set.values_min};
-							format!("range {}-{}{} in last {}", min,  bucket_set.values_max, timeline.units_text, duration_text)
+							format!("range {}-{}{} in last {}", min_bucket_value,  max_bucket_value, timeline.units_text, duration_text)
 						};
-						let max_bucket_value = get_max_buckets_value(buckets);
 						let label_scale = if max_bucket_value > 0 {
 							format!( " (vertical scale: 0-{}{})", max_bucket_value, timeline.units_text)
 						} else {
