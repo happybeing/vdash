@@ -69,6 +69,8 @@ pub struct Timeline {
 	pub is_mmm: bool,
 	pub is_cumulative:	bool,
 	pub colour: Color,
+
+	pub last_non_zero_value: u64,
 	buckets: HashMap<&'static str, Buckets>,
 }
 
@@ -80,6 +82,7 @@ impl Timeline {
 			is_mmm,
 			is_cumulative,
 			buckets: HashMap::<&'static str, Buckets>::new(),
+			last_non_zero_value: 0,
 			colour,
 		}
 	}
@@ -133,6 +136,8 @@ impl Timeline {
 
 	pub fn update_value(&mut self, time: &DateTime<Utc>, value: u64) {
 		// debug_log!("update_value()");
+
+		if value > 0 {self.last_non_zero_value = value;}
 		for (_name, bs) in self.buckets.iter_mut() {
 			// debug_log!(format!("name       : {}", _name).as_str());
 			let mut index = Some(bs.num_buckets() - 1);

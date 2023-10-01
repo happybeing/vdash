@@ -464,12 +464,13 @@ fn draw_timeline<B: Backend>(
 						// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
 						let duration_text = bucket_set.get_duration_text();
 
-						let max_bucket_value = get_max_buckets_value(buckets);
-						let min_bucket_value = get_min_buckets_value(buckets);
+						let mut max_bucket_value = get_max_buckets_value(buckets);
+						let mut min_bucket_value = get_min_buckets_value(buckets);
 						let label_stats = if timeline.is_cumulative {
 							format!("{}{} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
 						} else {
-							let min = if bucket_set.values_min == u64::MAX {0} else {bucket_set.values_min};
+							if max_bucket_value == 0 {max_bucket_value = timeline.last_non_zero_value;}
+							if min_bucket_value == u64::MAX || min_bucket_value == 0 {min_bucket_value = max_bucket_value;}
 							format!("range {}-{}{} in last {}", min_bucket_value,  max_bucket_value, timeline.units_text, duration_text)
 						};
 						let label_scale = if max_bucket_value > 0 {
