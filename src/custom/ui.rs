@@ -4,13 +4,14 @@
 
 use super::app::{App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
-use chrono::{Utc};
+use chrono::{Utc, Duration};
 
 #[path = "../widgets/mod.rs"]
 pub mod widgets;
 use self::widgets::sparkline::Sparkline2;
 use self::widgets::gauge::Gauge2;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use tui::{
 	backend::Backend,
@@ -79,6 +80,26 @@ fn draw_node<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashStat
 	draw_node_storage(f, chunks[1], dash_state, monitor);
 }
 
+
+fn get_node_status_string(monitor: &mut LogMonitor) -> String {
+
+	let node_inactive_timeout = Duration::seconds(20);
+
+	let mut node_status_string = monitor.metrics.node_status_string();
+
+	if let Some(metadata) = &monitor.metrics.entry_metadata {
+		let idle_time = Utc::now() - metadata.time;
+		if idle_time > node_inactive_timeout {
+			monitor.metrics.node_inactive = true;
+			node_status_string = format!("INACTIVE ({})", get_duration_text(idle_time));
+		} else {
+			monitor.metrics.node_inactive = false;
+		}
+	}
+
+	return node_status_string;
+}
+
 fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
@@ -98,7 +119,7 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	push_metric(
 		&mut items,
 		&"Status".to_string(),
-		&monitor.metrics.node_status_string(),
+		&get_node_status_string(monitor),
 	);
 
 	push_subheading(&mut items, &"".to_string());

@@ -534,6 +534,8 @@ pub struct NodeMetrics {
 
 	pub entry_metadata: Option<LogMeta>,
 	pub node_status: NodeStatus,
+	pub node_inactive: bool,
+
 	pub activity_gets: u64,
 	pub activity_puts: u64,
 	pub activity_errors: u64,
@@ -599,6 +601,7 @@ impl NodeMetrics {
 
 			// State (node)
 			node_status: NodeStatus::Stopped,
+			node_inactive: false,
 
 			// State (network)
 
