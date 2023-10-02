@@ -33,7 +33,7 @@ use crossterm::{
 
 use std::{
 	error::Error,
-	io::{stdout, Write},
+	io::{stdout},
 	thread,
 	time::{Duration, Instant,SystemTime, UNIX_EPOCH},
 };
