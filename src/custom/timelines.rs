@@ -25,7 +25,7 @@ pub fn get_max_buckets_value(buckets: &Vec<u64>) -> u64 {
 pub fn get_min_buckets_value(buckets: &Vec<u64>) -> u64 {
 	let mut min: u64 = u64::MAX;
 	for i in 0 .. buckets.len() - 1 {
-		if buckets[i] < min { min = buckets[i]; }
+		if buckets[i] > 0 && buckets[i] < min { min = buckets[i]; }
 	}
 	return min;
 }
