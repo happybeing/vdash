@@ -7,11 +7,11 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, Duration};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
 
-use crate::custom::timelines::MinMeanMax;
+use crate::custom::timelines::{MinMeanMax, get_duration_text};
 use crate::custom::app_timelines::{AppTimelines, TIMESCALES, APP_TIMELINES};
 use crate::custom::app_timelines::{GETS_TIMELINE_KEY, PUTS_TIMELINE_KEY, ERRORS_TIMELINE_KEY, STORAGE_COST_TIMELINE_KEY, EARNINGS_TIMELINE_KEY};
 use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
@@ -398,6 +398,8 @@ fn exit_with_usage(reason: &str) -> Result<App, std::io::Error> {
 
 use fs2::{statvfs, FsStats};
 
+const NODE_INACTIVITY_TIMEOUT_S: i64 = 20;	// Seconds with no log message before node becomes 'inactive'
+
 pub struct LogMonitor {
 	pub index: usize,
 	pub content: StatefulList<String>,
@@ -523,6 +525,15 @@ pub enum NodeStatus {
 	Stopped,
 }
 
+pub fn node_status_as_string(node_status: &NodeStatus) -> String {
+	match node_status {
+		NodeStatus::Connecting => "Connecting".to_string(),
+		NodeStatus::Connected => "Connected".to_string(),
+		NodeStatus::Stopped => "Stopped".to_string(),
+		NodeStatus::Started => "Started".to_string(),
+	}
+}
+
 pub struct NodeMetrics {
 	pub node_started: Option<DateTime<Utc>>,
 	pub running_message: Option<String>,
@@ -637,13 +648,23 @@ impl NodeMetrics {
 		metrics
 	}
 
-	pub fn node_status_string(&self) -> String {
-		match self.node_status {
-			NodeStatus::Connecting => "Connecting".to_string(),
-			NodeStatus::Connected => "Connected".to_string(),
-			NodeStatus::Stopped => "Stopped".to_string(),
-			NodeStatus::Started => "Started".to_string(),
+
+	pub fn get_node_status_string(&mut self) -> String {
+		let node_inactive_timeout = Duration::seconds(NODE_INACTIVITY_TIMEOUT_S);
+
+		let mut node_status_string = node_status_as_string(&self.node_status);
+
+		if let Some(metadata) = &self.entry_metadata {
+			let idle_time = Utc::now() - metadata.system_time;
+			if idle_time > node_inactive_timeout {
+				self.node_inactive = true;
+				node_status_string = format!("INACTIVE ({})", get_duration_text(idle_time));
+			} else {
+				self.node_inactive = false;
+			}
 		}
+
+		return node_status_string;
 	}
 
 	fn reset_metrics(&mut self) {
