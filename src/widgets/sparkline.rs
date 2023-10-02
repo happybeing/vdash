@@ -1,5 +1,5 @@
 use std::cmp::min;
-use tui::{
+use ratatui::{
 	buffer::Buffer,
 	layout::Rect,
 	style::Style,
@@ -9,7 +9,7 @@ use tui::{
 
 /// Widget to render a sparkline over one or more lines.
 ///
-/// Based on tui::widgets::Sparkline, but with origin
+/// Based on ratatui::widgets::Sparkline, but with origin
 /// on right hand edge.
 #[derive(Debug, Clone)]
 pub struct Sparkline2<'a> {

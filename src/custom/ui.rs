@@ -2,9 +2,10 @@
 ///
 /// Edit src/custom/ui.rs to create a customised fork of logtail-dash
 
+use chrono::Utc;
+
 use super::app::{App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
-use chrono::{Utc};
 
 #[path = "../widgets/mod.rs"]
 pub mod widgets;
@@ -12,11 +13,11 @@ use self::widgets::sparkline::Sparkline2;
 use self::widgets::gauge::Gauge2;
 use std::collections::HashMap;
 
-use tui::{
+use ratatui::{
 	backend::Backend,
 	layout::{Constraint, Direction, Layout, Rect},
 	style::{Color, Modifier, Style},
-	text::Spans,
+	text::Line,
 	widgets::{Block, Borders, List, ListItem},
 	Frame,
 };
@@ -164,7 +165,7 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 
 fn push_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 	items.push(
-		ListItem::new(vec![Spans::from(subheading.clone())])
+		ListItem::new(vec![Line::from(subheading.clone())])
 			.style(Style::default().fg(Color::Yellow)),
 	);
 }
@@ -172,7 +173,7 @@ fn push_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	let s = format!("{:<12}: {:>12}", metric, value);
 	items.push(
-		ListItem::new(vec![Spans::from(s.clone())])
+		ListItem::new(vec![Line::from(s.clone())])
 			.style(Style::default().fg(Color::Blue)),
 	);
 }
@@ -307,7 +308,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 	);
 
 	text_items.push(
-		ListItem::new(vec![Spans::from(total_rx_text.clone())])
+		ListItem::new(vec![Line::from(total_rx_text.clone())])
 			.style(Style::default().fg(Color::Blue)),
 	);
 
@@ -318,7 +319,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 	);
 
 	text_items.push(
-		ListItem::new(vec![Spans::from(total_tx_text.clone())])
+		ListItem::new(vec![Line::from(total_tx_text.clone())])
 			.style(Style::default().fg(Color::Blue)),
 	);
 
@@ -331,7 +332,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		monitor.metrics.memory_used_mb,
 	);
 	text_items.push(
-		ListItem::new(vec![Spans::from(node_text.clone())])
+		ListItem::new(vec![Line::from(node_text.clone())])
 			.style(Style::default().fg(Color::Blue)),
 	);
 
@@ -343,7 +344,7 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 		monitor.metrics.system_memory_usage_percent,
 	);
 	text_items.push(
-		ListItem::new(vec![Spans::from(system_text.clone())])
+		ListItem::new(vec![Line::from(system_text.clone())])
 			.style(Style::default().fg(Color::Blue)),
 	);
 
@@ -376,7 +377,7 @@ fn ratio(numerator: u64, denomimator: u64) -> f64 {
 
 fn push_storage_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 	items.push(
-		ListItem::new(vec![Spans::from(subheading.clone())])
+		ListItem::new(vec![Line::from(subheading.clone())])
 			.style(Style::default().fg(Color::Yellow)),
 	);
 }
@@ -384,7 +385,7 @@ fn push_storage_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 fn push_storage_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	let s = format!("{:<13}:{:>9}", metric, value);
 	items.push(
-		ListItem::new(vec![Spans::from(s.clone())])
+		ListItem::new(vec![Line::from(s.clone())])
 			.style(Style::default().fg(Color::Blue)),
 	);
 }
@@ -493,7 +494,7 @@ fn draw_sparkline<B: Backend>(
 	area: Rect,
 	buckets: &Vec<u64>,
 	title: &str,
-	fg_colour: tui::style::Color,
+	fg_colour: ratatui::style::Color,
 	) {
 
 		let sparkline = Sparkline2::default()
@@ -560,7 +561,7 @@ pub fn draw_logfile<B: Backend>(
 		.items
 		.iter()
 		.map(|s| {
-			ListItem::new(vec![Spans::from(s.clone())])
+			ListItem::new(vec![Line::from(s.clone())])
 				.style(Style::default().fg(Color::Black).bg(Color::White))
 		})
 		.collect();
@@ -591,7 +592,7 @@ fn draw_debug_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut 
 		.items
 		.iter()
 		.map(|s| {
-			ListItem::new(vec![Spans::from(s.clone())])
+			ListItem::new(vec![Line::from(s.clone())])
 				.style(Style::default().fg(Color::Black).bg(Color::White))
 		})
 		.collect();

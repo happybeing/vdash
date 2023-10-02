@@ -1,4 +1,4 @@
-use tui::{
+use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
@@ -8,14 +8,14 @@ use tui::{
 
 /// A widget to display a task progress.
 ///
-/// Note: Gauge requires minimum height of 2, Gauge2 has been modified to work with 
+/// Note: Gauge requires minimum height of 2, Gauge2 has been modified to work with
 /// a height of 1
 ///
 /// # Examples:
 ///
 /// ```
-/// # use tui::widgets::{Widget, Gauge2, Block, Borders};
-/// # use tui::style::{Style, Color, Modifier};
+/// # use ratatui::widgets::{Widget, Gauge2, Block, Borders};
+/// # use ratatui::style::{Style, Color, Modifier};
 /// Gauge2::default()
 ///     .block(Block::default().borders(Borders::ALL).title("Progress"))
 ///     .gauge_style(Style::default().fg(Color::White).bg(Color::Black).add_modifier(Modifier::ITALIC))

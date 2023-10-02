@@ -3,7 +3,7 @@
 use super::app::{DashState, DashViewMain, LogMonitor};
 use std::collections::HashMap;
 
-use tui::{
+use ratatui::{
 	backend::Backend,
 	Frame
 };

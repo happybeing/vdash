@@ -33,14 +33,14 @@ use crossterm::{
 
 use std::{
 	error::Error,
-	io::{stdout},
+	io::stdout,
 	thread,
 	time::{Duration, Instant,SystemTime, UNIX_EPOCH},
 };
 
 use chrono::Utc;
 
-use tui::{backend::CrosstermBackend, Terminal};
+use ratatui::{backend::CrosstermBackend, Terminal};
 
 use futures::{
 	future::FutureExt, // for `.fuse()`

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use chrono::{DateTime, Duration, Utc};
-use tui::style::Color;
+use ratatui::style::Color;
 
 use crate::custom::app::debug_log;
 

@@ -4,7 +4,7 @@ use chrono::{DateTime, Duration, Utc};
 
 use crate::custom::opt::Opt;
 use crate::custom::timelines::{Timeline, Buckets};
-use tui::style::Color;
+use ratatui::style::Color;
 
 lazy_static::lazy_static! {
 	pub static ref TIMESCALES: std::vec::Vec<(&'static str, Duration)> = vec!(

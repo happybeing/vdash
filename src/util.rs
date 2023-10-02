@@ -1,6 +1,6 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
-use tui::widgets::ListState;
+use ratatui::widgets::ListState;
 
 #[derive(Clone)]
 pub struct RandomSignal {
