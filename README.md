@@ -92,14 +92,25 @@ You are now ready to install `vdash` and can test it by running a local test net
 
 ## Usage
 
-In the terminal type the command and the paths of one or more node logfiles you want to monitor. For example:
-
-    vdash ~/.safe/node/local-node/safenode.log
-
-When the dashboard is active, pressing 's' or 'd' switches between summary and detail views.
-For more information:
+For help:
 
     vdash --help
+
+Typically you can just pass the paths of one or more node logfiles you want to monitor. For example, to run `vdash` first start your Safe Network node(s) with one or more `safenode` commands. Then, assuming their logfiles are in the standard location start `vdash` with:
+
+**Linux:**
+
+    vdash ~/.local/share/safe/node/*/logs/safenode.log
+
+**Mac:**
+
+    vdash "/Users/<username>/Library/Application Support/safe/node/*/logs/safenode.log"
+
+**Windows:**
+
+    vdash C:\Users\<username>\AppData\Roaming\safe\node\*\logs\safenode.log
+
+Keyboard commands for `vdash` are summarised in the introduction above.
 
 ### Safe Node Setup
 **IMPORTANT:** Ignore this section until the Safe Network CLI has been restored to work with the changes being implemented to Safe Network code in 2023/Q2. For now, see **Using vdash With a Local Test Network** below.
@@ -176,11 +187,10 @@ git clone https://github.com/happybeing/vdash
 cd vdash
 ```
 
-### Build - Linux / MacOS
-Build `vdash` with the termion backend (see [tui-rs](https://github.com/fdehau/tui-rs)).
-Note: MacOS is untested but may 'just work'.
+### Build - Linux / MacOS / Windows 10
+Note: MacOS and Windows are untested but may 'just work' - please report success or failure in an issue.
 ```
-cargo build --features="termion" --features="vdash" --release
+cargo build --release
 ```
 If built for target 'musl' `vdash` uses considerably less memory:
 
@@ -194,14 +204,7 @@ VIRT   RES  SHR
 803M  9372 4716 x13 threads (release)
 32768 6848 2440 x13 threads (release/musl)
 ```
-#### Build - Windows 10
-Builds `vdash` the crossterm backend (see [tui-rs](https://github.com/fdehau/tui-rs)), with the intention to support Windows.
-
-NOT working on Windows yet, this is being worked on at the moment. Help with testing appreciated.
-```
-cargo build --bin vdash-crossterm --features="crossterm" --features="vdash" --release
-```
-
+Note: the above figures are out of date but illustrate the point.
 
 # Roadmap
 Where `vdash` is headed:
@@ -230,21 +233,22 @@ Where `vdash` is headed:
     - [x] change timeline scaling to use +/- an i/o keys rather than s, m, d etc
     - [ ] optimise redraw rate limit
     - [ ] make a CLI option for redraw rate limit
-  - [ ] track safenode [issue #1126](https://github.com/maidsafe/safenode/issues/1126) (maintain Get/Put response in)
+  - [x] track safenode [issue #1126](https://github.com/maidsafe/safenode/issues/1126) (maintain Get/Put response in)
   - [x] implement storage 'meter'
     - [x] code to get node storage used
     - [x] code to get free space on same device
     - [x] implement storage used/free 'progress' bar
-  - [ ] implement bandwidth 'meter'
-    - [ ] code to get node bandwidth
-    - [ ] code to get total bandwidth
+  - [x] implement bandwidth 'meter'
+    - [x] code to get node bandwidth
+    - [x] code to get total bandwidth
     - [ ] implement bandwidth node/total/max in last day 'progress' bar
 - [ ] Implement DashOverview: all nodes on one page (rename from DashSummary)
-- [ ] trim NodeMetrics timeline
+- [x] trim NodeMetrics timeline
 - [ ] logtail-dash [Issue #1](https://github.com/happybeing/logfile-dash/issues/1): Implement popup help on ?, h, H
 - [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
 - [ ] Implement --features="vdash" / --features="logtail" to select app and UI
-
+- [x] switch to crossterm only (v0.9.0)
+- [ ] port from tui-rs (deprecated) to ratatui (supported fork of tui-rs)
 
 ## LICENSE
 
