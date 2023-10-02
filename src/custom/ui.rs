@@ -88,7 +88,7 @@ fn get_node_status_string(monitor: &mut LogMonitor) -> String {
 	let mut node_status_string = monitor.metrics.node_status_string();
 
 	if let Some(metadata) = &monitor.metrics.entry_metadata {
-		let idle_time = Utc::now() - metadata.time;
+		let idle_time = Utc::now() - metadata.system_time;
 		if idle_time > node_inactive_timeout {
 			monitor.metrics.node_inactive = true;
 			node_status_string = format!("INACTIVE ({})", get_duration_text(idle_time));

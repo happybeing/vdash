@@ -671,7 +671,7 @@ impl NodeMetrics {
 
 		let entry = LogEntry { logstring: String::from(line) };
 		let entry_metadata = self.entry_metadata.as_ref().unwrap().clone();
-		let entry_time = entry_metadata.time;
+		let entry_time = entry_metadata.message_time;
 
 		debug_log!(format!("gather_metrics() entry_time: {:?}", entry_time).as_str());
 
@@ -699,7 +699,7 @@ impl NodeMetrics {
 			self.node_status = NodeStatus::Started;
 			let message = line.to_string();
 			let version = String::from(line[running_prefix.len()..].to_string());
-			self.node_started = Some(entry_metadata.time);
+			self.node_started = Some(entry_metadata.message_time);
 			self.parser_output = format!(
 				"START node {} at {}",
 				String::from(version.clone()),
@@ -723,7 +723,7 @@ impl NodeMetrics {
 			&line,
 			"Running as Node: SendToSection [ msg: MsgEnvelope { message: QueryResponse { response: QueryResponse::",
 		)
-		|| self.parse_timed_data(&line, &entry_metadata.time)
+		|| self.parse_timed_data(&line, &entry_metadata.message_time)
 		|| self.parse_states(&line, &entry_metadata)
 		|| self.parse_start(&line, &entry_metadata);
 	}
@@ -786,7 +786,7 @@ impl NodeMetrics {
 	///! Returns true if the line has been processed and can be discarded
 	fn parse_states(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
 		if entry_metadata.category.eq("ERROR") {
-			self.count_error(&entry_metadata.time);
+			self.count_error(&entry_metadata.message_time);
 		}
 
 		let &content = &line.as_str();
@@ -1035,7 +1035,7 @@ pub struct ActivityEntry {
 	pub activity: String,
 	pub logstring: String,
 	pub category: String, // First word, "Running", "INFO", "WARN" etc
-	pub time: DateTime<Utc>,
+	pub message_time: DateTime<Utc>,
 	pub source: String,
 
 	pub parser_output: String,
@@ -1048,7 +1048,7 @@ impl ActivityEntry {
 			activity: activity.to_string(),
 			logstring: line.clone(),
 			category: entry_metadata.category.clone(),
-			time: entry_metadata.time,
+			message_time: entry_metadata.message_time,
 			source: entry_metadata.source.clone(),
 
 			parser_output: String::from(""),
@@ -1061,7 +1061,8 @@ impl ActivityEntry {
 #[derive(Clone)]
 pub struct LogMeta {
 	pub category: String, // First word ('INFO', 'WARN' etc.)
-	pub time: DateTime<Utc>,
+	pub message_time: DateTime<Utc>,
+	pub system_time: DateTime<Utc>,
 	pub source: String,
 	pub message: String,
 
@@ -1072,7 +1073,8 @@ impl LogMeta {
 	pub fn clone(&self) -> LogMeta {
 		LogMeta {
 			category: self.category.clone(),
-			time: self.time,
+			message_time: self.message_time,
+			system_time: self.system_time,
 			source: self.source.clone(),
 			message: self.message.clone(),
 			parser_output: self.parser_output.clone(),
@@ -1120,7 +1122,8 @@ impl LogEntry {
 
 			return Some(LogMeta {
 				category: String::from(category),
-				time: time_utc,
+				message_time: time_utc,
+				system_time: Utc::now(),
 				source: String::from(source),
 				message: String::from(message),
 				parser_output,
