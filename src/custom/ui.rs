@@ -6,6 +6,8 @@ use chrono::Utc;
 
 use super::app::{App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
+use structopt::StructOpt;
+use crate::custom::opt::Opt;
 
 #[path = "../widgets/mod.rs"]
 pub mod widgets;
@@ -470,6 +472,7 @@ fn draw_timeline<B: Backend>(
 						let label_stats = if timeline.is_cumulative {
 							format!("{}{} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
 						} else {
+							dash_state._debug_window(format!("min: {} max: {}", min_bucket_value, max_bucket_value).as_str());
 							if max_bucket_value == 0 {max_bucket_value = timeline.last_non_zero_value;}
 							if min_bucket_value == u64::MAX || min_bucket_value == 0 {min_bucket_value = max_bucket_value;}
 							format!("range {}-{}{} in last {}", min_bucket_value,  max_bucket_value, timeline.units_text, duration_text)
@@ -601,8 +604,9 @@ fn draw_debug_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut 
 		.block(
 			Block::default()
 				.borders(Borders::ALL)
-				.title(String::from(DEBUG_WINDOW_NAME)),
-		)
+				// .title(String::from(DEBUG_WINDOW_NAME)),
+				.title(format!("{} v{} - {}", Opt::clap().get_name(), structopt::clap::crate_version!(), String::from(DEBUG_WINDOW_NAME))),
+			)
 		.highlight_style(highlight_style);
 
 	f.render_stateful_widget(
