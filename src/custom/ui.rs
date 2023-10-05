@@ -86,7 +86,11 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
 
-	push_subheading(&mut items, &"Node".to_string());
+	let mut node_title_text = String::from(super::app::SAFENODE_BINARY_NAME);
+	if let Some(node_running_version) = &monitor.metrics.running_version {
+		node_title_text = format!("{} {}", &node_title_text, node_running_version);
+	};
+	push_subheading(&mut items, &node_title_text);
 
 	let mut node_uptime_txt = String::from("Start time unknown");
 	if let Some(node_start_time) = monitor.metrics.node_started {

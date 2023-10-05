@@ -17,6 +17,8 @@ use crate::custom::app_timelines::{GETS_TIMELINE_KEY, PUTS_TIMELINE_KEY, ERRORS_
 use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
 use crate::shared::util::StatefulList;
 
+pub const SAFENODE_BINARY_NAME: &str = "safenode";
+
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
 
 use std::sync::Mutex;
