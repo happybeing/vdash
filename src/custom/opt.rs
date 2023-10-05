@@ -1,6 +1,4 @@
 ///! Command line options and usage
-///!
-///! Edit src/custom/opt.rs to create a customised fork of logtail-dash
 
 pub static MIN_TIMELINE_STEPS: usize = 10;
 
@@ -35,7 +33,7 @@ pub struct Opt {
 	#[structopt(short, long)]
 	pub debug_window: bool,
 
-	/// Parses first logfile, prints results to second and shows side-by-side (logtail-crossterm only)
+	/// Parses first logfile and adds a debug output window (fullscreen with r/l arrow))
 	#[structopt(long)]
 	pub debug_dashboard: bool,
 }
