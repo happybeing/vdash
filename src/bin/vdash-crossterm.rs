@@ -114,8 +114,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							terminal.show_cursor()?;
 							break Ok(());
 						},
-						// KeyCode::Char('s')|
-						// KeyCode::Char('S') => app.set_main_view(DashViewMain::DashSummary),
+						KeyCode::Char('s')|
+						KeyCode::Char('S') => set_main_view(DashViewMain::DashSummary, &mut app),
+						KeyCode::Char('h')|
+						KeyCode::Char('H') => set_main_view(DashViewMain::DashHelp, &mut app),
 						KeyCode::Char('v')|
 						KeyCode::Char('V') => set_main_view(DashViewMain::DashNode, &mut app),
 

@@ -18,7 +18,8 @@ use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
 use crate::shared::util::StatefulList;
 
 pub const SAFENODE_BINARY_NAME: &str = "safenode";
-
+pub static SUMMARY_WINDOW_NAME: &str = "All Nodes Summary";
+pub static HELP_WINDOW_NAME: &str = "Help";
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
 
 use std::sync::Mutex;
@@ -1161,6 +1162,7 @@ impl LogEntry {
 pub enum DashViewMain {
 	DashSummary,
 	DashNode,
+	DashHelp,
 	DashDebug,
 }
 
@@ -1170,6 +1172,9 @@ pub struct DashState {
 	pub dash_node_focus: String,
     pub mmm_ui_mode:   MinMeanMax,
     pub top_timeline: usize,  // Timeline to show at top of UI
+
+	pub summary_status: StatefulList<String>,
+	pub help_status: StatefulList<String>,
 
 	// For --debug-window option
 	pub debug_window_list: StatefulList<String>,
@@ -1187,6 +1192,9 @@ impl DashState {
 			dash_node_focus: String::new(),
 			mmm_ui_mode: MinMeanMax::Mean,
             top_timeline: 0,
+
+			summary_status: StatefulList::with_items(vec![]),
+			help_status: StatefulList::with_items(vec![]),
 
 			debug_window: false,
 			debug_window_has_focus: false,
@@ -1256,6 +1264,7 @@ pub fn set_main_view(view: DashViewMain, app: &mut App) {
 pub fn save_focus(app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashSummary => {} // TODO
+		DashViewMain::DashHelp => {} // TODO
 		DashViewMain::DashNode => {
 			if let Some(focus) = app.get_logfile_with_focus() {
 				app.dash_state.dash_node_focus = focus;
@@ -1268,6 +1277,7 @@ pub fn save_focus(app: &mut App) {
 pub fn restore_focus(app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashSummary => {} // TODO
+		DashViewMain::DashHelp => {} // TODO
 		DashViewMain::DashNode => {
 			app.set_logfile_with_focus(app.dash_state.dash_node_focus.clone())
 		}

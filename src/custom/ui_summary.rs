@@ -10,27 +10,23 @@ use ratatui::{
 
 pub fn draw_dashboard<B: Backend>(
 	f: &mut Frame<B>,
-	dash_state: &DashState,
+	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
 	match dash_state.main_view {
-		DashViewMain::DashSummary => {}
+		DashViewMain::DashSummary => draw_summary_dash(f, dash_state, monitors),
 		DashViewMain::DashNode => {}
 		DashViewMain::DashHelp => {}
-		DashViewMain::DashDebug => draw_debug_dashboard(f, dash_state, monitors),
+		DashViewMain::DashDebug => {}
 	}
 }
 
-use super::ui::draw_logfile;
+use super::ui::draw_summary_window;
 
-fn draw_debug_dashboard<B: Backend>(
+fn draw_summary_dash<B: Backend>(
 	f: &mut Frame<B>,
-	_dash_state: &DashState,
+	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
-	for (logfile, monitor) in monitors.iter_mut() {
-		if monitor.is_debug_dashboard_log {
-			draw_logfile(f, f.size(), logfile, monitor);
-		}
-	}
+	draw_summary_window(f, f.size(), dash_state, monitors);
 }

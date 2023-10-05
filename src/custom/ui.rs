@@ -4,8 +4,16 @@
 
 use chrono::Utc;
 
-use super::app::{App, DashState, DashViewMain, LogMonitor, DEBUG_WINDOW_NAME};
+use super::app::{App, DashState, DashViewMain, LogMonitor,
+	SUMMARY_WINDOW_NAME,
+	HELP_WINDOW_NAME,
+	DEBUG_WINDOW_NAME
+};
+
+use super::ui_summary::draw_dashboard as draw_summary_dash;
+use super::ui_help::draw_dashboard as draw_help_dash;
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
+
 use structopt::StructOpt;
 use crate::custom::opt::Opt;
 
@@ -28,7 +36,8 @@ use crate::custom::timelines::{get_duration_text, get_min_buckets_value, get_max
 
 pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 	match app.dash_state.main_view {
-		DashViewMain::DashSummary => {} //draw_summary_dash(f, dash_state, monitors),
+		DashViewMain::DashSummary => draw_summary_dash(f, &mut app.dash_state, &mut app.monitors),
+		DashViewMain::DashHelp => draw_help_dash(f, &mut app.dash_state, &mut app.monitors),
 		DashViewMain::DashNode => draw_node_dash(f, &mut app.dash_state, &mut app.monitors),
 		DashViewMain::DashDebug => debug_draw_dashboard(f, &mut app.dash_state, &mut app.monitors),
 	}
@@ -63,6 +72,8 @@ fn draw_node_dash<B: Backend>(
 		}
 	}
 
+	draw_summary_window(f, size, dash_state, monitors);
+	draw_help_window(f, size, dash_state);
 	draw_debug_window(f, size, dash_state);
 }
 
@@ -586,6 +597,58 @@ pub fn draw_logfile<B: Backend>(
 	f.render_stateful_widget(logfile_widget, area, &mut monitor.content.state);
 }
 
+pub fn draw_summary_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
+	// let highlight_style = match dash_state.debug_window_has_focus {
+	// 	true => Style::default()
+	// 		.bg(Color::LightGreen)
+	// 		.add_modifier(Modifier::BOLD),
+	// 	false => Style::default().add_modifier(Modifier::BOLD),
+	// };
+
+	// let items: Vec<ListItem> = dash_state
+	// 	.summary_window_list
+	// 	.items
+	// 	.iter()
+	// 	.map(|s| {
+	// 		ListItem::new(vec![Line::from(s.clone())])
+	// 			.style(Style::default().fg(Color::Black).bg(Color::White))
+	// 	})
+	// 	.collect();
+
+	// let debug_window_widget = List::new(items)
+	// 	.block(
+	// 		Block::default()
+	// 			.borders(Borders::ALL)
+	// 			.title(format!("{} v{} - {}", Opt::clap().get_name(), structopt::clap::crate_version!(), String::from(SUMMARY_WINDOW_NAME))),
+	// 		)
+	// 	.highlight_style(highlight_style);
+
+	// f.render_stateful_widget(
+	// 	debug_window_widget,
+	// 	area,
+	// 	&mut dash_state.summary_window_list.state,
+	// );
+}
+
+pub fn draw_help_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState) {
+	let mut items = Vec::<ListItem>::new();
+	let mut help_title_text = String::from("{} v{} - Help");
+	push_subheading(&mut items, &help_title_text);
+
+	push_metric(
+		&mut items,
+		&"This is...".to_string(),
+		&String::from("some help!"),
+	);
+
+	let help_widget = List::new(items).block(
+		Block::default()
+			.borders(Borders::ALL)
+			.title(format!("{} v{} - {}", Opt::clap().get_name(), structopt::clap::crate_version!(), String::from(HELP_WINDOW_NAME))),
+		);
+	f.render_stateful_widget(help_widget, area, &mut dash_state.help_status.state);
+}
+
 fn draw_debug_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState) {
 	let highlight_style = match dash_state.debug_window_has_focus {
 		true => Style::default()
@@ -608,7 +671,6 @@ fn draw_debug_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut 
 		.block(
 			Block::default()
 				.borders(Borders::ALL)
-				// .title(String::from(DEBUG_WINDOW_NAME)),
 				.title(format!("{} v{} - {}", Opt::clap().get_name(), structopt::clap::crate_version!(), String::from(DEBUG_WINDOW_NAME))),
 			)
 		.highlight_style(highlight_style);
