@@ -17,8 +17,8 @@ lazy_static::lazy_static! {
 	);
 }
 
-pub const EARNINGS_UNITS_TEXT: &str = " nanos";
-pub const STORAGE_COST_UNITS_TEXT: &str = " nanos/MB";
+pub const EARNINGS_UNITS_TEXT: &str = "nanos";
+pub const STORAGE_COST_UNITS_TEXT: &str = "nanos/MB";
 
 /// keys (used to access timelines)
 pub const GETS_TIMELINE_KEY: &str = "gets";

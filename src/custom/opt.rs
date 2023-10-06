@@ -37,3 +37,6 @@ pub struct Opt {
 	#[structopt(long)]
 	pub debug_dashboard: bool,
 }
+
+pub fn get_app_name() -> String { String::from(Opt::clap().get_name()) }
+pub fn get_app_version() -> String { String::from(structopt::clap::crate_version!()) }

@@ -15,7 +15,7 @@ use super::ui_help::draw_dashboard as draw_help_dash;
 use super::ui_debug::draw_dashboard as debug_draw_dashboard;
 
 use structopt::StructOpt;
-use crate::custom::opt::Opt;
+use crate::custom::opt::{Opt, get_app_name, get_app_version};
 
 #[path = "../widgets/mod.rs"]
 pub mod widgets;
@@ -185,6 +185,22 @@ fn push_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 		ListItem::new(vec![Line::from(subheading.clone())])
 			.style(Style::default().fg(Color::Yellow)),
 	);
+}
+
+fn push_text(items: &mut Vec<ListItem>, subheading: &String, optional_style: Option<Style>) {
+	let style = match optional_style {
+		Some(style) => style,
+		None => Style::default().fg(Color::Green),
+	};
+
+	items.push(
+		ListItem::new(vec![Line::from(subheading.clone())])
+			.style(style),
+	);
+}
+
+fn push_blank(items: &mut Vec<ListItem>) {
+	push_text(items, &String::from(""), None);
 }
 
 fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
@@ -485,15 +501,15 @@ fn draw_timeline<B: Backend>(
 						let mut max_bucket_value = get_max_buckets_value(buckets);
 						let mut min_bucket_value = get_min_buckets_value(buckets);
 						let label_stats = if timeline.is_cumulative {
-							format!("{}{} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
+							format!("{} {} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
 						} else {
 							dash_state._debug_window(format!("min: {} max: {}", min_bucket_value, max_bucket_value).as_str());
 							if max_bucket_value == 0 {max_bucket_value = timeline.last_non_zero_value;}
 							if min_bucket_value == u64::MAX || min_bucket_value == 0 {min_bucket_value = max_bucket_value;}
-							format!("range {}-{}{} in last {}", min_bucket_value,  max_bucket_value, timeline.units_text, duration_text)
+							format!("range {}-{} {} in last {}", min_bucket_value,  max_bucket_value, timeline.units_text, duration_text)
 						};
 						let label_scale = if max_bucket_value > 0 {
-							format!( " (vertical scale: 0-{}{})", max_bucket_value, timeline.units_text)
+							format!( " (vertical scale: 0-{} {})", max_bucket_value, timeline.units_text)
 						} else {
 							String::from("")
 						};
@@ -597,7 +613,7 @@ pub fn draw_logfile<B: Backend>(
 	f.render_stateful_widget(logfile_widget, area, &mut monitor.content.state);
 }
 
-pub fn draw_summary_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
+pub fn draw_summary_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
 	// let highlight_style = match dash_state.debug_window_has_focus {
 	// 	true => Style::default()
 	// 		.bg(Color::LightGreen)
@@ -605,46 +621,86 @@ pub fn draw_summary_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state:
 	// 	false => Style::default().add_modifier(Modifier::BOLD),
 	// };
 
-	// let items: Vec<ListItem> = dash_state
-	// 	.summary_window_list
-	// 	.items
-	// 	.iter()
-	// 	.map(|s| {
-	// 		ListItem::new(vec![Line::from(s.clone())])
-	// 			.style(Style::default().fg(Color::Black).bg(Color::White))
-	// 	})
-	// 	.collect();
+	let highlight_style = Style::default()
+		.bg(Color::LightGreen)
+		.add_modifier(Modifier::BOLD);
 
-	// let debug_window_widget = List::new(items)
-	// 	.block(
-	// 		Block::default()
-	// 			.borders(Borders::ALL)
-	// 			.title(format!("{} v{} - {}", Opt::clap().get_name(), structopt::clap::crate_version!(), String::from(SUMMARY_WINDOW_NAME))),
-	// 		)
-	// 	.highlight_style(highlight_style);
+	let items: Vec<ListItem> = dash_state
+		.summary_window_list
+		.items
+		.iter()
+		.map(|s| {
+			ListItem::new(vec![Line::from(s.clone())])
+				.style(Style::default().fg(Color::Black).bg(Color::White))
+		})
+		.collect();
 
-	// f.render_stateful_widget(
-	// 	debug_window_widget,
-	// 	area,
-	// 	&mut dash_state.summary_window_list.state,
-	// );
+	let summary_window_widget = List::new(items)
+		.block(
+			Block::default()
+				.borders(Borders::ALL)
+				.title(format!("{} v{} - {}", get_app_name(), get_app_version(), String::from(SUMMARY_WINDOW_NAME))),
+			)
+		.highlight_style(highlight_style);
+
+	f.render_stateful_widget(
+		summary_window_widget,
+		area,
+		&mut dash_state.summary_window_list.state,
+	);
 }
 
+fn push_multiline_text(mut items: &mut Vec<ListItem>, lines: &str) {
+	for line in lines.lines().into_iter() {
+		push_text(&mut items, &String::from(line), None);
+	}
+}
 pub fn draw_help_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState) {
 	let mut items = Vec::<ListItem>::new();
-	let mut help_title_text = String::from("{} v{} - Help");
-	push_subheading(&mut items, &help_title_text);
 
-	push_metric(
-		&mut items,
-		&"This is...".to_string(),
-		&String::from("some help!"),
-	);
+	push_blank(&mut items);
+	push_text(&mut items, &String::from("    For vdash command usage:"), None);
+	push_text(&mut items, &String::from("        vdash --help"), None);
 
+	push_blank(&mut items);
+	push_blank(&mut items);
+	push_subheading(&mut items, &String::from("    Keyboard Commands"));
+	push_multiline_text(&mut items, "
+    'n' or 'N'     :   Switch to Node Details which displays metrics for one node and lets you cycle through all monitored nodes.\n
+    's' or 'S'     :   Switch to Summary Screen which provides a summary of every monitored node.
+
+    'h', 'H' or '?':   Shows this help. Press 'n' or 's' to exit help.");
+
+	push_blank(&mut items);
+	push_blank(&mut items);
+	push_subheading(&mut items, &String::from("    Node Details: selecting a node"));
+	push_blank(&mut items);
+
+	push_text(&mut items, &String::from("    Use right arrow and left arrow to cycle forward and backwards through multiple monitored nodes."), None);
+	push_blank(&mut items);
+
+	push_blank(&mut items);
+	push_blank(&mut items);
+	push_subheading(&mut items, &String::from("    Node Details: timelines"));
+
+	push_multiline_text(&mut items,"
+    'o', 'O' or '-':   Zoom timeline out.
+    'i', 'I' or '+':   Zoom timeline in.
+
+    'm' or 'M'     :   Cycle through minimum, mean and maximum values for a non-cumulative timeline such as Storage Cost.
+
+    't':           :   Scroll timelines up. Only three of the available timelines are visible at one time.
+    'T':           :   Scroll timelines down.
+	");
+
+	push_blank(&mut items);
+	push_subheading(&mut items, &String::from("    To exit Help press 'n' or 's'"));
+
+	let help_title_text =format!("{} v{} - {}", get_app_name(), get_app_version(), String::from(HELP_WINDOW_NAME));
 	let help_widget = List::new(items).block(
 		Block::default()
 			.borders(Borders::ALL)
-			.title(format!("{} v{} - {}", Opt::clap().get_name(), structopt::clap::crate_version!(), String::from(HELP_WINDOW_NAME))),
+			.title(help_title_text),
 		);
 	f.render_stateful_widget(help_widget, area, &mut dash_state.help_status.state);
 }

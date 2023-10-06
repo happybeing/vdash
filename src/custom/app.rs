@@ -156,6 +156,7 @@ impl App {
 			logfile_names,
 		};
 		app.update_timelines(&Utc::now());
+		app.dash_state.update_summary_window(&mut app.monitors);
 
 		if !first_logfile.is_empty() {
 			app.dash_state.dash_node_focus = first_logfile.clone();
@@ -1173,7 +1174,7 @@ pub struct DashState {
     pub mmm_ui_mode:   MinMeanMax,
     pub top_timeline: usize,  // Timeline to show at top of UI
 
-	pub summary_status: StatefulList<String>,
+	pub summary_window_list: StatefulList<String>,
 	pub help_status: StatefulList<String>,
 
 	// For --debug-window option
@@ -1193,7 +1194,7 @@ impl DashState {
 			mmm_ui_mode: MinMeanMax::Mean,
             top_timeline: 0,
 
-			summary_status: StatefulList::with_items(vec![]),
+			summary_window_list: StatefulList::new(),	// TODO was ::with_items(vec![]),
 			help_status: StatefulList::with_items(vec![]),
 
 			debug_window: false,
@@ -1201,6 +1202,45 @@ impl DashState {
 			debug_window_list: StatefulList::new(),
 			max_debug_window: 100,
 		}
+	}
+
+	// TODO this is inefficient regenerates every line. May be worth just updating the line for the updated node/monitor
+	pub fn update_summary_window(&mut self, monitors: &mut HashMap<String, LogMonitor>) {
+		self.summary_window_list = StatefulList::new();
+
+		let earnings_heading = format!("Earned ({})", crate::custom::app_timelines::EARNINGS_UNITS_TEXT);
+
+		self.summary_window_list.items.push(format!("{:>4} {:>15}{:>12} {:>10} {:>10} {:>10} {:>10} {:>24}",
+			String::from("Node"),
+			earnings_heading,
+			String::from("StoreCost"),
+			String::from("PUTS"),
+			String::from("GETS"),
+			String::from("Errors"),
+			String::from("MB RAM"),
+			String::from("Status"),
+			));
+		for (_, monitor) in monitors.into_iter() {
+			if !monitor.is_debug_dashboard_log {
+				let node_status_string = monitor.metrics.get_node_status_string();
+				let node_summary = format!("{:>4} {:>15}{:>12} {:>10} {:>10} {:>10} {:>10} {:>24}",
+					monitor.index + 1,
+					monitor.metrics.storage_payments.to_string(),
+					monitor.metrics.storage_cost,
+					monitor.metrics.activity_puts,
+					monitor.metrics.activity_gets,
+					monitor.metrics.activity_errors,
+					monitor.metrics.memory_used_mb,
+					node_status_string
+				);
+				self.summary_window_list.items.push(String::from(node_summary));
+			}
+		}
+	}
+
+	pub fn _summary_window(&mut self, text: &str){
+		// TODO maybe add selection? See _debug_window() below
+		self.summary_window_list.items.push(text.to_string());
 	}
 
 	pub fn _debug_window(&mut self, text: &str) {
