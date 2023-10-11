@@ -18,7 +18,7 @@ use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
 use crate::shared::util::StatefulList;
 
 pub const SAFENODE_BINARY_NAME: &str = "safenode";
-pub static SUMMARY_WINDOW_NAME: &str = "All Nodes Summary";
+pub static SUMMARY_WINDOW_NAME: &str = "Summary of Monitored Nodes";
 pub static HELP_WINDOW_NAME: &str = "Help";
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
 
@@ -313,19 +313,34 @@ impl App {
 		}
 	}
 
-	pub fn handle_arrow_up(&mut self) {
-		if let Some(monitor) = self.get_monitor_with_focus() {
-			do_bracketed_next_previous(&mut monitor.content, false);
-		} else if self.opt.debug_window {
-			do_bracketed_next_previous(&mut self.dash_state.debug_window_list, false);
-		}
-	}
+	pub fn handle_arrow_up(&mut self)   { self.handle_arrow(false); }
 
-	pub fn handle_arrow_down(&mut self) {
-		if let Some(monitor) = self.get_monitor_with_focus() {
-			do_bracketed_next_previous(&mut monitor.content, true);
-		} else if self.opt.debug_window {
-			do_bracketed_next_previous(&mut self.dash_state.debug_window_list, true);
+	pub fn handle_arrow_down(&mut self) { self.handle_arrow( true); }
+
+	pub fn handle_arrow(&mut self, is_down: bool) {
+		let list = match self.dash_state.main_view {
+			DashViewMain::DashSummary => { Some(&mut self.dash_state.summary_window_list) }
+			DashViewMain::DashNode => {
+				if let Some(monitor) = self.get_monitor_with_focus() {
+					Some(&mut monitor.content)
+				} else if self.opt.debug_window {
+					Some(&mut self.dash_state.debug_window_list)
+				} else {
+					None
+				}
+			}
+			DashViewMain::DashHelp => { None }
+			DashViewMain::DashDebug => {
+				if self.opt.debug_window {
+					Some(&mut self.dash_state.debug_window_list)
+				} else {
+					None
+				}
+			}
+		};
+
+		if let Some(list) = list {
+			do_bracketed_next_previous(list, is_down);
 		}
 	}
 
@@ -450,6 +465,8 @@ impl LogMonitor {
 		}
 	}
 
+	pub fn is_node(&self) -> bool { return !self.is_debug_dashboard_log; }
+
 	pub fn update_chunk_store_fsstats(&mut self) {
 		self.chunk_store_fsstats = match statvfs(&self.chunk_store_pathbuf) {
 			Ok(fsstats) => Some(fsstats),
@@ -551,6 +568,7 @@ pub struct NodeMetrics {
 	pub node_status: NodeStatus,
 	pub node_inactive: bool,
 
+	pub peers_connected: u64,
 	pub activity_gets: u64,
 	pub activity_puts: u64,
 	pub activity_errors: u64,
@@ -604,6 +622,7 @@ impl NodeMetrics {
 
 			// Counts
 			category_count: HashMap::new(),
+			peers_connected: 0,
 			activity_gets: 0,
 			activity_puts: 0,
 			activity_errors: 0,
@@ -652,6 +671,7 @@ impl NodeMetrics {
 		metrics
 	}
 
+	pub fn is_node_active(&self) -> bool {return !self.node_inactive;}
 
 	pub fn get_node_status_string(&mut self) -> String {
 		let node_inactive_timeout = Duration::seconds(NODE_INACTIVITY_TIMEOUT_S);
@@ -673,6 +693,7 @@ impl NodeMetrics {
 
 	fn reset_metrics(&mut self) {
 		self.node_status = NodeStatus::Started;
+		self.peers_connected = 0;
 		self.activity_gets = 0;
 		self.activity_puts = 0;
 		self.activity_errors = 0;
@@ -839,6 +860,16 @@ impl NodeMetrics {
 			let mut parser_output = String::from("Connected ({} lag)");
 			if let Some(events_skipped) = self.parse_usize("Skipping ", content) {
 				parser_output = format!("{} ({})", &parser_output, events_skipped);
+			};
+			self.parser_output = parser_output;
+			return true;
+		}
+
+		if content.contains("connected peers") {
+			let mut parser_output = String::from("connected peers:");
+			if let Some(peers_connected) = self.parse_u64("now we have #", content) {
+				self.peers_connected = peers_connected;
+				parser_output = format!("{} {}", &parser_output, peers_connected);
 			};
 			self.parser_output = parser_output;
 			return true;
@@ -1174,7 +1205,10 @@ pub struct DashState {
     pub mmm_ui_mode:   MinMeanMax,
     pub top_timeline: usize,  // Timeline to show at top of UI
 
+	pub summary_window_heading: String,
 	pub summary_window_list: StatefulList<String>,
+	max_summary_window: usize,
+
 	pub help_status: StatefulList<String>,
 
 	// For --debug-window option
@@ -1188,13 +1222,16 @@ impl DashState {
 	pub fn new() -> DashState {
 
 		DashState {
-			main_view: DashViewMain::DashNode,
+			main_view: DashViewMain::DashSummary,
 			active_timescale: 0,
 			dash_node_focus: String::new(),
 			mmm_ui_mode: MinMeanMax::Mean,
             top_timeline: 0,
 
-			summary_window_list: StatefulList::new(),	// TODO was ::with_items(vec![]),
+			summary_window_heading: String::from(""),
+			summary_window_list: StatefulList::new(),
+			max_summary_window: 1000,
+
 			help_status: StatefulList::with_items(vec![]),
 
 			debug_window: false,
@@ -1204,43 +1241,57 @@ impl DashState {
 		}
 	}
 
-	// TODO this is inefficient regenerates every line. May be worth just updating the line for the updated node/monitor
+	// TODO this regenerates every line. May be worth just updating the line for the updated node/monitor
 	pub fn update_summary_window(&mut self, monitors: &mut HashMap<String, LogMonitor>) {
 		self.summary_window_list = StatefulList::new();
 
 		let earnings_heading = format!("Earned ({})", crate::custom::app_timelines::EARNINGS_UNITS_TEXT);
 
-		self.summary_window_list.items.push(format!("{:>4} {:>15}{:>12} {:>10} {:>10} {:>10} {:>10} {:>24}",
+		self.summary_window_heading = format!("{:>4} {:>15}{:>12} {:>11} {:>11} {:>11} {:>11} {:>11} {:>24}",
 			String::from("Node"),
 			earnings_heading,
 			String::from("StoreCost"),
 			String::from("PUTS"),
 			String::from("GETS"),
 			String::from("Errors"),
+			String::from("Connections"),
 			String::from("MB RAM"),
 			String::from("Status"),
-			));
+		);
+
 		for (_, monitor) in monitors.into_iter() {
 			if !monitor.is_debug_dashboard_log {
 				let node_status_string = monitor.metrics.get_node_status_string();
-				let node_summary = format!("{:>4} {:>15}{:>12} {:>10} {:>10} {:>10} {:>10} {:>24}",
+				let node_summary = format!("{:>4} {:>15}{:>12} {:>11} {:>11} {:>11} {:>11} {:>11} {:>24}",
 					monitor.index + 1,
 					monitor.metrics.storage_payments.to_string(),
 					monitor.metrics.storage_cost,
 					monitor.metrics.activity_puts,
 					monitor.metrics.activity_gets,
 					monitor.metrics.activity_errors,
+					monitor.metrics.peers_connected,
 					monitor.metrics.memory_used_mb,
 					node_status_string
 				);
-				self.summary_window_list.items.push(String::from(node_summary));
+				self.summary_window(&node_summary);
 			}
 		}
 	}
 
-	pub fn _summary_window(&mut self, text: &str){
-		// TODO maybe add selection? See _debug_window() below
+	fn summary_window(&mut self, text: &str){
 		self.summary_window_list.items.push(text.to_string());
+
+		let len = self.summary_window_list.items.len();
+
+		if len > self.max_summary_window {
+			self.summary_window_list.items = self
+				.summary_window_list
+				.items
+				.split_off(len - self.max_summary_window);
+		} else {
+			self.summary_window_list.state.select(Some(len - 1));
+		}
+
 	}
 
 	pub fn _debug_window(&mut self, text: &str) {
