@@ -603,16 +603,11 @@ pub struct NodeMetrics {
 	pub node_status: NodeStatus,
 	pub node_inactive: bool,
 
-	pub activity_gets: u64,
-	pub activity_puts: u64,
-	pub activity_errors: u64,
-
-	pub storage_payments: u64,
-
-	pub storage_cost: u64,
-	pub storage_cost_min: u64,
-	pub storage_cost_max: u64,
-
+	pub activity_gets: MmmStat,
+	pub activity_puts: MmmStat,
+	pub activity_errors: MmmStat,
+	pub storage_payments: MmmStat,
+	pub storage_cost: MmmStat,
 	pub peers_connected: MmmStat,
 	pub memory_used_mb: MmmStat,
 
@@ -658,16 +653,13 @@ impl NodeMetrics {
 
 			// Counts
 			category_count: HashMap::new(),
-			activity_gets: 0,
-			activity_puts: 0,
-			activity_errors: 0,
+			activity_gets: MmmStat::new(),
+			activity_puts: MmmStat::new(),
+			activity_errors: MmmStat::new(),
 
 			// Storage Payments
-			storage_payments: 0,
-			storage_cost: 0,
-			storage_cost_min: 0,
-			storage_cost_max: 0,
-
+			storage_payments: MmmStat::new(),
+			storage_cost: MmmStat::new(),
 			peers_connected: MmmStat::new(),
 
 			// State (node)
@@ -730,12 +722,10 @@ impl NodeMetrics {
 
 	fn reset_metrics(&mut self) {
 		self.node_status = NodeStatus::Started;
-		self.activity_gets = 0;
-		self.activity_puts = 0;
-		self.activity_errors = 0;
-		self.storage_cost = 0;
-		self.storage_cost_min = 0;
-		self.storage_cost_max = 0;
+		self.activity_gets = MmmStat::new();
+		self.activity_puts = MmmStat::new();
+		self.activity_errors = MmmStat::new();
+		self.storage_cost = MmmStat::new();
 		self.peers_connected = MmmStat::new();
 		self.memory_used_mb = MmmStat::new();
 	}
@@ -1067,51 +1057,28 @@ impl NodeMetrics {
 	}
 
 	fn count_get(&mut self, time: &DateTime<Utc>) {
-		self.activity_gets += 1;
-		if let Some(timeline) = self.app_timelines.get_timeline_by_key(GETS_TIMELINE_KEY) {
-			timeline.increment_value(time);
-		}
+		self.activity_gets.add_sample(1);
+		self.apply_timeline_sample(GETS_TIMELINE_KEY, time, 1);
 	}
 
 	fn count_put(&mut self, time: &DateTime<Utc>) {
-		self.activity_puts += 1;
-		if let Some(timeline) = self.app_timelines.get_timeline_by_key(PUTS_TIMELINE_KEY) {
-			timeline.increment_value(time);
-		}
+		self.activity_puts.add_sample(1);
+		self.apply_timeline_sample(PUTS_TIMELINE_KEY, time, 1);
 	}
 
 	fn count_error(&mut self, time: &DateTime<Utc>) {
-		self.activity_errors += 1;
-		if let Some(timeline) = self.app_timelines.get_timeline_by_key(ERRORS_TIMELINE_KEY) {
-			timeline.increment_value(time);
-		}
+		self.activity_errors.add_sample(1);
+		self.apply_timeline_sample(ERRORS_TIMELINE_KEY, time, 1);
 	}
 
 	fn count_storage_payment(&mut self, time: &DateTime<Utc>, storage_payment: u64) {
-		self.storage_payments += storage_payment;
-		if let Some(timeline) = self.app_timelines.get_timeline_by_key(EARNINGS_TIMELINE_KEY) {
-			timeline.update_value(time, storage_payment);
-		}
+		self.storage_payments.add_sample(storage_payment);
+		self.apply_timeline_sample(EARNINGS_TIMELINE_KEY, time, storage_payment);
 	}
 
 	fn count_storage_cost(&mut self, time: &DateTime<Utc>, storage_cost: u64) {
-		self.storage_cost = storage_cost;
-		if storage_cost > self.storage_cost_max {
-			self.storage_cost_max = storage_cost;
-		}
-		if self.storage_cost_min == 0 || storage_cost < self.storage_cost_min {
-			self.storage_cost_min = storage_cost;
-		}
-
-		if let Some(timeline) = self.app_timelines.get_timeline_by_key(STORAGE_COST_TIMELINE_KEY) {
-			timeline.update_value(time, storage_cost);
-		}
-	}
-
-	fn apply_timeline_sample(&mut self, timeline_key: &str, time: &DateTime<Utc>, value: u64) {
-		if let Some(timeline) = self.app_timelines.get_timeline_by_key(timeline_key) {
-				timeline.update_value(time, value);
-		}
+		self.storage_cost.add_sample(storage_cost);
+		self.apply_timeline_sample(STORAGE_COST_TIMELINE_KEY, time, storage_cost);
 	}
 
 	fn count_peers_connected(&mut self, time: &DateTime<Utc>, connections: u64) {
@@ -1124,15 +1091,9 @@ impl NodeMetrics {
 		self.apply_timeline_sample(RAM_TIMELINE_KEY, time, memory_used_mb);
 	}
 
-	///! TODO
-	pub fn parse_logentry_counts(&mut self, entry: &LogMeta) {
-		// Categories ('INFO', 'WARN' etc)
-		if !entry.category.is_empty() {
-			let count = match self.category_count.get(&entry.category) {
-				Some(count) => count + 1,
-				None => 1,
-			};
-			self.category_count.insert(entry.category.clone(), count);
+	fn apply_timeline_sample(&mut self, timeline_key: &str, time: &DateTime<Utc>, value: u64) {
+		if let Some(timeline) = self.app_timelines.get_timeline_by_key(timeline_key) {
+				timeline.update_value(time, value);
 		}
 	}
 }
@@ -1316,11 +1277,11 @@ impl DashState {
 				let node_status_string = monitor.metrics.get_node_status_string();
 				let node_summary = format!("{:>4} {:>15}{:>12} {:>11} {:>11} {:>11} {:>11} {:>11} {:>24}",
 					monitor.index + 1,
-					monitor.metrics.storage_payments.to_string(),
-					monitor.metrics.storage_cost,
-					monitor.metrics.activity_puts,
-					monitor.metrics.activity_gets,
-					monitor.metrics.activity_errors,
+					monitor.metrics.storage_payments.total.to_string(),
+					monitor.metrics.storage_cost.most_recent,
+					monitor.metrics.activity_puts.total,
+					monitor.metrics.activity_gets.total,
+					monitor.metrics.activity_errors.total,
 					monitor.metrics.peers_connected.most_recent,
 					monitor.metrics.memory_used_mb.most_recent,
 					node_status_string

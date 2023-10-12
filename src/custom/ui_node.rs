@@ -99,7 +99,7 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 
 	push_subheading(&mut items, &"".to_string());
 	let storage_payments_txt = format!("{}{}",
-		monitor.metrics.storage_payments.to_string(),
+		monitor.metrics.storage_payments.total.to_string(),
 		crate::custom::app_timelines::EARNINGS_UNITS_TEXT,
 	);
 	push_metric(&mut items,
@@ -107,9 +107,9 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 		&storage_payments_txt);
 
 	let chunk_fee_txt = format!("{} ({}-{}){}",
-		monitor.metrics.storage_cost.to_string(),
-		monitor.metrics.storage_cost_min.to_string(),
-		monitor.metrics.storage_cost_max.to_string(),
+		monitor.metrics.storage_cost.most_recent.to_string(),
+		monitor.metrics.storage_cost.min.to_string(),
+		monitor.metrics.storage_cost.max.to_string(),
 		crate::custom::app_timelines::STORAGE_COST_UNITS_TEXT,
 	);
 	push_metric(&mut items,
@@ -124,19 +124,19 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	push_metric(
 		&mut items,
 		&"PUTS".to_string(),
-		&monitor.metrics.activity_puts.to_string(),
+		&monitor.metrics.activity_puts.total.to_string(),
 	);
 
 	push_metric(
 		&mut items,
 		&"GETS".to_string(),
-		&monitor.metrics.activity_gets.to_string(),
+		&monitor.metrics.activity_gets.total.to_string(),
 	);
 
 	push_metric(
 		&mut items,
 		&"ERRORS".to_string(),
-		&monitor.metrics.activity_errors.to_string(),
+		&monitor.metrics.activity_errors.total.to_string(),
 	);
 
 	push_subheading(&mut items, &"".to_string());

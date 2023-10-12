@@ -55,11 +55,11 @@ impl SummaryStats {
 				self.node_count += 1;
 				self.active_node_count += if monitor.metrics.is_node_active() {1} else {0};
 
-				self.storage_cost.add_sample(monitor.metrics.storage_cost);
-				self.earnings.add_sample(monitor.metrics.storage_payments);
-				self.puts.add_sample(monitor.metrics.activity_puts);
-				self.gets.add_sample(monitor.metrics.activity_gets);
-				self.errors.add_sample(monitor.metrics.activity_errors);
+				self.storage_cost.add_sample(monitor.metrics.storage_cost.most_recent);
+				self.earnings.add_sample(monitor.metrics.storage_payments.total);
+				self.puts.add_sample(monitor.metrics.activity_puts.total);
+				self.gets.add_sample(monitor.metrics.activity_gets.total);
+				self.errors.add_sample(monitor.metrics.activity_errors.total);
 				self.connections.add_sample(monitor.metrics.peers_connected.most_recent);
 				self.ram.add_sample(u64::from(monitor.metrics.memory_used_mb.most_recent));
 			}

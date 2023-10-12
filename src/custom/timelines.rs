@@ -130,10 +130,6 @@ impl Timeline {
 		}
 	}
 
-	pub fn increment_value(&mut self, time: &DateTime<Utc>) {
-		self.update_value(time, 1);
-	}
-
 	pub fn update_value(&mut self, time: &DateTime<Utc>, value: u64) {
 		// debug_log!("update_value()");
 
