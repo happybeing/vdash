@@ -141,7 +141,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Tab => app.change_focus_next(),
 						KeyCode::Left => app.change_focus_previous(),
 
-						KeyCode::Char('g') => set_main_view(DashViewMain::DashDebug, &mut app),
+						KeyCode::Char('g') => {
+							if app.opt.debug_window { set_main_view(DashViewMain::DashDebug, &mut app); }
+						},
 						_ => {}
 					};
 					terminal.draw(|f| draw_dashboard(f, &mut app)).unwrap();
