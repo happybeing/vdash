@@ -129,6 +129,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Char('o')|
 						KeyCode::Char('O') => app.scale_timeline_down(),
 
+						KeyCode::Char('l')|
+						KeyCode::Char('L') => app.toggle_logfile_area(),
+
 						KeyCode::Char('m')|
 						KeyCode::Char('M') => app.bump_mmm_ui_mode(),
 

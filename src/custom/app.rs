@@ -344,6 +344,10 @@ impl App {
 		}
 	}
 
+	pub fn toggle_logfile_area(&mut self) {
+		self.dash_state.node_logfile_visible = !self.dash_state.node_logfile_visible;
+	}
+
 	pub fn scale_timeline_up(&mut self) {
 		if self.dash_state.active_timescale == 0 {
 			return;
@@ -1214,6 +1218,7 @@ pub enum DashViewMain {
 pub struct DashState {
 	pub main_view: DashViewMain,
 	pub active_timescale: usize,
+	pub node_logfile_visible: bool,
 	pub dash_node_focus: String,
     pub mmm_ui_mode:   MinMeanMax,
     pub top_timeline: usize,  // Timeline to show at top of UI
@@ -1237,6 +1242,7 @@ impl DashState {
 		DashState {
 			main_view: DashViewMain::DashSummary,
 			active_timescale: 0,
+			node_logfile_visible: true,
 			dash_node_focus: String::new(),
 			mmm_ui_mode: MinMeanMax::Mean,
             top_timeline: 0,

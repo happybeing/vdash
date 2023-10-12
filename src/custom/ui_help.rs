@@ -55,6 +55,8 @@ pub fn draw_help_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &m
 
     't':           :   Scroll timelines up. Only three of the available timelines are visible at one time.
     'T':           :   Scroll timelines down.
+
+    'l' or 'L'     :   Toggle between show logfile plus 3 timelines, or hide logfile to show all timelines.
 	");
 
 	push_blank(&mut items);

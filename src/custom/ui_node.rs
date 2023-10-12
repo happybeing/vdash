@@ -9,6 +9,7 @@ pub mod widgets;
 use self::widgets::gauge::Gauge2;
 
 use super::app::{DashState, LogMonitor};
+use super::timelines::Timeline;
 use crate::custom::timelines::{get_min_buckets_value, get_max_buckets_value, get_duration_text};
 
 use crate::custom::ui::{push_subheading, push_metric, draw_sparkline};
@@ -27,27 +28,39 @@ pub fn draw_node_dash<B: Backend>(
 	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
-	// Horizonatal bands:
-	let constraints = [
-		Constraint::Length(12), // Stats summary and graphs
-		Constraint::Length(18), // Timeline
-		Constraint::Min(0),     // Bottom panel
-	];
-
 	let size = f.size();
-	let chunks = Layout::default()
+	let chunks_with_3_bands = Layout::default()
 		.direction(Direction::Vertical)
-		.constraints(constraints.as_ref())
+		.constraints([
+			Constraint::Length(12), // Stats summary and graphs
+			Constraint::Length(18), // Timelines
+			Constraint::Min(0),     // Logfile panel
+		].as_ref())
+		.split(size);
+
+	let chunks_with_2_bands = Layout::default()
+		.direction(Direction::Vertical)
+		.constraints([
+			Constraint::Length(12), // Stats summary and graphs
+			Constraint::Min(0),     // Timelines
+		].as_ref())
 		.split(size);
 
 	for entry in monitors.into_iter() {
 		let (logfile, mut monitor) = entry;
 		if monitor.has_focus {
-			// Stats and Graphs / Timeline / Logfile
-			draw_node(f, chunks[0], dash_state, &mut monitor);
-			draw_timeline(f, chunks[1], dash_state, &mut monitor);
-			draw_bottom_panel(f, chunks[2], dash_state, &logfile, &mut monitor);
-			return;
+			if dash_state.node_logfile_visible {
+				// Stats and Graphs / Timelines / Logfile
+				draw_node(f, chunks_with_3_bands[0], dash_state, &mut monitor);
+				draw_timelines_panel(f, chunks_with_3_bands[1], dash_state, &mut monitor);
+				draw_bottom_panel(f, chunks_with_3_bands[2], dash_state, &logfile, &mut monitor);
+				return;
+			} else {
+				// Stats and Graphs / Timelines
+				draw_node(f, chunks_with_2_bands[0], dash_state, &mut monitor);
+				draw_timelines_panel(f, chunks_with_2_bands[1], dash_state, &mut monitor);
+				return;
+			}
 		}
 	}
 
@@ -149,7 +162,7 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.metrics_status.state);
 }
 
-fn draw_timeline<B: Backend>(
+fn draw_timelines_panel<B: Backend>(
 	f: &mut Frame<B>,
 	area: Rect,
 	dash_state: &mut DashState,
@@ -186,67 +199,103 @@ fn draw_timeline<B: Backend>(
 		// 	i += 1;
 		// }
 
-		const NUM_TIMELINES_VISIBLE: usize = 3;
+		const NUM_TIMELINES_VISIBLE: u16 = 3;
+		let num_timelines_visible = if dash_state.node_logfile_visible {
+			NUM_TIMELINES_VISIBLE
+		} else {
+			crate::custom::app_timelines::APP_TIMELINES.len() as u16
+		};
 
-		let chunks = Layout::default()
+		let chunks_slim = Layout::default()
 			.direction(Direction::Vertical)
 			.margin(1)
 			.constraints(
 				[
-					Constraint::Percentage(33),
-					Constraint::Percentage(33),
-					Constraint::Percentage(33),
+					// Three timelines
+					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100/num_timelines_visible),
 				]
 				.as_ref(),
 			)
 			.split(area);
 
-		use crate::custom::timelines::MinMeanMax;
 
-		let mut index = dash_state.top_timeline_index();
-		for i in 1 ..= NUM_TIMELINES_VISIBLE {
-			let mmm_ui_mode = dash_state.mmm_ui_mode();
-			if index >= monitor.metrics.app_timelines.get_num_timelines() {
-				index = 0;
+		let chunks_fat = Layout::default()
+			.direction(Direction::Vertical)
+			.margin(1)
+			.constraints(
+				[
+					// Tailored to display all timelines in APP_TIMELINES (currently 7)
+					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100/num_timelines_visible),
+				]
+				.as_ref(),
+			)
+			.split(area);
+
+		let mut index = dash_state.top_timeline_index() + 1;
+		for i in 1 ..= num_timelines_visible {
+			if index > monitor.metrics.app_timelines.get_num_timelines() {
+				index = 1;
 			}
-
-			if let Some(timeline) = monitor.metrics.app_timelines.get_timeline_by_index(index) {
-				let mmm_text = if timeline.is_mmm {
-					match mmm_ui_mode {
-						MinMeanMax::Min => {" Min "}
-						MinMeanMax::Mean => {" Mean"}
-						MinMeanMax::Max => {" Max "}
-					}
-				} else { "" };
-
-				if let Some(bucket_set) = timeline.get_bucket_set(active_timescale_name) {
-					if let Some(buckets) = timeline.get_buckets(active_timescale_name, Some(mmm_ui_mode)) {
-						// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
-						let duration_text = bucket_set.get_duration_text();
-
-						let mut max_bucket_value = get_max_buckets_value(buckets);
-						let mut min_bucket_value = get_min_buckets_value(buckets);
-						let label_stats = if timeline.is_cumulative {
-							format!("{} {} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
-						} else {
-							dash_state._debug_window(format!("min: {} max: {}", min_bucket_value, max_bucket_value).as_str());
-							if max_bucket_value == 0 {max_bucket_value = timeline.last_non_zero_value;}
-							if min_bucket_value == u64::MAX || min_bucket_value == 0 {min_bucket_value = max_bucket_value;}
-							format!("range {}-{} {} in last {}", min_bucket_value,  max_bucket_value, timeline.units_text, duration_text)
-						};
-						let label_scale = if max_bucket_value > 0 {
-							format!( " (vertical scale: 0-{} {})", max_bucket_value, timeline.units_text)
-						} else {
-							String::from("")
-						};
-						let timeline_label = format!("{}{}: {}{}", timeline.name, mmm_text, label_stats, label_scale);
-						draw_sparkline(f, chunks[i-1], &buckets, &timeline_label, timeline.colour);
-					};
-				};
+			let timeline_index = if dash_state.node_logfile_visible {index} else {i as usize};
+			if let Some(timeline) = monitor.metrics.app_timelines.get_timeline_by_index(timeline_index - 1) {
+				let chunk = if dash_state.node_logfile_visible {&chunks_slim} else {&chunks_fat};
+				draw_timeline(f, chunk[i as usize - 1], dash_state, timeline, active_timescale_name);
 			}
 			index += 1;
 		}
 	}
+}
+
+fn draw_timeline<B: Backend>(
+	f: &mut Frame<B>,
+	area: Rect,
+	dash_state: &mut DashState,
+	timeline: &Timeline,
+	active_timescale_name: &str,
+) {
+	use crate::custom::timelines::MinMeanMax;
+
+	let mmm_ui_mode = dash_state.mmm_ui_mode();
+	let mmm_text = if timeline.is_mmm {
+		match mmm_ui_mode {
+			MinMeanMax::Min => {" Min "}
+			MinMeanMax::Mean => {" Mean"}
+			MinMeanMax::Max => {" Max "}
+		}
+	} else { "" };
+
+	if let Some(bucket_set) = timeline.get_bucket_set(active_timescale_name) {
+		if let Some(buckets) = timeline.get_buckets(active_timescale_name, Some(mmm_ui_mode)) {
+			// dash_state._debug_window(format!("bucket[0-2 to max]: {},{},{},{} to {}, for {}", buckets[0], buckets[1], buckets[2], buckets[3], buckets[buckets.len()-1], display_name).as_str());
+			let duration_text = bucket_set.get_duration_text();
+
+			let mut max_bucket_value = get_max_buckets_value(buckets);
+			let mut min_bucket_value = get_min_buckets_value(buckets);
+			let label_stats = if timeline.is_cumulative {
+				format!("{} {} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
+			} else {
+				dash_state._debug_window(format!("min: {} max: {}", min_bucket_value, max_bucket_value).as_str());
+				if max_bucket_value == 0 {max_bucket_value = timeline.last_non_zero_value;}
+				if min_bucket_value == u64::MAX || min_bucket_value == 0 {min_bucket_value = max_bucket_value;}
+				format!("range {}-{} {} in last {}", min_bucket_value,  max_bucket_value, timeline.units_text, duration_text)
+			};
+			let label_scale = if max_bucket_value > 0 {
+				format!( " (vertical scale: 0-{} {})", max_bucket_value, timeline.units_text)
+			} else {
+				String::from("")
+			};
+			let timeline_label = format!("{}{}: {}{}", timeline.name, mmm_text, label_stats, label_scale);
+			draw_sparkline(f, area, &buckets, &timeline_label, timeline.colour);
+		};
+	};
 }
 
 fn draw_bottom_panel<B: Backend>(
