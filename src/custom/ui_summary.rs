@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use super::app::{DashState, LogMonitor, SUMMARY_WINDOW_NAME};
+use super::app::{DashState, LogMonitor, MmmStat, SUMMARY_WINDOW_NAME};
 
 use crate::custom::opt::{get_app_name, get_app_version};
 use crate::custom::ui::{ push_subheading, push_text, push_blank, push_metric};
@@ -16,39 +16,6 @@ use ratatui::{
 	widgets::{Block, Borders, List, ListItem},
 	Frame,
 };
-
-// TODO refactor other mmm code to use this struct
-pub struct MmmStat {
-	sample_count:	u64,
-
-	total:	u64,
-	min:	u64,
-	mean:	u64,
-	max:	u64,
-}
-
-impl MmmStat {
-	pub fn new() -> MmmStat {
-		MmmStat {
-			sample_count:	0,
-			total: 	0,
-			min: 	u64::MAX,
-			mean:	0,
-			max:	0,
-		}
-	}
-
-	pub fn add_sample(&mut self, value: u64) {
-		self.sample_count += 1;
-		self.total += value;
-		self.mean = self.total / self.sample_count;
-
-		if self.min > value || self.min == u64::MAX {
-			self.min = value;
-		}
-		if self.max < value { self.max = value; }
-	}
-}
 struct SummaryStats {
 	node_count: u32,
 	active_node_count:	u32,
@@ -93,8 +60,8 @@ impl SummaryStats {
 				self.puts.add_sample(monitor.metrics.activity_puts);
 				self.gets.add_sample(monitor.metrics.activity_gets);
 				self.errors.add_sample(monitor.metrics.activity_errors);
-				self.connections.add_sample(monitor.metrics.peers_connected);
-				self.ram.add_sample(u64::from(monitor.metrics.memory_used_mb as u64));
+				self.connections.add_sample(monitor.metrics.peers_connected.most_recent);
+				self.ram.add_sample(u64::from(monitor.metrics.memory_used_mb.most_recent));
 			}
 		}
 	}
@@ -115,7 +82,7 @@ pub fn draw_summary_dash<B: Backend>(f: &mut Frame<B>, dash_state: &mut DashStat
 
 	let summary_list_widget = Block::default()
 			.borders(Borders::ALL)
-			.title(format!("{}  ({} v{}      Press '?' for Help)", String::from(SUMMARY_WINDOW_NAME), get_app_name(), get_app_version()));
+			.title(format!("{}  ({} v{}      Press 	'?' for Help)", String::from(SUMMARY_WINDOW_NAME), get_app_name(), get_app_version()));
 
 	f.render_widget(
 		summary_list_widget,

@@ -13,7 +13,7 @@ use tempfile::NamedTempFile;
 
 use crate::custom::timelines::{MinMeanMax, get_duration_text};
 use crate::custom::app_timelines::{AppTimelines, TIMESCALES, APP_TIMELINES};
-use crate::custom::app_timelines::{GETS_TIMELINE_KEY, PUTS_TIMELINE_KEY, ERRORS_TIMELINE_KEY, STORAGE_COST_TIMELINE_KEY, EARNINGS_TIMELINE_KEY};
+use crate::custom::app_timelines::{STORAGE_COST_TIMELINE_KEY, EARNINGS_TIMELINE_KEY, PUTS_TIMELINE_KEY, GETS_TIMELINE_KEY, CONNECTIONS_TIMELINE_KEY, RAM_TIMELINE_KEY, ERRORS_TIMELINE_KEY};
 use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
 use crate::shared::util::StatefulList;
 
@@ -555,6 +555,41 @@ pub fn node_status_as_string(node_status: &NodeStatus) -> String {
 	}
 }
 
+pub struct MmmStat {
+	sample_count:	u64,
+
+	pub most_recent:	u64,
+	pub total:	u64,
+	pub min:	u64,
+	pub mean:	u64,
+	pub max:	u64,
+}
+
+impl MmmStat {
+	pub fn new() -> MmmStat {
+		MmmStat {
+			sample_count:	0,
+			most_recent: 	0,
+			total: 	0,
+			min: 	u64::MAX,
+			mean:	0,
+			max:	0,
+		}
+	}
+
+	pub fn add_sample(&mut self, value: u64) {
+		self.most_recent = value;
+		self.sample_count += 1;
+		self.total += value;
+		self.mean = self.total / self.sample_count;
+
+		if self.min > value || self.min == u64::MAX {
+			self.min = value;
+		}
+		if self.max < value { self.max = value; }
+	}
+}
+
 pub struct NodeMetrics {
 	pub node_started: Option<DateTime<Utc>>,
 	pub running_message: Option<String>,
@@ -568,7 +603,6 @@ pub struct NodeMetrics {
 	pub node_status: NodeStatus,
 	pub node_inactive: bool,
 
-	pub peers_connected: u64,
 	pub activity_gets: u64,
 	pub activity_puts: u64,
 	pub activity_errors: u64,
@@ -578,6 +612,9 @@ pub struct NodeMetrics {
 	pub storage_cost: u64,
 	pub storage_cost_min: u64,
 	pub storage_cost_max: u64,
+
+	pub peers_connected: MmmStat,
+	pub memory_used_mb: MmmStat,
 
 	pub used_space: u64,
 	pub max_capacity: u64,
@@ -593,7 +630,6 @@ pub struct NodeMetrics {
 	pub total_mb_received: f32,
 	pub total_mb_transmitted: f32,
 
-	pub memory_used_mb: f32,
 	pub cpu_usage_percent:	f32,
 	pub cpu_usage_percent_max:	f32,
 	pub bytes_read: u64,
@@ -622,7 +658,6 @@ impl NodeMetrics {
 
 			// Counts
 			category_count: HashMap::new(),
-			peers_connected: 0,
 			activity_gets: 0,
 			activity_puts: 0,
 			activity_errors: 0,
@@ -632,6 +667,8 @@ impl NodeMetrics {
 			storage_cost: 0,
 			storage_cost_min: 0,
 			storage_cost_max: 0,
+
+			peers_connected: MmmStat::new(),
 
 			// State (node)
 			node_status: NodeStatus::Stopped,
@@ -655,7 +692,7 @@ impl NodeMetrics {
 			total_mb_received: 0.0,
 			total_mb_transmitted: 0.0,
 
-			memory_used_mb: 0.0,
+			memory_used_mb: MmmStat::new(),
 			cpu_usage_percent: 0.0,
 			cpu_usage_percent_max: 0.0,
 			bytes_read: 0,
@@ -693,13 +730,14 @@ impl NodeMetrics {
 
 	fn reset_metrics(&mut self) {
 		self.node_status = NodeStatus::Started;
-		self.peers_connected = 0;
 		self.activity_gets = 0;
 		self.activity_puts = 0;
 		self.activity_errors = 0;
 		self.storage_cost = 0;
 		self.storage_cost_min = 0;
 		self.storage_cost_max = 0;
+		self.peers_connected = MmmStat::new();
+		self.memory_used_mb = MmmStat::new();
 	}
 
 	///! Process a line from a SAFE Node logfile.
@@ -799,6 +837,14 @@ impl NodeMetrics {
 				self.parser_output = format!("Payment received: {}", storage_payment);
 				return true;
 			};
+		} else if line.contains("connected peers") {
+			let mut parser_output = String::from("connected peers:");
+			if let Some(peers_connected) = self.parse_u64("now we have #", line) {
+				self.count_peers_connected(entry_time, peers_connected);
+				parser_output = format!("{} {}", &parser_output, peers_connected);
+			};
+			self.parser_output = parser_output;
+			return true;
 		}
 		return false;
 	}
@@ -865,16 +911,6 @@ impl NodeMetrics {
 			return true;
 		}
 
-		if content.contains("connected peers") {
-			let mut parser_output = String::from("connected peers:");
-			if let Some(peers_connected) = self.parse_u64("now we have #", content) {
-				self.peers_connected = peers_connected;
-				parser_output = format!("{} {}", &parser_output, peers_connected);
-			};
-			self.parser_output = parser_output;
-			return true;
-		}
-
 		// Metrics
 		if content.contains("sn_logging::metrics") {
 			// System
@@ -919,7 +955,7 @@ impl NodeMetrics {
 			};
 
 			// Node Resources
-			if let Some(cpu_usage_percent) = self.parse_float32("\"cpu_usage_percent\":", content) {	// TODO prefix char for cpu_usage_percent
+			if let Some(cpu_usage_percent) = self.parse_float32("\"cpu_usage_percent\":", content) {
 
 				self.cpu_usage_percent = cpu_usage_percent;
 				if cpu_usage_percent > self.cpu_usage_percent_max {
@@ -927,8 +963,8 @@ impl NodeMetrics {
 				}
 				parser_output = format!("{}  cpu: {}, cpu_max {}", &parser_output, cpu_usage_percent, self.cpu_usage_percent_max);
 			};
-			if let Some(memory_used_mb) = self.parse_float32("\"memory_used_mb\":", content) {	// TODO prefix char for memory_used_mb
-				self.memory_used_mb = memory_used_mb;
+			if let Some(memory_used_mb) = self.parse_float32("\"memory_used_mb\":", content) {
+				self.count_memory_used_mb(&entry_metadata.message_time, memory_used_mb as u64);
 				parser_output = format!("{} , memory: {}", &parser_output, memory_used_mb);
 			};
 			if let Some(bytes_read) = self.parse_u64("bytes_read\":", content) {
@@ -1070,6 +1106,22 @@ impl NodeMetrics {
 		if let Some(timeline) = self.app_timelines.get_timeline_by_key(STORAGE_COST_TIMELINE_KEY) {
 			timeline.update_value(time, storage_cost);
 		}
+	}
+
+	fn apply_timeline_sample(&mut self, timeline_key: &str, time: &DateTime<Utc>, value: u64) {
+		if let Some(timeline) = self.app_timelines.get_timeline_by_key(timeline_key) {
+				timeline.update_value(time, value);
+		}
+	}
+
+	fn count_peers_connected(&mut self, time: &DateTime<Utc>, connections: u64) {
+		self.peers_connected.add_sample(connections);
+		self.apply_timeline_sample(CONNECTIONS_TIMELINE_KEY, time, connections);
+	}
+
+	fn count_memory_used_mb(&mut self, time: &DateTime<Utc>, memory_used_mb: u64) {
+		self.memory_used_mb.add_sample(memory_used_mb);
+		self.apply_timeline_sample(RAM_TIMELINE_KEY, time, memory_used_mb);
 	}
 
 	///! TODO
@@ -1269,8 +1321,8 @@ impl DashState {
 					monitor.metrics.activity_puts,
 					monitor.metrics.activity_gets,
 					monitor.metrics.activity_errors,
-					monitor.metrics.peers_connected,
-					monitor.metrics.memory_used_mb,
+					monitor.metrics.peers_connected.most_recent,
+					monitor.metrics.memory_used_mb.most_recent,
 					node_status_string
 				);
 				self.summary_window(&node_summary);

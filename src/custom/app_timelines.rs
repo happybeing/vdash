@@ -21,19 +21,23 @@ pub const EARNINGS_UNITS_TEXT: &str = "nanos";
 pub const STORAGE_COST_UNITS_TEXT: &str = "nanos/MB";
 
 /// keys (used to access timelines)
-pub const GETS_TIMELINE_KEY: &str = "gets";
-pub const PUTS_TIMELINE_KEY: &str = "puts";
 pub const EARNINGS_TIMELINE_KEY: &str = "earnings";
 pub const STORAGE_COST_TIMELINE_KEY: &str = "storage";
+pub const PUTS_TIMELINE_KEY: &str = "puts";
+pub const GETS_TIMELINE_KEY: &str = "gets";
+pub const CONNECTIONS_TIMELINE_KEY: &str = "connections";
+pub const RAM_TIMELINE_KEY: &str = "ram";
 pub const ERRORS_TIMELINE_KEY: &str = "errors";
 
 /// Defines the Timelines available for display
-pub const APP_TIMELINES: [(&str, &str, &str, bool, bool, Color); 5] = [
+pub const APP_TIMELINES: [(&str, &str, &str, bool, bool, Color); 7] = [
 //  (key, UI name, units_text, is_mmm, is_cumulative, colour)
     (EARNINGS_TIMELINE_KEY, "Earnings", EARNINGS_UNITS_TEXT, false, true, Color::LightCyan),
     (STORAGE_COST_TIMELINE_KEY, "Storage Cost", STORAGE_COST_UNITS_TEXT, true, false, Color::LightBlue),
     (PUTS_TIMELINE_KEY, "PUTS",  "",false, true, Color::Yellow),
     (GETS_TIMELINE_KEY, "GETS", "", false, true, Color::Green),
+    (CONNECTIONS_TIMELINE_KEY, "Connections", "", true, false, Color::Blue),
+    (RAM_TIMELINE_KEY, "RAM", "MB", true, false, Color::Magenta),
     (ERRORS_TIMELINE_KEY, "ERRORS", "", false, true, Color::Red),
 ];
 

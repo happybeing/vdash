@@ -116,7 +116,7 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 		&"Storage Cost".to_string(),
 		&chunk_fee_txt);
 
-	let connections_text = format!("{}", monitor.metrics.peers_connected);
+	let connections_text = format!("{}", monitor.metrics.peers_connected.most_recent);
 	push_metric(&mut items,
 	&"Connections".to_string(),
 	&connections_text);
@@ -458,11 +458,11 @@ fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut
 
 	push_storage_subheading(&mut text_items, &"Load".to_string());
 
-	let node_text = format!("{:<13}: CPU {:8.2} (MAX {:2.2}) MEM {:.0}MB",
+	let node_text = format!("{:<13}: CPU {:8.2} (MAX {:2.2}) MEM {}MB",
 		"Node",
 		monitor.metrics.cpu_usage_percent,
 		monitor.metrics.cpu_usage_percent_max,
-		monitor.metrics.memory_used_mb,
+		monitor.metrics.memory_used_mb.most_recent,
 	);
 	text_items.push(
 		ListItem::new(vec![Line::from(node_text.clone())])
