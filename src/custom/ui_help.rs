@@ -60,6 +60,12 @@ pub fn draw_help_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &m
 	push_blank(&mut items);
 	push_subheading(&mut items, &String::from("    To exit Help press 'n' or 's'"));
 
+	if dash_state.debug_window {
+		push_blank(&mut items);
+		push_blank(&mut items);
+		push_text(&mut items, &String::from("    'g' for debug window"), None);
+	}
+
 	let help_title_text =format!("{} v{} - {}", get_app_name(), get_app_version(), String::from(HELP_WINDOW_NAME));
 	let help_widget = List::new(items).block(
 		Block::default()
