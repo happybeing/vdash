@@ -135,6 +135,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Char('m')|
 						KeyCode::Char('M') => app.bump_mmm_ui_mode(),
 
+						KeyCode::Char('j')|
+						KeyCode::Char('J') => app.jump_to_node(),
+
 						KeyCode::Char('t') => app.top_timeline_next(),
 						KeyCode::Char('T') => app.top_timeline_previous(),
 

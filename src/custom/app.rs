@@ -59,7 +59,6 @@ pub struct App {
 	pub monitors: HashMap<String, LogMonitor>,
 	pub logfile_with_focus: String,
 	pub logfiles: MuxedLines,
-	pub logfile_names: Vec<String>,
 }
 
 impl App {
@@ -88,7 +87,6 @@ impl App {
 		let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
 		let mut logfiles = MuxedLines::new()?;
 		let mut debug_logfile_name = String::new();
-		let mut logfile_names = Vec::<String>::new();
 
 		let mut debug_logfile: Option<tempfile::NamedTempFile> = if opt.debug_window {
 			opt.files = opt.files[0..1].to_vec();
@@ -119,12 +117,12 @@ impl App {
 				}
 			}
 			if opt.ignore_existing {
-				logfile_names.push(f.to_string());
+				dash_state.logfile_names.push(f.to_string());
 				monitors.insert(f.to_string(), monitor);
 			} else {
 				match monitor.load_logfile(&mut dash_state) {
 					Ok(()) => {
-						logfile_names.push(f.to_string());
+						dash_state.logfile_names.push(f.to_string());
 						monitors.insert(f.to_string(), monitor);
 					}
 					Err(e) => {
@@ -153,7 +151,6 @@ impl App {
 			monitors,
 			logfile_with_focus: first_logfile.clone(),
 			logfiles,
-			logfile_names,
 		};
 		app.update_timelines(&Utc::now());
 		app.dash_state.update_summary_window(&mut app.monitors);
@@ -255,9 +252,9 @@ impl App {
 		}
 
 		let mut next_i = 0;
-		for (i, name) in self.logfile_names.iter().enumerate() {
+		for (i, name) in self.dash_state.logfile_names.iter().enumerate() {
 			if name == &self.logfile_with_focus {
-				if i < self.logfile_names.len() - 1 {
+				if i < self.dash_state.logfile_names.len() - 1 {
 					next_i = i + 1;
 				}
 				break;
@@ -269,7 +266,7 @@ impl App {
 			return;
 		}
 
-		let logfile = self.logfile_names[next_i].to_string();
+		let logfile = self.dash_state.logfile_names[next_i].to_string();
 		self.set_logfile_with_focus(logfile.clone());
 
 		if let Some(debug_logfile) = self.get_debug_dashboard_logfile() {
@@ -284,9 +281,9 @@ impl App {
 			return;
 		}
 
-		let len = self.logfile_names.len();
+		let len = self.dash_state.logfile_names.len();
 		let mut previous_i = len - 1;
-		for (i, name) in self.logfile_names.iter().enumerate() {
+		for (i, name) in self.dash_state.logfile_names.iter().enumerate() {
 			if name == &self.logfile_with_focus {
 				if i > 0 {
 					previous_i = i - 1;
@@ -303,13 +300,20 @@ impl App {
 			return;
 		}
 
-		let logfile = self.logfile_names[previous_i].to_string();
+		let logfile = self.dash_state.logfile_names[previous_i].to_string();
 		self.set_logfile_with_focus(logfile.clone());
 
 		if let Some(debug_logfile) = self.get_debug_dashboard_logfile() {
 			if logfile.eq(&debug_logfile) {
 				self.change_focus_previous();
 			}
+		}
+	}
+
+	pub fn change_focus_to(&mut self, logfile_index: usize) {
+		if logfile_index < self.dash_state.logfile_names.len() {
+			self.set_logfile_with_focus(self.dash_state.logfile_names[logfile_index].clone());
+			self.dash_state.main_view = DashViewMain::DashNode;
 		}
 	}
 
@@ -341,6 +345,14 @@ impl App {
 
 		if let Some(list) = list {
 			do_bracketed_next_previous(list, is_down);
+		}
+	}
+
+	pub fn jump_to_node(&mut self) {
+		if self.dash_state.main_view == DashViewMain::DashSummary {
+			if let Some(selected_index) = self.dash_state.summary_window_list.state.selected() {
+				self.change_focus_to(selected_index);
+			}
 		}
 	}
 
@@ -1219,6 +1231,7 @@ pub enum DashViewMain {
 
 pub struct DashState {
 	pub main_view: DashViewMain,
+	pub logfile_names: Vec<String>,
 	pub active_timescale: usize,
 	pub node_logfile_visible: bool,
 	pub dash_node_focus: String,
@@ -1227,6 +1240,7 @@ pub struct DashState {
 
 	pub summary_window_heading: String,
 	pub summary_window_list: StatefulList<String>,
+	pub summary_list_monitor_positions: Vec<String>,
 	max_summary_window: usize,
 
 	pub help_status: StatefulList<String>,
@@ -1243,6 +1257,7 @@ impl DashState {
 
 		DashState {
 			main_view: DashViewMain::DashSummary,
+			logfile_names: Vec::<String>::new(),
 			active_timescale: 0,
 			node_logfile_visible: true,
 			dash_node_focus: String::new(),
@@ -1251,6 +1266,7 @@ impl DashState {
 
 			summary_window_heading: String::from(""),
 			summary_window_list: StatefulList::new(),
+			summary_list_monitor_positions: Vec::new(),
 			max_summary_window: 1000,
 
 			help_status: StatefulList::with_items(vec![]),
@@ -1265,7 +1281,6 @@ impl DashState {
 	// TODO this regenerates every line. May be worth just updating the line for the updated node/monitor
 	pub fn update_summary_window(&mut self, monitors: &mut HashMap<String, LogMonitor>) {
 		let current_selection = self.summary_window_list.state.selected();
-
 		self.summary_window_list = StatefulList::new();
 
 		let earnings_heading = format!("Earned ({})", crate::custom::app_timelines::EARNINGS_UNITS_TEXT);
@@ -1282,27 +1297,32 @@ impl DashState {
 			String::from("Status"),
 		);
 
-		for (_, monitor) in monitors.into_iter() {
-			if !monitor.is_debug_dashboard_log {
-				let node_status_string = monitor.metrics.get_node_status_string();
-				let node_summary = format!("{:>4} {:>15}{:>12} {:>11} {:>11} {:>11} {:>11} {:>11} {:>24}",
-					monitor.index + 1,
-					monitor.metrics.storage_payments.total.to_string(),
-					monitor.metrics.storage_cost.most_recent,
-					monitor.metrics.activity_puts.total,
-					monitor.metrics.activity_gets.total,
-					monitor.metrics.activity_errors.total,
-					monitor.metrics.peers_connected.most_recent,
-					monitor.metrics.memory_used_mb.most_recent,
-					node_status_string
-				);
-				self.summary_window(&node_summary);
+		for i in 0..self.logfile_names.len() {
+			let filepath = self.logfile_names[i].clone();
+			if let Some(monitor) = monitors.get_mut(&filepath) {
+				if !monitor.is_debug_dashboard_log {
+					let node_status_string = monitor.metrics.get_node_status_string();
+					let node_summary = format!("{:>4} {:>15}{:>12} {:>11} {:>11} {:>11} {:>11} {:>11} {:>24}",
+						monitor.index + 1,
+						monitor.metrics.storage_payments.total.to_string(),
+						monitor.metrics.storage_cost.most_recent,
+						monitor.metrics.activity_puts.total,
+						monitor.metrics.activity_gets.total,
+						monitor.metrics.activity_errors.total,
+						monitor.metrics.peers_connected.most_recent,
+						monitor.metrics.memory_used_mb.most_recent,
+						node_status_string
+					);
+					self.append_to_summary_window(&node_summary);
+					self.summary_list_monitor_positions.push(filepath.clone());
+				}
 			}
 		}
+
 		self.summary_window_list.state.select(current_selection);
 	}
 
-	fn summary_window(&mut self, text: &str){
+	fn append_to_summary_window(&mut self, text: &str){
 		self.summary_window_list.items.push(text.to_string());
 
 		let len = self.summary_window_list.items.len();
