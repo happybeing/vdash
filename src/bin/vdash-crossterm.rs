@@ -115,12 +115,19 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							break Ok(());
 						},
 						KeyCode::Char('s')|
-						KeyCode::Char('S') => set_main_view(DashViewMain::DashSummary, &mut app),
+						KeyCode::Char('S') => {
+							app.preserve_node_selection();
+							set_main_view(DashViewMain::DashSummary, &mut app);
+						},
+
 						KeyCode::Char('h')|
 						KeyCode::Char('H')|
 						KeyCode::Char('?') => set_main_view(DashViewMain::DashHelp, &mut app),
 						KeyCode::Char('n')|
-						KeyCode::Char('N') => set_main_view(DashViewMain::DashNode, &mut app),
+						KeyCode::Char('N') => {
+							app.preserve_node_selection();
+							set_main_view(DashViewMain::DashNode, &mut app);
+						},
 
 						KeyCode::Char('+')|
 						KeyCode::Char('i')|
@@ -134,9 +141,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 						KeyCode::Char('m')|
 						KeyCode::Char('M') => app.bump_mmm_ui_mode(),
-
-						KeyCode::Char('j')|
-						KeyCode::Char('J') => app.jump_to_node(),
 
 						KeyCode::Char('t') => app.top_timeline_next(),
 						KeyCode::Char('T') => app.top_timeline_previous(),

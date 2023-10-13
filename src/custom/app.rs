@@ -348,10 +348,15 @@ impl App {
 		}
 	}
 
-	pub fn jump_to_node(&mut self) {
+	pub fn preserve_node_selection(&mut self) {
 		if self.dash_state.main_view == DashViewMain::DashSummary {
 			if let Some(selected_index) = self.dash_state.summary_window_list.state.selected() {
 				self.change_focus_to(selected_index);
+			}
+		} else if self.dash_state.main_view == DashViewMain::DashNode {
+			if let Some(monitor) = self.get_monitor_with_focus() {
+				let index = Some(monitor.index);
+				self.dash_state.summary_window_list.state.select(index);
 			}
 		}
 	}
