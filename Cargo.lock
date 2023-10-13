@@ -1114,7 +1114,7 @@ checksum = "5190c9442dcdaf0ddd50f37420417d219ae5261bbf5db120d0f9bab996c9cba1"
 
 [[package]]
 name = "vdash"
-version = "0.11.2"
+version = "0.11.3"
 dependencies = [
  "bincode",
  "byte-unit",
