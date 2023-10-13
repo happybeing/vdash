@@ -164,8 +164,6 @@ fn draw_summary_header<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mu
 }
 
 fn draw_summary_list<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
-	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
-
 	let highlight_style = Style::default()
 		.bg(Color::LightGreen)
 		.add_modifier(Modifier::BOLD);

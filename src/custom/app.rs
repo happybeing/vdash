@@ -737,13 +737,15 @@ impl NodeMetrics {
 	///! Process a line from a SAFE Node logfile.
 	///! Use a created LogMeta to update metrics.
 	pub fn gather_metrics(&mut self, line: &str) -> Result<(), std::io::Error> {
-		// let mut parser_result = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
+		self.parser_output = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
+		// debug_log!(&self.parser_output.clone());
 
 		if let Some(metadata) = LogEntry::decode_metadata(line) {
 			self.entry_metadata = Some(metadata);
 		}
 
 		if self.entry_metadata.is_none() {
+			// debug_log!("gather_metrics() - skipping bec. metadata missing");
 			return Ok(());	// Skip until start of first log message
 		}
 
@@ -759,7 +761,7 @@ impl NodeMetrics {
 
 		// --debug-dashboard - prints parser results for a single logfile
 		// to a temp logfile which is displayed in the adjacent window.
-		//debug_log!(&self.parser_output.clone());
+		debug_log!(&self.parser_output.clone());
 
 		Ok(())
 	}
@@ -1262,6 +1264,8 @@ impl DashState {
 
 	// TODO this regenerates every line. May be worth just updating the line for the updated node/monitor
 	pub fn update_summary_window(&mut self, monitors: &mut HashMap<String, LogMonitor>) {
+		let current_selection = self.summary_window_list.state.selected();
+
 		self.summary_window_list = StatefulList::new();
 
 		let earnings_heading = format!("Earned ({})", crate::custom::app_timelines::EARNINGS_UNITS_TEXT);
@@ -1295,6 +1299,7 @@ impl DashState {
 				self.summary_window(&node_summary);
 			}
 		}
+		self.summary_window_list.state.select(current_selection);
 	}
 
 	fn summary_window(&mut self, text: &str){
