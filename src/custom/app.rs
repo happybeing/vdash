@@ -1245,7 +1245,6 @@ pub struct DashState {
 
 	pub summary_window_heading: String,
 	pub summary_window_list: StatefulList<String>,
-	pub summary_list_monitor_positions: Vec<String>,
 	max_summary_window: usize,
 
 	pub help_status: StatefulList<String>,
@@ -1271,7 +1270,6 @@ impl DashState {
 
 			summary_window_heading: String::from(""),
 			summary_window_list: StatefulList::new(),
-			summary_list_monitor_positions: Vec::new(),
 			max_summary_window: 1000,
 
 			help_status: StatefulList::with_items(vec![]),
@@ -1319,7 +1317,6 @@ impl DashState {
 						node_status_string
 					);
 					self.append_to_summary_window(&node_summary);
-					self.summary_list_monitor_positions.push(filepath.clone());
 				}
 			}
 		}
