@@ -15,7 +15,6 @@ use crate::custom::timelines::{get_min_buckets_value, get_max_buckets_value, get
 use crate::custom::ui::{push_subheading, push_metric, draw_sparkline};
 
 use ratatui::{
-	backend::Backend,
 	layout::{Constraint, Direction, Layout, Rect},
 	widgets::{Block, Borders, List, ListItem},
 	style::{Color, Modifier, Style},
@@ -23,8 +22,8 @@ use ratatui::{
 	Frame,
 };
 
-pub fn draw_node_dash<B: Backend>(
-	f: &mut Frame<B>,
+pub fn draw_node_dash(
+	f: &mut Frame,
 	dash_state: &mut DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
@@ -68,7 +67,7 @@ pub fn draw_node_dash<B: Backend>(
 	crate::custom::ui_debug::draw_debug_dash(f, dash_state, monitors);
 }
 
-fn draw_node<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitor: &mut LogMonitor) {
+fn draw_node(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	// Columns:
 	let constraints = [
 		Constraint::Length(40), // Stats summary
@@ -84,7 +83,7 @@ fn draw_node<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashStat
 	draw_node_storage(f, chunks[1], dash_state, monitor);
 }
 
-fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMonitor) {
+fn draw_node_stats(f: &mut Frame, area: Rect, monitor: &mut LogMonitor) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
 
@@ -162,8 +161,8 @@ fn draw_node_stats<B: Backend>(f: &mut Frame<B>, area: Rect, monitor: &mut LogMo
 	f.render_stateful_widget(monitor_widget, area, &mut monitor.metrics_status.state);
 }
 
-fn draw_timelines_panel<B: Backend>(
-	f: &mut Frame<B>,
+fn draw_timelines_panel(
+	f: &mut Frame,
 	area: Rect,
 	dash_state: &mut DashState,
 	monitor: &mut LogMonitor,
@@ -254,8 +253,8 @@ fn draw_timelines_panel<B: Backend>(
 	}
 }
 
-fn draw_timeline<B: Backend>(
-	f: &mut Frame<B>,
+fn draw_timeline(
+	f: &mut Frame,
 	area: Rect,
 	dash_state: &mut DashState,
 	timeline: &Timeline,
@@ -298,8 +297,8 @@ fn draw_timeline<B: Backend>(
 	};
 }
 
-fn draw_bottom_panel<B: Backend>(
-	f: &mut Frame<B>,
+fn draw_bottom_panel(
+	f: &mut Frame,
 	area: Rect,
 	dash_state: &mut DashState,
 	logfile: &String,
@@ -324,8 +323,8 @@ fn draw_bottom_panel<B: Backend>(
 	}
 }
 
-pub fn draw_logfile<B: Backend>(
-	f: &mut Frame<B>,
+pub fn draw_logfile(
+	f: &mut Frame,
 	area: Rect,
 	logfile: &String,
 	monitor: &mut LogMonitor,
@@ -361,7 +360,7 @@ pub fn draw_logfile<B: Backend>(
 }
 
 // TODO split into two sub functions, one for gauges, one for text strings
-fn draw_node_storage<B: Backend>(f: &mut Frame<B>, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
+fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	let used_string = format_size(monitor.metrics.used_space, 1);
 	let max_string = format_size(monitor.metrics.max_capacity, 1);
 	// let device_limit_string = match &monitor.chunk_store_fsstats {

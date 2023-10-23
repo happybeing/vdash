@@ -6,7 +6,6 @@ use super::app::{DashState, LogMonitor, DEBUG_WINDOW_NAME};
 use crate::custom::opt::{get_app_name, get_app_version};
 
 use ratatui::{
-	backend::Backend,
 	layout::Rect,
 	style::{Color, Modifier, Style},
 	text::Line,
@@ -16,8 +15,8 @@ use ratatui::{
 
 use super::ui_node::draw_logfile;
 
-pub fn draw_debug_dash<B: Backend>(
-	f: &mut Frame<B>,
+pub fn draw_debug_dash(
+	f: &mut Frame,
 	_dash_state: &DashState,
 	monitors: &mut HashMap<String, LogMonitor>,
 ) {
@@ -28,7 +27,7 @@ pub fn draw_debug_dash<B: Backend>(
 	}
 }
 
-pub fn draw_debug_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState) {
+pub fn draw_debug_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
 	let highlight_style = match dash_state.debug_window_has_focus {
 		true => Style::default()
 			.bg(Color::LightGreen)

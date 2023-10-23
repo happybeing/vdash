@@ -13,7 +13,6 @@ pub mod widgets;
 use self::widgets::sparkline::Sparkline2;
 
 use ratatui::{
-	backend::Backend,
 	layout::Rect,
 	style::{Color, Style},
 	text::Line,
@@ -21,7 +20,7 @@ use ratatui::{
 	Frame,
 };
 
-pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+pub fn draw_dashboard(f: &mut Frame, app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashSummary => draw_summary_dash(f, &mut app.dash_state, &mut app.monitors),
 		DashViewMain::DashNode => draw_node_dash(f, &mut app.dash_state, &mut app.monitors),
@@ -66,8 +65,8 @@ pub fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	);
 }
 
-pub fn draw_sparkline<B: Backend>(
-	f: &mut Frame<B>,
+pub fn draw_sparkline(
+	f: &mut Frame,
 	area: Rect,
 	buckets: &Vec<u64>,
 	title: &str,

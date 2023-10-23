@@ -9,7 +9,6 @@ use crate::custom::opt::{get_app_name, get_app_version};
 use crate::custom::ui::{ push_subheading, push_text, push_blank, push_metric};
 
 use ratatui::{
-	backend::Backend,
 	layout::{Constraint, Direction, Layout, Rect},
 	style::{Color, Modifier, Style},
 	text::Line,
@@ -67,7 +66,7 @@ impl SummaryStats {
 	}
 }
 
-pub fn draw_summary_dash<B: Backend>(f: &mut Frame<B>, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
+pub fn draw_summary_dash(f: &mut Frame, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
 	let constraints = [
 		Constraint::Length(13), // Summary statistics for all nodes
 		Constraint::Min(0),     // Header above line of details for each node
@@ -93,7 +92,7 @@ pub fn draw_summary_dash<B: Backend>(f: &mut Frame<B>, dash_state: &mut DashStat
 	draw_summary_list_window(f, chunks[1], dash_state, monitors);
 }
 
-fn draw_summary_stats_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
+fn draw_summary_stats_window(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
 	let mut items = Vec::<ListItem>::new();
 
 	let ss = SummaryStats::new(dash_state, monitors);
@@ -131,7 +130,7 @@ fn draw_summary_stats_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_stat
 	f.render_widget(monitor_widget, area);
 }
 
-pub fn draw_summary_list_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
+pub fn draw_summary_list_window(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
 	let constraints = [
 		Constraint::Length(1), 	// Heading
 		Constraint::Min(0),     // List
@@ -147,7 +146,7 @@ pub fn draw_summary_list_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_s
 }
 
 // TODO switch to horizontally stacked block per heading so can select to sort column using '<-', '->' and <enter>
-fn draw_summary_header<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
+fn draw_summary_header(f: &mut Frame, area: Rect, dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
 	let mut items = Vec::<ListItem>::new();
 
 	let highlight_style = Style::default()
@@ -163,7 +162,7 @@ fn draw_summary_header<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mu
 	);
 }
 
-fn draw_summary_list<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
+fn draw_summary_list(f: &mut Frame, area: Rect, dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
 	let highlight_style = Style::default()
 		.bg(Color::LightGreen)
 		.add_modifier(Modifier::BOLD);

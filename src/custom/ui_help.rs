@@ -5,21 +5,20 @@ use crate::custom::ui::{ push_subheading, push_text, push_blank, push_multiline_
 use crate::custom::opt::{get_app_name, get_app_version};
 
 use ratatui::{
-	backend::Backend,
 	layout::Rect,
 	widgets::{Block, Borders, List, ListItem},
 	Frame,
 };
 
 
-pub fn draw_help_dash<B: Backend>(
-	f: &mut Frame<B>,
+pub fn draw_help_dash(
+	f: &mut Frame,
 	dash_state: &mut DashState,
 ) {
 	draw_help_window(f, f.size(), dash_state);
 }
 
-pub fn draw_help_window<B: Backend>(f: &mut Frame<B>, area: Rect, dash_state: &mut DashState) {
+pub fn draw_help_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
 	let mut items = Vec::<ListItem>::new();
 
 	push_blank(&mut items);
