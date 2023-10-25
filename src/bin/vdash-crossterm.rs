@@ -1,7 +1,7 @@
 //! This app monitors and logfiles and displays status in the terminal
 //!
 //! It is based on logtail-dash, which is a basic logfile dashboard
-//! and also a framework for similar apps with customised dahsboard
+//! and also a framework for similar apps with customised dashboard
 //! displays.
 //!
 //! Custom apps based on logtail can be created by creating a
@@ -114,6 +114,23 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							terminal.show_cursor()?;
 							break Ok(());
 						},
+						KeyCode::Enter => {
+							if app.dash_state.main_view == DashViewMain::DashNode {
+								app.preserve_node_selection();
+								set_main_view(DashViewMain::DashSummary, &mut app);
+							} else if app.dash_state.main_view == DashViewMain::DashSummary {
+								app.preserve_node_selection();
+								set_main_view(DashViewMain::DashNode, &mut app);
+							}
+						}
+
+						KeyCode::Char(' ') => {
+							if app.dash_state.main_view == DashViewMain::DashSummary {
+								app.dash_state.logfile_names_sorted_ascending = !app.dash_state.logfile_names_sorted_ascending;
+								app.dash_state.update_summary_window(&mut app.monitors);
+							}
+						}
+
 						KeyCode::Char('s')|
 						KeyCode::Char('S') => {
 							app.preserve_node_selection();

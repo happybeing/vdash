@@ -6,12 +6,10 @@ use std::collections::HashMap;
 use super::app::{DashState, LogMonitor, MmmStat, SUMMARY_WINDOW_NAME};
 
 use crate::custom::opt::{get_app_name, get_app_version};
-use crate::custom::ui::{ push_subheading, push_text, push_blank, push_metric};
+use crate::custom::ui::{ push_subheading, push_blank, push_metric};
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
-	style::{Color, Modifier, Style},
-	text::Line,
 	widgets::{Block, Borders, List, ListItem},
 	Frame,
 };
@@ -89,7 +87,7 @@ pub fn draw_summary_dash(f: &mut Frame, dash_state: &mut DashState, monitors: &m
 	);
 
 	draw_summary_stats_window(f, chunks[0], dash_state, monitors);
-	draw_summary_list_window(f, chunks[1], dash_state, monitors);
+	crate::custom::ui_summary_table::draw_summary_table_window(f, chunks[1], dash_state, monitors);
 }
 
 fn draw_summary_stats_window(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
@@ -128,63 +126,5 @@ fn draw_summary_stats_window(f: &mut Frame, area: Rect, dash_state: &mut DashSta
 
 	let monitor_widget = List::new(items).block(Block::default());
 	f.render_widget(monitor_widget, area);
-}
-
-pub fn draw_summary_list_window(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
-	let constraints = [
-		Constraint::Length(1), 	// Heading
-		Constraint::Min(0),     // List
-	];
-
-	let chunks = Layout::default()
-		.direction(Direction::Vertical)
-		.constraints(constraints.as_ref())
-		.split(area);
-
-	draw_summary_header(f, chunks[0], dash_state, monitors);
-	draw_summary_list(f, chunks[1], dash_state, monitors);
-}
-
-// TODO switch to horizontally stacked block per heading so can select to sort column using '<-', '->' and <enter>
-fn draw_summary_header(f: &mut Frame, area: Rect, dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
-	let mut items = Vec::<ListItem>::new();
-
-	let highlight_style = Style::default()
-		.bg(Color::LightGreen)
-		.add_modifier(Modifier::BOLD);
-
-	push_text(&mut items, &dash_state.summary_window_heading, Some(highlight_style));
-	let summary_window_widget = List::new(items).block(Block::default());
-
-	f.render_widget(
-		summary_window_widget,
-		area
-	);
-}
-
-fn draw_summary_list(f: &mut Frame, area: Rect, dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
-	let highlight_style = Style::default()
-		.bg(Color::LightGreen)
-		.add_modifier(Modifier::BOLD);
-
-	let items: Vec<ListItem> = dash_state
-		.summary_window_list
-		.items
-		.iter()
-		.map(|s| {
-			ListItem::new(vec![Line::from(s.clone())])
-				.style(Style::default().fg(Color::White).bg(Color::Black))
-		})
-		.collect();
-
-	let summary_window_widget = List::new(items)
-		.block( Block::default())
-		.highlight_style(highlight_style);
-
-	f.render_stateful_widget(
-		summary_window_widget,
-		area,
-		&mut dash_state.summary_window_list.state,
-	);
 }
 

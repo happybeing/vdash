@@ -106,7 +106,7 @@ fn draw_node_stats(f: &mut Frame, area: Rect, monitor: &mut LogMonitor) {
 	push_metric(
 		&mut items,
 		&"Status".to_string(),
-		&monitor.metrics.get_node_status_string(),
+		&monitor.metrics.node_status_string,
 	);
 
 	push_subheading(&mut items, &"".to_string());

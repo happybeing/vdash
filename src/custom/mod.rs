@@ -6,4 +6,5 @@ pub mod ui;
 pub mod ui_debug;
 pub mod ui_help;
 pub mod ui_node;
+pub mod ui_summary_table;
 pub mod ui_summary;
