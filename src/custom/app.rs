@@ -153,7 +153,7 @@ impl App {
 			logfiles,
 		};
 		app.update_timelines(&Utc::now());
-		app.dash_state.update_summary_window(&mut app.monitors);
+		app.update_summary_window();
 
 		if !first_logfile.is_empty() {
 			app.dash_state.dash_node_focus = first_logfile.clone();
@@ -254,7 +254,7 @@ impl App {
 		if self.dash_state.main_view == DashViewMain::DashSummary {
 			if self.dash_state.summary_window_heading_selected < self.dash_state.summary_window_headings.items.len() - 1 {
 				self.dash_state.summary_window_heading_selected += 1;
-				self.dash_state.update_summary_window(&mut self.monitors);
+				self.update_summary_window();
 			}
 		}
 
@@ -291,7 +291,7 @@ impl App {
 		if self.dash_state.main_view == DashViewMain::DashSummary {
 			if self.dash_state.summary_window_heading_selected > 0 {
 				self.dash_state.summary_window_heading_selected -= 1;
-				self.dash_state.update_summary_window(&mut self.monitors);
+				self.update_summary_window();
 			}
 		}
 
@@ -365,7 +365,10 @@ impl App {
 	pub fn preserve_node_selection(&mut self) {
 		if self.dash_state.main_view == DashViewMain::DashSummary {
 			if let Some(selected_index) = self.dash_state.summary_window_rows.state.selected() {
-				self.change_focus_to(selected_index);
+				let selected_logfile = &self.dash_state.logfile_names_sorted[selected_index];
+				if let Some(node_index) = self.dash_state.logfile_names.iter().position(|s| s == selected_logfile.as_str()) {
+					self.change_focus_to(node_index);
+				}
 			}
 		} else if self.dash_state.main_view == DashViewMain::DashNode {
 			for index in 0..self.dash_state.logfile_names_sorted.len() {
@@ -376,11 +379,58 @@ impl App {
 			}
 
 			if let Some(monitor) = self.get_monitor_with_focus() {
-				let index = Some(monitor.index);
-				self.dash_state.summary_window_rows.state.select(index);
+				let selected_logfile = monitor.logfile.clone();
+				if let Some(node_index) = self.dash_state.logfile_names_sorted.iter().position(|s| s == selected_logfile.as_str()) {
+					self.dash_state.summary_window_rows.state.select(Some(node_index));
+				}
 			}
 		}
 	}
+
+		// TODO this regenerates every line. May be worth just updating the line for the updated node/monitor
+		// Needs to be on the app to manage focus for DashSummary and DashNode through sorting of summary table
+		pub fn update_summary_window(&mut self) {
+			let current_selection = self.dash_state.summary_window_rows.state.selected();
+
+			self.dash_state.summary_window_rows = StatefulList::new();
+
+			// TODO could avoid this repeated copy by ensuring both are modified at the same time
+			self.dash_state.logfile_names_sorted = self.dash_state.logfile_names
+				.iter()
+				.map(|f| f.clone())
+				.collect();
+
+			crate::custom::ui_summary_table::sort_nodes_by_column(&mut self.dash_state, &mut self.monitors);
+
+			for i in 0..self.dash_state.logfile_names_sorted.len() {
+				let filepath = self.dash_state.logfile_names_sorted[i].clone();
+				if let Some(monitor) = self.monitors.get_mut(&filepath) {
+					if !monitor.is_debug_dashboard_log {
+						monitor.metrics.update_node_status_string();
+						let node_summary = crate::custom::ui_summary_table::format_table_row(monitor);
+						self.append_to_summary_window(&node_summary);
+					}
+				}
+			}
+
+			self.dash_state.summary_window_rows.state.select(current_selection);
+		}
+
+		fn append_to_summary_window(&mut self, text: &str){
+			self.dash_state.summary_window_rows.items.push(text.to_string());
+
+			let len = self.dash_state.summary_window_rows.items.len();
+
+			if len > self.dash_state.max_summary_window {
+				self.dash_state.summary_window_rows.items = self.dash_state
+					.summary_window_rows
+					.items
+					.split_off(len - self.dash_state.max_summary_window);
+			} else {
+				self.dash_state.summary_window_rows.state.select(Some(len - 1));
+			}
+
+		}
 
 	pub fn toggle_logfile_area(&mut self) {
 		self.dash_state.node_logfile_visible = !self.dash_state.node_logfile_visible;
@@ -457,7 +507,7 @@ fn exit_with_usage(reason: &str) -> Result<App, std::io::Error> {
 	return Err(Error::new(ErrorKind::Other, reason));
 }
 
-use fs2::{FsStats};
+use fs2::FsStats;
 
 const NODE_INACTIVITY_TIMEOUT_S: i64 = 20;	// Seconds with no log message before node becomes 'inactive'
 
@@ -1314,50 +1364,6 @@ impl DashState {
 		};
 		crate::custom::ui_summary_table::initialise_summary_headings(&mut new_dash);
 		new_dash
-	}
-
-	// TODO this regenerates every line. May be worth just updating the line for the updated node/monitor
-	pub fn update_summary_window(&mut self, monitors: &mut HashMap<String, LogMonitor>) {
-		let current_selection = self.summary_window_rows.state.selected();
-
-		self.summary_window_rows = StatefulList::new();
-
-		// TODO could avoid this repeated copy by ensuring both are modified at the same time
-		self.logfile_names_sorted = self.logfile_names
-			.iter()
-			.map(|f| f.clone())
-			.collect();
-
-		crate::custom::ui_summary_table::sort_nodes_by_column(self, monitors);
-
-		for i in 0..self.logfile_names_sorted.len() {
-			let filepath = self.logfile_names_sorted[i].clone();
-			if let Some(monitor) = monitors.get_mut(&filepath) {
-				if !monitor.is_debug_dashboard_log {
-					monitor.metrics.update_node_status_string();
-					let node_summary = crate::custom::ui_summary_table::format_table_row(monitor);
-					self.append_to_summary_window(&node_summary);
-				}
-			}
-		}
-
-		self.summary_window_rows.state.select(current_selection);
-	}
-
-	fn append_to_summary_window(&mut self, text: &str){
-		self.summary_window_rows.items.push(text.to_string());
-
-		let len = self.summary_window_rows.items.len();
-
-		if len > self.max_summary_window {
-			self.summary_window_rows.items = self
-				.summary_window_rows
-				.items
-				.split_off(len - self.max_summary_window);
-		} else {
-			self.summary_window_rows.state.select(Some(len - 1));
-		}
-
 	}
 
 	pub fn _debug_window(&mut self, text: &str) {

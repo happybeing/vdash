@@ -127,7 +127,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Char(' ') => {
 							if app.dash_state.main_view == DashViewMain::DashSummary {
 								app.dash_state.logfile_names_sorted_ascending = !app.dash_state.logfile_names_sorted_ascending;
-								app.dash_state.update_summary_window(&mut app.monitors);
+								app.update_summary_window();
 							}
 						}
 
@@ -200,7 +200,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							if monitor.is_debug_dashboard_log {
 								app.dash_state._debug_window(line.line());
 							} else if app.dash_state.main_view == DashViewMain::DashSummary {
-								app.dash_state.update_summary_window(&mut app.monitors);
+								app.update_summary_window();
 							}
 						},
 						None => {
