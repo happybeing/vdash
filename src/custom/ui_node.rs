@@ -12,7 +12,7 @@ use super::app::{DashState, LogMonitor};
 use super::timelines::Timeline;
 use crate::custom::timelines::{get_min_buckets_value, get_max_buckets_value, get_duration_text};
 
-use crate::custom::ui::{push_subheading, push_metric, draw_sparkline};
+use crate::custom::ui::{push_subheading, push_metric, push_metric_with_units, draw_sparkline};
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
@@ -116,20 +116,24 @@ fn draw_node_stats(f: &mut Frame, area: Rect, monitor: &mut LogMonitor) {
 	);
 
 	push_subheading(&mut items, &"".to_string());
-	let storage_payments_txt = format!("{}{}",
+	let storage_payments_txt = format!("{}",
 		monitor.metrics.storage_payments.total.to_string(),
-		crate::custom::app_timelines::EARNINGS_UNITS_TEXT,
 	);
-	push_metric(&mut items,
+	push_metric_with_units(&mut items,
 		&"Earnings".to_string(),
-		&storage_payments_txt);
+		&storage_payments_txt,
+		&crate::custom::app_timelines::EARNINGS_UNITS_TEXT.to_string());
 
-	let chunk_fee_txt = format!("{} ({}-{}){}",
+	let chunk_fee_txt = if monitor.metrics.storage_cost.most_recent == 0 {
+		String::from("unknown")
+	} else {
+		format!("{} ({}-{}){} ",
 		monitor.metrics.storage_cost.most_recent.to_string(),
 		monitor.metrics.storage_cost.min.to_string(),
 		monitor.metrics.storage_cost.max.to_string(),
-		crate::custom::app_timelines::STORAGE_COST_UNITS_TEXT,
-	);
+		crate::custom::app_timelines::STORAGE_COST_UNITS_TEXT,)
+	};
+
 	push_metric(&mut items,
 		&"Storage Cost".to_string(),
 		&chunk_fee_txt);

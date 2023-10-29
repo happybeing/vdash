@@ -65,6 +65,14 @@ pub fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	);
 }
 
+pub fn push_metric_with_units(items: &mut Vec<ListItem>, metric: &String, value: &String, units: &String) {
+	let s = format!("{:<12}: {:>12} {}", metric, value, units);
+	items.push(
+		ListItem::new(vec![Line::from(s.clone())])
+			.style(Style::default().fg(Color::Blue)),
+	);
+}
+
 pub fn draw_sparkline(
 	f: &mut Frame,
 	area: Rect,
