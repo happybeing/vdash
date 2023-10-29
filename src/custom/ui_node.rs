@@ -88,9 +88,15 @@ fn draw_node_stats(f: &mut Frame, area: Rect, monitor: &mut LogMonitor) {
 	let mut items = Vec::<ListItem>::new();
 
 	let mut node_title_text = String::from(super::app::SAFENODE_BINARY_NAME);
+
 	if let Some(node_running_version) = &monitor.metrics.running_version {
-		node_title_text = format!("{} {}", &node_title_text, node_running_version);
-	};
+		node_title_text += format!(" {}", node_running_version).as_str();
+	}
+
+	if let Some(node_process_id) = &monitor.metrics.node_process_id {
+		node_title_text += format!("  (PID: {})", node_process_id).as_str();
+	}
+
 	push_subheading(&mut items, &node_title_text);
 
 	let mut node_uptime_txt = String::from("Start time unknown");

@@ -686,6 +686,8 @@ pub struct NodeMetrics {
 	pub node_started: Option<DateTime<Utc>>,
 	pub running_message: Option<String>,
 	pub running_version: Option<String>,
+	pub node_process_id: Option<u64>,
+	pub node_peer_id: Option<String>,
 	pub category_count: HashMap<String, usize>,
 	pub activity_history: Vec<ActivityEntry>,
 
@@ -736,6 +738,8 @@ impl NodeMetrics {
 			node_started: None,
 			running_message: None,
 			running_version: None,
+			node_process_id: None,
+			node_peer_id: None,
 
 			// Logfile entries
 			activity_history: Vec::<ActivityEntry>::new(),
@@ -883,6 +887,21 @@ impl NodeMetrics {
 			return true;
 		}
 
+		let process_id_prefix = "Node (PID: ";
+		if line.contains(&process_id_prefix) {
+			self.node_process_id = self.parse_u64(process_id_prefix, line);
+			let process_id = match &self.node_process_id {
+				Some(process_id) => process_id.to_string(),
+				None => String::from("unknown")
+			};
+
+			if let Some(peer_id) = self.parse_string("PeerId: ", line) {
+				self.parser_output = format!("Node pid: {} peer_id: {}", String::from(process_id.clone()), peer_id);
+				self.node_peer_id = Some(peer_id);
+			}
+			return true;
+		}
+
 		false
 	}
 
@@ -958,6 +977,26 @@ impl NodeMetrics {
 			return true;
 		};
 		return false;
+	}
+
+	///! Update data metrics from a handler response logfile entry
+	///! Returns true if the line has been processed and can be discarded
+	fn parse_string(&mut self, prefix: &str, line: &String) -> Option<String> {
+		let mut string = "";
+		if let Some(mut string_start) = line.find(prefix) {
+			string_start += prefix.len();
+
+			if let Some(string_end) = line[string_start..].find("\"") {
+				string = line.as_str()[string_start..string_start + string_end].as_ref()
+				} else {
+				string = line.as_str()[string_start..].as_ref()
+			}
+			if string.is_empty() {
+				self.parser_output = format!("failed to parse string after {} in: {}", prefix, line);
+			}
+		};
+
+		if string.len() > 0 { Some(String::from(string)) } else { None }
 	}
 
 	///! Capture state updates from a logfile entry
