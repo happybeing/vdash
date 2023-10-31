@@ -79,7 +79,8 @@ pub fn draw_summary_dash(f: &mut Frame, dash_state: &mut DashState, monitors: &m
 
 	let summary_list_widget = Block::default()
 			.borders(Borders::ALL)
-			.title(format!("{}  ({} v{}      Press 	'?' for Help)", String::from(SUMMARY_WINDOW_NAME), get_app_name(), get_app_version()));
+			.title(format!("{}  ({} v{}:  {})", String::from(SUMMARY_WINDOW_NAME), get_app_name(), get_app_version(),
+				&dash_state.vdash_status.get_status()));
 
 	f.render_widget(
 		summary_list_widget,

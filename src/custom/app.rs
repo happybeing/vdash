@@ -1347,6 +1347,7 @@ pub enum DashViewMain {
 }
 
 pub struct DashState {
+	pub vdash_status: StatusMessage,
 	pub main_view: DashViewMain,
 	pub logfile_names: Vec<String>,
 	pub logfile_names_sorted: Vec<String>,
@@ -1373,10 +1374,16 @@ pub struct DashState {
 	max_debug_window: usize,
 }
 
+const UI_STATUS_DEFAULT_MESSAGE: &str = "Press '?' for Help";
+const UI_STATUS_DEFAULT_DURATION_S: i64 = 5;
+use crate::custom::ui_status::StatusMessage;
+
 impl DashState {
 	pub fn new() -> DashState {
 
 		let mut new_dash = DashState {
+			vdash_status: StatusMessage::new(&String::from(UI_STATUS_DEFAULT_MESSAGE), &Duration::seconds(UI_STATUS_DEFAULT_DURATION_S)),
+
 			main_view: DashViewMain::DashSummary,
 			logfile_names: Vec::<String>::new(),				// Ordered in sync with LogMonitor.index?
 			logfile_names_sorted: Vec::<String>::new(),	// Sorted by column
