@@ -80,9 +80,6 @@ impl App {
 
 		let mut dash_state = DashState::new();
 		dash_state.debug_window = opt.debug_window;
-		if opt.debug_dashboard {
-			dash_state.main_view = DashViewMain::DashDebug;
-		}
 
 		let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
 		let mut logfiles = MuxedLines::new()?;
@@ -144,7 +141,6 @@ impl App {
 			}
 		}
 
-		let activate_debug_dashboard = opt.debug_dashboard;
 		let mut app = App {
 			opt,
 			dash_state,
@@ -156,14 +152,9 @@ impl App {
 		app.update_summary_window();
 
 		if !first_logfile.is_empty() {
-			app.dash_state.dash_node_focus = first_logfile.clone();
-		}
-
-		if activate_debug_dashboard {
-			app.set_logfile_with_focus(debug_logfile_name);
-		} else {
 			app.set_logfile_with_focus(first_logfile);
 		}
+
 		Ok(app)
 	}
 

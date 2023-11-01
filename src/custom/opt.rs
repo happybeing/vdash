@@ -29,13 +29,10 @@ pub struct Opt {
 	#[structopt(name = "LOGFILE")]
 	pub files: Vec<String>,
 
-	/// Show a debug window to the right of the logfile view in main dashboard
+	/// Parses first logfile *only* and adds a debug output window (accessed with l/r arrow)
+	/// Also shows smaller debug output window to the right of the node view for the logfile
 	#[structopt(short, long)]
 	pub debug_window: bool,
-
-	/// Parses first logfile and adds a debug output window (fullscreen with r/l arrow))
-	#[structopt(long)]
-	pub debug_dashboard: bool,
 }
 
 pub fn get_app_name() -> String { String::from(Opt::clap().get_name()) }
