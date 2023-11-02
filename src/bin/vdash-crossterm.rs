@@ -235,7 +235,7 @@ fn initialise_events(tick_rate: u64) -> Rx {
 				if let CEvent::Key(key) = event::read().unwrap() {
 					match tx.send(Event::Input(key)) {
 						Ok(()) => {},
-						Err(e) => println!("send error: {}", e),
+						Err(e) => eprintln!("send error: {}", e),
 
 					}
 				}
@@ -243,7 +243,7 @@ fn initialise_events(tick_rate: u64) -> Rx {
 			if last_tick.elapsed() >= tick_rate {
 				match tx.send(Event::Tick) {
 					Ok(()) => last_tick = Instant::now(),
-					Err(e) => println!("send error: {}", e),
+					Err(e) => eprintln!("send error: {}", e),
 
 				}
 			}
@@ -251,7 +251,7 @@ fn initialise_events(tick_rate: u64) -> Rx {
 			if last_tick.elapsed() >= tick_rate {
 				match tx.send(Event::Tick) {
 					Ok(()) => last_tick = Instant::now(),
-					Err(e) => println!("send error: {}", e),
+					Err(e) => eprintln!("send error: {}", e),
 				}
 			}
 		}
