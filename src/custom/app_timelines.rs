@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Duration, Utc};
 
-use crate::custom::opt::Opt;
-use crate::custom::timelines::{Timeline, Buckets};
+use super::app::OPT;
+use super::timelines::{Timeline, Buckets};
 use ratatui::style::Color;
 
 lazy_static::lazy_static! {
@@ -49,7 +49,9 @@ pub struct AppTimelines {
 
 impl AppTimelines {
 
-    pub fn new(opt: &Opt) -> AppTimelines {
+    pub fn new() -> AppTimelines {
+		let opt_timeline_steps = { let opt = OPT.lock().unwrap(); opt.timeline_steps };
+
         let mut app_timelines = AppTimelines {
             timelines: HashMap::<&'static str, Timeline>::new(),
 		};
@@ -61,7 +63,7 @@ impl AppTimelines {
         for (_, timeline) in app_timelines.timelines.iter_mut() {
 			for i in 0..TIMESCALES.len() {
 				if let Some(spec) = TIMESCALES.get(i) {
-					timeline.add_bucket_set(spec.0, spec.1, opt.timeline_steps);
+					timeline.add_bucket_set(spec.0, spec.1, opt_timeline_steps);
 				}
 			}
         }

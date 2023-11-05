@@ -1,7 +1,6 @@
 ///! Application logic
 ///!
 ///! Edit src/custom/app.rs to create a customised fork of logtail-dash
-use linemux::MuxedLines;
 use std::collections::HashMap;
 
 use std::fs::File;
@@ -11,11 +10,13 @@ use chrono::{DateTime, Utc, Duration};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
 
-use crate::custom::timelines::{MinMeanMax, get_duration_text};
-use crate::custom::app_timelines::{AppTimelines, TIMESCALES, APP_TIMELINES};
-use crate::custom::app_timelines::{STORAGE_COST_TIMELINE_KEY, EARNINGS_TIMELINE_KEY, PUTS_TIMELINE_KEY, GETS_TIMELINE_KEY, CONNECTIONS_TIMELINE_KEY, RAM_TIMELINE_KEY, ERRORS_TIMELINE_KEY};
-use crate::custom::opt::{Opt, MIN_TIMELINE_STEPS};
 use crate::shared::util::StatefulList;
+
+use super::timelines::{MinMeanMax, get_duration_text};
+use super::app_timelines::{AppTimelines, TIMESCALES, APP_TIMELINES};
+use super::app_timelines::{STORAGE_COST_TIMELINE_KEY, EARNINGS_TIMELINE_KEY, PUTS_TIMELINE_KEY, GETS_TIMELINE_KEY, CONNECTIONS_TIMELINE_KEY, RAM_TIMELINE_KEY, ERRORS_TIMELINE_KEY};
+use super::opt::{Opt, MIN_TIMELINE_STEPS};
+use super::logfiles_manager::LogfilesManager;
 
 pub const SAFENODE_BINARY_NAME: &str = "safenode";
 pub static SUMMARY_WINDOW_NAME: &str = "Summary of Monitored Nodes";
@@ -53,25 +54,41 @@ pub unsafe fn debug_log(message: &str) {
 	};
 }
 
+lazy_static::lazy_static! {
+	pub static ref OPT: Mutex<Opt> =
+		Mutex::<Opt>::new(Opt::from_args());
+}
+
 pub struct App {
-	pub opt: Opt,
 	pub dash_state: DashState,
 	pub monitors: HashMap<String, LogMonitor>,
 	pub logfile_with_focus: String,
-	pub logfiles: MuxedLines,
+
+	pub logfiles_manager: LogfilesManager,
 }
 
 impl App {
 	pub async fn new() -> Result<App, std::io::Error> {
-		let mut opt = Opt::from_args();
+		let (opt_files, opt_globpaths, opt_debug_window, opt_timeline_steps) = {
+			let opt = OPT.lock().unwrap();
+			(opt.files.clone(), opt.glob_path.clone(), opt.debug_window, opt.timeline_steps)
+		};
 
-		if opt.files.is_empty() {
-			println!("{}: no logfile(s) specified.", Opt::clap().get_name());
+		let mut app = App {
+			dash_state: DashState::new(),
+			monitors: HashMap::new(),
+			logfile_with_focus: String::new(),
+
+			logfiles_manager: LogfilesManager::new(),
+		};
+
+		if opt_files.is_empty() && opt_globpaths.is_empty() {
+			eprintln!("{}: no logfile(s) specified.", Opt::clap().get_name());
 			return exit_with_usage("missing logfiles");
 		}
 
-		if opt.timeline_steps < MIN_TIMELINE_STEPS {
-			println!(
+		if opt_timeline_steps < MIN_TIMELINE_STEPS {
+			eprintln!(
 				"Timeline steps number is too small, minimum is {}",
 				MIN_TIMELINE_STEPS
 			);
@@ -79,82 +96,53 @@ impl App {
 		}
 
 		let mut dash_state = DashState::new();
-		dash_state.debug_window = opt.debug_window;
+		dash_state.debug_window = opt_debug_window;
+		if opt_debug_window {
+			dash_state.main_view = DashViewMain::DashDebug;
+		}
 
-		let mut monitors: HashMap<String, LogMonitor> = HashMap::new();
-		let mut logfiles = MuxedLines::new()?;
-		let mut debug_logfile_name = String::new();
+		let mut files_to_load = opt_files.clone();
 
-		let mut debug_logfile: Option<tempfile::NamedTempFile> = if opt.debug_window {
-			opt.files = opt.files[0..1].to_vec();
-			let named_file = NamedTempFile::new()?;
-			let path = named_file.path();
+		if opt_debug_window {
+			if opt_files.len() == 0 {
+				eprint!("For debugging with --debug-window you must specify a logfile path.");
+				return exit_with_usage("missing logfile");
+			}
+
+			// For debug: only use first logfile, plus one for debug messages
+			files_to_load = opt_files[0..1].to_vec();
+			let debug_file = NamedTempFile::new()?;
+			let path = debug_file.path();
 			let path_str = path
 				.to_str()
 				.ok_or_else(|| Error::new(ErrorKind::Other, "invalid path"))?;
-			opt.files.push(String::from(path_str));
-			debug_logfile_name = String::from(path_str);
-			Some(named_file)
-		} else {
-			None
-		};
-
-		println!("Loading {} files...", opt.files.len());
-		let mut first_logfile = String::new();
-		for f in &opt.files {
-			println!("file: {}", f);
-			if first_logfile.is_empty() {
-				first_logfile = f.to_string();
-			}
-			let mut monitor = LogMonitor::new(&opt, f.to_string(), opt.lines_max);
-			if opt.debug_window && monitor.index == 0 {
-				if let Some(named_file) = debug_logfile {
-					*DEBUG_LOGFILE.lock().unwrap() = Some(named_file);
-					debug_logfile = None;
-				}
-			}
-			if opt.ignore_existing {
-				dash_state.logfile_names.push(f.to_string());
-				monitors.insert(f.to_string(), monitor);
-			} else {
-				match monitor.load_logfile(&mut dash_state) {
-					Ok(()) => {
-						dash_state.logfile_names.push(f.to_string());
-						monitors.insert(f.to_string(), monitor);
-					}
-					Err(e) => {
-						println!("...failed: {}", e);
-						return Err(e);
-					}
-				}
-			}
-
-			match logfiles.add_file(&f).await {
-				Ok(_) => (),
-				Err(e) => {
-					println!("ERROR: {}", e);
-					println!(
-						"Note: it is ok for the file not to exist, but the file's parent directory must exist."
-					);
-					return Err(e);
-				}
-			}
+			files_to_load.push(String::from(path_str));
+			*DEBUG_LOGFILE.lock().unwrap() = Some(debug_file);
 		}
 
-		let mut app = App {
-			opt,
-			dash_state,
-			monitors,
-			logfile_with_focus: first_logfile.clone(),
-			logfiles,
-		};
+		if files_to_load.len() > 0 {
+			app.logfiles_manager.monitor_multi_paths(files_to_load, &mut app.monitors, &mut app.dash_state.vdash_status).await;
+		}
+
+		if opt_globpaths.len() > 0 {
+			app.logfiles_manager.monitor_multi_globpaths(opt_globpaths, &mut app.monitors, &mut app.dash_state.vdash_status).await;
+		}
+
+		if app.logfiles_manager.logfiles_added.len() > 0 {
+			app.logfile_with_focus = app.logfiles_manager.logfiles_added[0].clone();	// Save to give focus
+		} else {
+			eprintln!("{}: no logfile(s) specified and no files matched glob paths.", Opt::clap().get_name());
+			return exit_with_usage("missing logfiles");
+		}
+
 		app.update_timelines(&Utc::now());
 		app.update_summary_window();
 
-		if !first_logfile.is_empty() {
-			app.set_logfile_with_focus(first_logfile);
+		if !app.logfile_with_focus.is_empty() {
+			app.dash_state.dash_node_focus = app.logfile_with_focus.clone();
 		}
 
+		app.set_logfile_with_focus(app.logfile_with_focus.clone());
 		Ok(app)
 	}
 
@@ -238,6 +226,8 @@ impl App {
 	}
 
 	pub fn change_focus_next(&mut self) {
+		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
+
 		if self.dash_state.main_view == DashViewMain::DashDebug {
 			return;
 		}
@@ -250,21 +240,21 @@ impl App {
 		}
 
 		let mut next_i = 0;
-		for (i, name) in self.dash_state.logfile_names.iter().enumerate() {
+		for (i, name) in self.logfiles_manager.logfiles_added.iter().enumerate() {
 			if name == &self.logfile_with_focus {
-				if i < self.dash_state.logfile_names.len() - 1 {
+				if i < self.logfiles_manager.logfiles_added.len() - 1 {
 					next_i = i + 1;
 				}
 				break;
 			}
 		}
 
-		if next_i == 0 && self.opt.debug_window && self.logfile_with_focus != DEBUG_WINDOW_NAME {
+		if next_i == 0 && opt_debug_window && self.logfile_with_focus != DEBUG_WINDOW_NAME {
 			self.set_logfile_with_focus(DEBUG_WINDOW_NAME.to_string());
 			return;
 		}
 
-		let logfile = self.dash_state.logfile_names[next_i].to_string();
+		let logfile = self.logfiles_manager.logfiles_added[next_i].to_string();
 		self.set_logfile_with_focus(logfile.clone());
 
 		if let Some(debug_logfile) = self.get_debug_dashboard_logfile() {
@@ -275,6 +265,8 @@ impl App {
 	}
 
 	pub fn change_focus_previous(&mut self) {
+		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
+
 		if self.dash_state.main_view == DashViewMain::DashDebug {
 			return;
 		}
@@ -286,9 +278,9 @@ impl App {
 			}
 		}
 
-		let len = self.dash_state.logfile_names.len();
+		let len = self.logfiles_manager.logfiles_added.len();
 		let mut previous_i = len - 1;
-		for (i, name) in self.dash_state.logfile_names.iter().enumerate() {
+		for (i, name) in self.logfiles_manager.logfiles_added.iter().enumerate() {
 			if name == &self.logfile_with_focus {
 				if i > 0 {
 					previous_i = i - 1;
@@ -297,7 +289,7 @@ impl App {
 			}
 		}
 
-		if self.opt.debug_window
+		if opt_debug_window
 			&& previous_i == len - 1
 			&& self.logfile_with_focus != DEBUG_WINDOW_NAME
 		{
@@ -305,7 +297,7 @@ impl App {
 			return;
 		}
 
-		let logfile = self.dash_state.logfile_names[previous_i].to_string();
+		let logfile = self.logfiles_manager.logfiles_added[previous_i].to_string();
 		self.set_logfile_with_focus(logfile.clone());
 
 		if let Some(debug_logfile) = self.get_debug_dashboard_logfile() {
@@ -316,8 +308,8 @@ impl App {
 	}
 
 	pub fn change_focus_to(&mut self, logfile_index: usize) {
-		if logfile_index < self.dash_state.logfile_names.len() {
-			self.set_logfile_with_focus(self.dash_state.logfile_names[logfile_index].clone());
+		if logfile_index < self.logfiles_manager.logfiles_added.len() {
+			self.set_logfile_with_focus(self.logfiles_manager.logfiles_added[logfile_index].clone());
 			self.dash_state.main_view = DashViewMain::DashNode;
 		}
 	}
@@ -327,12 +319,14 @@ impl App {
 	pub fn handle_arrow_down(&mut self) { self.handle_arrow( true); }
 
 	pub fn handle_arrow(&mut self, is_down: bool) {
+		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
+
 		let list = match self.dash_state.main_view {
 			DashViewMain::DashSummary => { Some(&mut self.dash_state.summary_window_rows) }
 			DashViewMain::DashNode => {
 				if let Some(monitor) = self.get_monitor_with_focus() {
 					Some(&mut monitor.content)
-				} else if self.opt.debug_window {
+				} else if opt_debug_window {
 					Some(&mut self.dash_state.debug_window_list)
 				} else {
 					None
@@ -340,7 +334,7 @@ impl App {
 			}
 			DashViewMain::DashHelp => { None }
 			DashViewMain::DashDebug => {
-				if self.opt.debug_window {
+				if opt_debug_window {
 					Some(&mut self.dash_state.debug_window_list)
 				} else {
 					None
@@ -357,7 +351,7 @@ impl App {
 		if self.dash_state.main_view == DashViewMain::DashSummary {
 			if let Some(selected_index) = self.dash_state.summary_window_rows.state.selected() {
 				let selected_logfile = &self.dash_state.logfile_names_sorted[selected_index];
-				if let Some(node_index) = self.dash_state.logfile_names.iter().position(|s| s == selected_logfile.as_str()) {
+				if let Some(node_index) = self.logfiles_manager.logfiles_added.iter().position(|s| s == selected_logfile.as_str()) {
 					self.change_focus_to(node_index);
 				}
 			}
@@ -378,50 +372,50 @@ impl App {
 		}
 	}
 
-		// TODO this regenerates every line. May be worth just updating the line for the updated node/monitor
-		// Needs to be on the app to manage focus for DashSummary and DashNode through sorting of summary table
-		pub fn update_summary_window(&mut self) {
-			let current_selection = self.dash_state.summary_window_rows.state.selected();
+	// TODO this regenerates every line. May be worth just updating the line for the updated node/monitor
+	// Needs to be on the app to manage focus for DashSummary and DashNode through sorting of summary table
+	pub fn update_summary_window(&mut self) {
+		let current_selection = self.dash_state.summary_window_rows.state.selected();
 
-			self.dash_state.summary_window_rows = StatefulList::new();
+		self.dash_state.summary_window_rows = StatefulList::new();
 
-			// TODO could avoid this repeated copy by ensuring both are modified at the same time
-			self.dash_state.logfile_names_sorted = self.dash_state.logfile_names
-				.iter()
-				.map(|f| f.clone())
-				.collect();
+		// TODO could avoid this repeated copy by ensuring both are modified at the same time
+		self.dash_state.logfile_names_sorted = self.logfiles_manager.logfiles_added
+			.iter()
+			.map(|f| f.clone())
+			.collect();
 
-			crate::custom::ui_summary_table::sort_nodes_by_column(&mut self.dash_state, &mut self.monitors);
+		super::ui_summary_table::sort_nodes_by_column(&mut self.dash_state, &mut self.monitors);
 
-			for i in 0..self.dash_state.logfile_names_sorted.len() {
-				let filepath = self.dash_state.logfile_names_sorted[i].clone();
-				if let Some(monitor) = self.monitors.get_mut(&filepath) {
-					if !monitor.is_debug_dashboard_log {
-						monitor.metrics.update_node_status_string();
-						let node_summary = crate::custom::ui_summary_table::format_table_row(monitor);
-						self.append_to_summary_window(&node_summary);
-					}
+		for i in 0..self.dash_state.logfile_names_sorted.len() {
+			let filepath = self.dash_state.logfile_names_sorted[i].clone();
+			if let Some(monitor) = self.monitors.get_mut(&filepath) {
+				if !monitor.is_debug_dashboard_log {
+					monitor.metrics.update_node_status_string();
+					let node_summary = super::ui_summary_table::format_table_row(monitor);
+					self.append_to_summary_window(&node_summary);
 				}
 			}
-
-			self.dash_state.summary_window_rows.state.select(current_selection);
 		}
 
-		fn append_to_summary_window(&mut self, text: &str){
-			self.dash_state.summary_window_rows.items.push(text.to_string());
+		self.dash_state.summary_window_rows.state.select(current_selection);
+	}
 
-			let len = self.dash_state.summary_window_rows.items.len();
+	fn append_to_summary_window(&mut self, text: &str){
+		self.dash_state.summary_window_rows.items.push(text.to_string());
 
-			if len > self.dash_state.max_summary_window {
-				self.dash_state.summary_window_rows.items = self.dash_state
-					.summary_window_rows
-					.items
-					.split_off(len - self.dash_state.max_summary_window);
-			} else {
-				self.dash_state.summary_window_rows.state.select(Some(len - 1));
-			}
+		let len = self.dash_state.summary_window_rows.items.len();
 
+		if len > self.dash_state.max_summary_window {
+			self.dash_state.summary_window_rows.items = self.dash_state
+				.summary_window_rows
+				.items
+				.split_off(len - self.dash_state.max_summary_window);
+		} else {
+			self.dash_state.summary_window_rows.state.select(Some(len - 1));
 		}
+
+	}
 
 	pub fn toggle_logfile_area(&mut self) {
 		self.dash_state.node_logfile_visible = !self.dash_state.node_logfile_visible;
@@ -491,7 +485,7 @@ fn do_bracketed_next_previous(list: &mut StatefulList<String>, next: bool) {
 }
 
 fn exit_with_usage(reason: &str) -> Result<App, std::io::Error> {
-	println!(
+	eprintln!(
 		"Try '{} --help' for more information.",
 		Opt::clap().get_name()
 	);
@@ -519,7 +513,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
 
 impl LogMonitor {
-	pub fn new(opt: &Opt, logfile_path: String, max_lines: usize) -> LogMonitor {
+	pub fn new(logfile_path: String) -> LogMonitor {
 		let index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
 
 		let mut is_debug_dashboard_log = false;
@@ -534,13 +528,14 @@ impl LogMonitor {
 			chunk_store_pathbuf.push("chunkdb")
 		}
 
+		let opt_lines_max = { OPT.lock().unwrap().lines_max };
 		LogMonitor {
 			index,
 			logfile: logfile_path,
-			max_content: max_lines,
+			max_content: opt_lines_max,
 			chunk_store_fsstats: None,
 			chunk_store_pathbuf,
-			metrics: NodeMetrics::new(&opt),
+			metrics: NodeMetrics::new(),
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,
 			metrics_status: StatefulList::with_items(vec![]),
@@ -723,7 +718,7 @@ pub struct NodeMetrics {
 }
 
 impl NodeMetrics {
-	fn new(opt: &Opt) -> NodeMetrics {
+	fn new() -> NodeMetrics {
 		let mut metrics = NodeMetrics {
 			// Start
 			node_started: None,
@@ -737,7 +732,7 @@ impl NodeMetrics {
 			entry_metadata: None,
 
 			// A predefined set of Timelines (Sparklines)
-			app_timelines: AppTimelines::new(opt),
+			app_timelines: AppTimelines::new(),
 
 			// Counts
 			category_count: HashMap::new(),
@@ -1340,7 +1335,6 @@ pub enum DashViewMain {
 pub struct DashState {
 	pub vdash_status: StatusMessage,
 	pub main_view: DashViewMain,
-	pub logfile_names: Vec<String>,
 	pub logfile_names_sorted: Vec<String>,
 	pub logfile_names_sorted_ascending: bool,
 
@@ -1367,7 +1361,7 @@ pub struct DashState {
 
 const UI_STATUS_DEFAULT_MESSAGE: &str = "Press '?' for Help";
 const UI_STATUS_DEFAULT_DURATION_S: i64 = 5;
-use crate::custom::ui_status::StatusMessage;
+use super::ui_status::StatusMessage;
 
 impl DashState {
 	pub fn new() -> DashState {
@@ -1376,7 +1370,6 @@ impl DashState {
 			vdash_status: StatusMessage::new(&String::from(UI_STATUS_DEFAULT_MESSAGE), &Duration::seconds(UI_STATUS_DEFAULT_DURATION_S)),
 
 			main_view: DashViewMain::DashSummary,
-			logfile_names: Vec::<String>::new(),				// Ordered in sync with LogMonitor.index?
 			logfile_names_sorted: Vec::<String>::new(),	// Sorted by column
 			logfile_names_sorted_ascending: true,
 
@@ -1399,7 +1392,7 @@ impl DashState {
 			debug_window_list: StatefulList::new(),
 			max_debug_window: 100,
 		};
-		crate::custom::ui_summary_table::initialise_summary_headings(&mut new_dash);
+		super::ui_summary_table::initialise_summary_headings(&mut new_dash);
 		new_dash
 	}
 

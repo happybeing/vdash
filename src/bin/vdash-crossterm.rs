@@ -11,10 +11,9 @@
 
 #![recursion_limit = "1024"] // Prevent select! macro blowing up
 
-///! forks of logterm customise the files in src/custom
 #[path = "../custom/mod.rs"]
 pub mod custom;
-use self::custom::app::{set_main_view, App, DashViewMain};
+use self::custom::app::{OPT, App, DashViewMain, set_main_view};
 use self::custom::ui::draw_dashboard;
 
 #[macro_use]
@@ -59,6 +58,11 @@ use tokio::sync::mpsc;
 // RUSTFLAGS="-A unused" cargo run --bin logtail-crossterm --features="crossterm" /var/log/auth.log /var/log/dmesg
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
+	let (opt_tick_rate, opt_debug_window) = {
+		let opt = OPT.lock().unwrap();
+		(opt.tick_rate, opt.debug_window)
+	};
+
 	env_logger::init();
 	info!("Started");
 
@@ -69,11 +73,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 	// Terminal initialization
 	enable_raw_mode()?;
+
 	let mut stdout = stdout();
 	execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
 	let backend = CrosstermBackend::new(stdout);
 	let mut terminal = Terminal::new(backend)?;
-	let mut rx = initialise_events(app.opt.tick_rate);
+	let mut rx = initialise_events(opt_tick_rate);
 	terminal.clear()?;
 
 	// Use futures of async functions to handle events
@@ -91,7 +96,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 			next_update += Duration::from_secs(1);
 		}
 
-		let logfiles_future = app.logfiles.next().fuse();
+		let logfiles_future = app.logfiles_manager.linemux_files.next().fuse();
 		let events_future = rx.recv().fuse();
 		pin_mut!(logfiles_future, events_future);
 
@@ -169,7 +174,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Left => app.change_focus_previous(),
 
 						KeyCode::Char('g') => {
-							if app.opt.debug_window { set_main_view(DashViewMain::DashDebug, &mut app); }
+							if opt_debug_window { set_main_view(DashViewMain::DashDebug, &mut app); }
 						},
 						_ => {}
 					};

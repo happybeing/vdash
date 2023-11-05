@@ -1,7 +1,8 @@
 pub mod app;
 pub mod app_timelines;
-pub mod timelines;
+pub mod logfiles_manager;
 pub mod opt;
+pub mod timelines;
 pub mod ui;
 pub mod ui_debug;
 pub mod ui_help;

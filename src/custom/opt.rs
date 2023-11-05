@@ -25,6 +25,13 @@ pub struct Opt {
 	#[structopt(short, long)]
 	pub ignore_existing: bool,
 
+	/// A *nix 'glob' path to match multiple files.
+	/// Can be provided multiple times as here:
+	///
+	///    vdash -g '~/logfiles/*/safenode.log' -g '~/.local/share/safe/node/**/safenode.log'
+	#[structopt(short, long, multiple=true)]
+	pub glob_path: Vec<String>,
+
 	/// One or more logfiles to monitor
 	#[structopt(name = "LOGFILE")]
 	pub files: Vec<String>,
