@@ -30,7 +30,8 @@ pub fn draw_help_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
 	push_subheading(&mut items, &String::from("    Keyboard Commands"));
 	push_multiline_text(&mut items, "
     'n' or 'N'     :   Switch to Node Details which displays metrics for one node and lets you cycle through all monitored nodes.\n
-    's' or 'S'     :   Switch to Summary Screen which provides a summary of every monitored node.
+    's' or 'S'     :   Switch to Summary Screen which provides a summary of every monitored node.\n
+    'r' or 'R'     :   Re-scan any 'glob' paths to add new nodes.
 
     'h', 'H' or '?':   Shows this help. Press 'n' or 's' to exit help.");
 
@@ -59,7 +60,7 @@ pub fn draw_help_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
 	");
 
 	push_blank(&mut items);
-	push_subheading(&mut items, &String::from("    To exit Help press 'n' or 's'"));
+	push_subheading(&mut items, &String::from("    To exit Help press <ENTER>"));
 
 	if dash_state.debug_window {
 		push_blank(&mut items);

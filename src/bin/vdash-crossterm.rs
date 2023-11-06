@@ -120,12 +120,18 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							break Ok(());
 						},
 						KeyCode::Enter => {
-							if app.dash_state.main_view == DashViewMain::DashNode {
-								app.preserve_node_selection();
-								set_main_view(DashViewMain::DashSummary, &mut app);
-							} else if app.dash_state.main_view == DashViewMain::DashSummary {
-								app.preserve_node_selection();
-								set_main_view(DashViewMain::DashNode, &mut app);
+							if app.dash_state.main_view == DashViewMain::DashHelp {
+								set_main_view(app.dash_state.previous_main_view, &mut app);
+							} else {
+								if app.logfiles_manager.logfiles_added.len() > 0 {
+									if app.dash_state.main_view == DashViewMain::DashNode {
+										app.preserve_node_selection();
+										set_main_view(DashViewMain::DashSummary, &mut app);
+									} else if app.dash_state.main_view == DashViewMain::DashSummary {
+										app.preserve_node_selection();
+										set_main_view(DashViewMain::DashNode, &mut app);
+									}
+								}
 							}
 						}
 
@@ -147,8 +153,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						KeyCode::Char('?') => set_main_view(DashViewMain::DashHelp, &mut app),
 						KeyCode::Char('n')|
 						KeyCode::Char('N') => {
-							app.preserve_node_selection();
-							set_main_view(DashViewMain::DashNode, &mut app);
+							if app.logfiles_manager.logfiles_added.len() > 0 {
+								app.preserve_node_selection();
+								set_main_view(DashViewMain::DashNode, &mut app);
+							}
 						},
 
 						KeyCode::Char('+')|
@@ -163,6 +171,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 						KeyCode::Char('m')|
 						KeyCode::Char('M') => app.bump_mmm_ui_mode(),
+
+						KeyCode::Char('r')|
+						KeyCode::Char('R') => app.scan_glob_paths(false, false).await,
 
 						KeyCode::Char('t') => app.top_timeline_next(),
 						KeyCode::Char('T') => app.top_timeline_previous(),
@@ -183,14 +194,14 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
 				Some(Event::Tick) => {
 					app.update_timelines(&Utc::now());
+					app.scan_glob_paths(true, true).await;
 				// draw_dashboard(&mut f, &dash_state, &mut monitors).unwrap();
 				// draw_dashboard(f, &dash_state, &mut monitors)?;
 				}
 
 				None => {},
 			}
-			},
-
+		},
 			line = logfiles_future => {
 			match line {
 				Some(Ok(line)) => {
@@ -221,11 +232,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 					app.dash_state._debug_window(format!("logfile error: None").as_str());
 					()
 				}
-		}
-			},
+			}
+		},
 		}
 	}
 }
+
 type Rx = tokio::sync::mpsc::UnboundedReceiver<Event<crossterm::event::KeyEvent>>;
 
 fn initialise_events(tick_rate: u64) -> Rx {
@@ -263,3 +275,4 @@ fn initialise_events(tick_rate: u64) -> Rx {
 	});
 	rx
 }
+

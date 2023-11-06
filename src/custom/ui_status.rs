@@ -48,7 +48,7 @@ impl StatusMessage {
 
 	pub fn get_status(&mut self) -> String {
 	 	if let Some(expiry_time) = self.clear_at_time {
-			if expiry_time.lt(&Utc::now()) {
+			if Utc::now() > expiry_time {
 				self.current_message = None;
 				self.clear_at_time = None;
 			};

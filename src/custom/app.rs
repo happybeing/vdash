@@ -1,6 +1,7 @@
 ///! Application logic
-///!
-///! Edit src/custom/app.rs to create a customised fork of logtail-dash
+//
+// TODO consider colouring logfiles using regex's from https://github.com/bensadeh/tailspin
+
 use std::collections::HashMap;
 
 use std::fs::File;
@@ -65,13 +66,14 @@ pub struct App {
 	pub logfile_with_focus: String,
 
 	pub logfiles_manager: LogfilesManager,
+	pub next_glob_scan: Option<DateTime<Utc>>,
 }
 
 impl App {
 	pub async fn new() -> Result<App, std::io::Error> {
 		let (opt_files, opt_globpaths, opt_debug_window, opt_timeline_steps) = {
 			let opt = OPT.lock().unwrap();
-			(opt.files.clone(), opt.glob_path.clone(), opt.debug_window, opt.timeline_steps)
+			(opt.files.clone(), opt.glob_paths.clone(), opt.debug_window, opt.timeline_steps)
 		};
 
 		let mut app = App {
@@ -79,11 +81,12 @@ impl App {
 			monitors: HashMap::new(),
 			logfile_with_focus: String::new(),
 
-			logfiles_manager: LogfilesManager::new(),
+			logfiles_manager: LogfilesManager::new(opt_globpaths.clone()),
+			next_glob_scan: None,
 		};
 
 		if opt_files.is_empty() && opt_globpaths.is_empty() {
-			eprintln!("{}: no logfile(s) specified.", Opt::clap().get_name());
+			eprintln!("{}: no logfile(s) or 'glob' paths provided.", Opt::clap().get_name());
 			return exit_with_usage("missing logfiles");
 		}
 
@@ -121,18 +124,16 @@ impl App {
 		}
 
 		if files_to_load.len() > 0 {
-			app.logfiles_manager.monitor_multi_paths(files_to_load, &mut app.monitors, &mut app.dash_state.vdash_status).await;
+			app.logfiles_manager.monitor_multi_paths(files_to_load, &mut app.monitors, &mut app.dash_state.vdash_status, false).await;
 		}
 
-		if opt_globpaths.len() > 0 {
-			app.logfiles_manager.monitor_multi_globpaths(opt_globpaths, &mut app.monitors, &mut app.dash_state.vdash_status).await;
-		}
+		app.scan_glob_paths(false, false).await;
 
 		if app.logfiles_manager.logfiles_added.len() > 0 {
 			app.logfile_with_focus = app.logfiles_manager.logfiles_added[0].clone();	// Save to give focus
 		} else {
-			eprintln!("{}: no logfile(s) specified and no files matched glob paths.", Opt::clap().get_name());
-			return exit_with_usage("missing logfiles");
+			app.dash_state.vdash_status.message(&"No files to monitor, please start a node and try again.".to_string(), None);
+			return exit_with_usage("no files to monitor.");
 		}
 
 		app.update_timelines(&Utc::now());
@@ -143,7 +144,32 @@ impl App {
 		}
 
 		app.set_logfile_with_focus(app.logfile_with_focus.clone());
+		app.dash_state.vdash_status.disable_to_console();
 		Ok(app)
+	}
+
+	pub async fn scan_glob_paths(&mut self, timed: bool, disable_status: bool) {
+		if self.logfiles_manager.globpaths.len() == 0 { return; }
+		let opt_globs_scan = OPT.lock().unwrap().glob_scan;
+
+		let mut do_scan = !timed;
+		if timed && opt_globs_scan > 0 {
+			let current_time = Utc::now();
+			if let Some(next_glob_scan) = self.next_glob_scan {
+				if current_time > next_glob_scan {
+					self.next_glob_scan = Some(current_time + Duration::seconds(opt_globs_scan));
+					do_scan = true;
+				}
+			} else {
+				self.next_glob_scan = Some(current_time + Duration::seconds(opt_globs_scan));
+				do_scan = true;
+			}
+		}
+
+		if do_scan {
+			let opt_glob_paths = OPT.lock().unwrap().glob_paths.clone();
+			self.logfiles_manager.scan_multi_globpaths(opt_glob_paths, &mut self.monitors, &mut self.dash_state.vdash_status, disable_status).await;
+		}
 	}
 
 	pub fn update_timelines(&mut self, now: &DateTime<Utc>) {
@@ -201,6 +227,8 @@ impl App {
 	}
 
 	pub fn set_logfile_with_focus(&mut self, logfile_name: String) {
+		if logfile_name.len() == 0 { return; }
+
 		match self.get_monitor_with_focus() {
 			Some(fading_monitor) => {
 				fading_monitor.has_focus = false;
@@ -226,6 +254,8 @@ impl App {
 	}
 
 	pub fn change_focus_next(&mut self) {
+		if self.logfiles_manager.logfiles_added.len() == 0 { return; }
+
 		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
 
 		if self.dash_state.main_view == DashViewMain::DashDebug {
@@ -265,6 +295,8 @@ impl App {
 	}
 
 	pub fn change_focus_previous(&mut self) {
+		if self.logfiles_manager.logfiles_added.len() == 0 { return; }
+
 		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
 
 		if self.dash_state.main_view == DashViewMain::DashDebug {
@@ -319,6 +351,8 @@ impl App {
 	pub fn handle_arrow_down(&mut self) { self.handle_arrow( true); }
 
 	pub fn handle_arrow(&mut self, is_down: bool) {
+		if self.logfiles_manager.logfiles_added.len() == 0 { return; }
+
 		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
 
 		let list = match self.dash_state.main_view {
@@ -348,6 +382,8 @@ impl App {
 	}
 
 	pub fn preserve_node_selection(&mut self) {
+		if self.logfiles_manager.logfiles_added.len() == 0 { return; }
+
 		if self.dash_state.main_view == DashViewMain::DashSummary {
 			if let Some(selected_index) = self.dash_state.summary_window_rows.state.selected() {
 				let selected_logfile = &self.dash_state.logfile_names_sorted[selected_index];
@@ -1325,6 +1361,8 @@ impl LogEntry {
 
 ///! Active UI at top level
 #[derive(PartialEq)]
+#[derive(Clone)]
+#[derive(Copy)]
 pub enum DashViewMain {
 	DashSummary,
 	DashNode,
@@ -1335,6 +1373,7 @@ pub enum DashViewMain {
 pub struct DashState {
 	pub vdash_status: StatusMessage,
 	pub main_view: DashViewMain,
+	pub previous_main_view: DashViewMain,
 	pub logfile_names_sorted: Vec<String>,
 	pub logfile_names_sorted_ascending: bool,
 
@@ -1370,6 +1409,7 @@ impl DashState {
 			vdash_status: StatusMessage::new(&String::from(UI_STATUS_DEFAULT_MESSAGE), &Duration::seconds(UI_STATUS_DEFAULT_DURATION_S)),
 
 			main_view: DashViewMain::DashSummary,
+			previous_main_view: DashViewMain::DashSummary,
 			logfile_names_sorted: Vec::<String>::new(),	// Sorted by column
 			logfile_names_sorted_ascending: true,
 
@@ -1449,6 +1489,7 @@ pub fn set_main_view(view: DashViewMain, app: &mut App) {
 		return;
 	}
 
+	app.dash_state.previous_main_view = app.dash_state.main_view;
 	save_focus(app);
 	app.dash_state.main_view = view;
 	restore_focus(app);

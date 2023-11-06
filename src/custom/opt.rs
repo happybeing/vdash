@@ -28,9 +28,13 @@ pub struct Opt {
 	/// A *nix 'glob' path to match multiple files.
 	/// Can be provided multiple times as here:
 	///
-	///    vdash -g '~/logfiles/*/safenode.log' -g '~/.local/share/safe/node/**/safenode.log'
-	#[structopt(short, long, multiple=true)]
-	pub glob_path: Vec<String>,
+	///    vdash -g '~/logfiles/*/safenode.log' -g '/home/user/.local/share/safe/node/**/safenode.log'
+	#[structopt(name="glob-path", short, long, multiple=true)]
+	pub glob_paths: Vec<String>,
+
+	/// Enable periodic scan of any glob paths every so many seconds. 0 to disable.
+	#[structopt(long, default_value = "0")]
+	pub glob_scan: i64,
 
 	/// One or more logfiles to monitor
 	#[structopt(name = "LOGFILE")]
