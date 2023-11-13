@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 use chrono::{DateTime, Utc, Duration};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
@@ -177,12 +177,6 @@ impl App {
 			monitor.metrics.update_timelines(now);
 		}
 	}
-
-	// pub fn update_chunk_store_stats(&mut self) {
-	// 	for (_monitor_file, monitor) in self.monitors.iter_mut() {
-	// 		monitor.update_chunk_store_fsstats();
-	// 	}
-	// }
 
 	pub fn get_monitor_for_file_path(&mut self, logfile: &String) -> Option<&mut LogMonitor> {
 		let mut monitor_for_path = None;
@@ -528,8 +522,6 @@ fn exit_with_usage(reason: &str) -> Result<App, std::io::Error> {
 	return Err(Error::new(ErrorKind::Other, reason));
 }
 
-use fs2::FsStats;
-
 const NODE_INACTIVITY_TIMEOUT_S: i64 = 20;	// Seconds with no log message before node becomes 'inactive'
 
 pub struct LogMonitor {
@@ -538,8 +530,6 @@ pub struct LogMonitor {
 	max_content: usize, // Limit number of lines in content
 	pub has_focus: bool,
 	pub logfile: String,
-	pub chunk_store_fsstats: Option<FsStats>,
-	pub chunk_store_pathbuf: PathBuf,
 	pub metrics: NodeMetrics,
 	pub metrics_status: StatefulList<String>,
 	pub is_debug_dashboard_log: bool,
@@ -559,18 +549,11 @@ impl LogMonitor {
 			}
 		}
 
-		let mut chunk_store_pathbuf = PathBuf::from(&logfile_path);
-		if chunk_store_pathbuf.pop() {
-			chunk_store_pathbuf.push("chunkdb")
-		}
-
 		let opt_lines_max = { OPT.lock().unwrap().lines_max };
 		LogMonitor {
 			index,
 			logfile: logfile_path,
 			max_content: opt_lines_max,
-			chunk_store_fsstats: None,
-			chunk_store_pathbuf,
 			metrics: NodeMetrics::new(),
 			content: StatefulList::with_items(vec![]),
 			has_focus: false,
@@ -581,13 +564,6 @@ impl LogMonitor {
 
 	pub fn is_node(&self) -> bool { return !self.is_debug_dashboard_log; }
 
-	// pub fn update_chunk_store_fsstats(&mut self) {
-	// 	self.chunk_store_fsstats = match statvfs(&self.chunk_store_pathbuf) {
-	// 		Ok(fsstats) => Some(fsstats),
-	// 		Err(_) => None,
-	// 	};
-	// }
-
 	pub fn load_logfile(&mut self, dash_state: &mut DashState) -> std::io::Result<()> {
 		use std::io::{BufRead, BufReader};
 
@@ -597,7 +573,6 @@ impl LogMonitor {
 			Err(_e) => return Ok(()), // It's ok for a logfile not to exist yet
 		};
 
-		// self.update_chunk_store_fsstats();
 		let f = BufReader::new(f);
 
 		for line in f.lines() {
@@ -748,7 +723,6 @@ pub struct NodeMetrics {
 	pub total_mb_read: f32,
 	pub total_mb_written: f32,
 
-	pub debug_logfile: Option<NamedTempFile>,
 	parser_output: String,
 }
 
@@ -811,7 +785,6 @@ impl NodeMetrics {
 			total_mb_written: 0.0,
 
 			// Debug
-			debug_logfile: None,
 			parser_output: String::from("-"),
 		};
 		metrics.update_timelines(&Utc::now());
