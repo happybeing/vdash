@@ -373,15 +373,6 @@ pub fn draw_logfile(
 fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
 	let used_string = format_size(monitor.metrics.used_space, 1);
 	let max_string = format_size(monitor.metrics.max_capacity, 1);
-	// let device_limit_string = match &monitor.chunk_store_fsstats {
-	// 	Some(fsstats) => {
-	// 		let chunk_store_limit = fsstats.free_space();
-	// 		format_size(chunk_store_limit, 1).to_string()
-	// 	},
-	// 	None => {
-	// 		"unknown".to_string()
-	// 	}
-	// };
 
 	let heading = format!("Node {:>2} Resources - Chunk Store:  {:>9} of {} limit", monitor.index+1, &used_string, &max_string);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
