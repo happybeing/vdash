@@ -711,7 +711,6 @@ pub struct NodeMetrics {
 	pub node_process_id: Option<u64>,
 	pub node_peer_id: Option<String>,
 	pub category_count: HashMap<String, usize>,
-	pub activity_history: Vec<ActivityEntry>,
 
 	pub app_timelines: AppTimelines,
 
@@ -764,7 +763,6 @@ impl NodeMetrics {
 			node_peer_id: None,
 
 			// Logfile entries
-			activity_history: Vec::<ActivityEntry>::new(),
 			entry_metadata: None,
 
 			// A predefined set of Timelines (Sparklines)
@@ -987,8 +985,6 @@ impl NodeMetrics {
 				response = line.as_str()[response_start..response_start + response_end]
 					.as_ref();
 				if !response.is_empty() {
-					let activity_entry = ActivityEntry::new(&line, &self.entry_metadata.as_ref().unwrap(), response);
-					self.activity_history.push(activity_entry);
 					self.parser_output = format!("node activity: {}", response);
 				}
 			}
@@ -1254,34 +1250,6 @@ impl NodeMetrics {
 		}
 	}
 }
-
-///! Node activity for node activity_history
-pub struct ActivityEntry {
-	pub message: String,
-	pub activity: String,
-	pub logstring: String,
-	pub category: String, // First word, "Running", "INFO", "WARN" etc
-	pub message_time: DateTime<Utc>,
-	pub source: String,
-
-	pub parser_output: String,
-}
-
-impl ActivityEntry {
-	pub fn new(line: &String, entry_metadata: &LogMeta, activity: &str) -> ActivityEntry {
-		ActivityEntry {
-			message: entry_metadata.message.clone(),
-			activity: activity.to_string(),
-			logstring: line.clone(),
-			category: entry_metadata.category.clone(),
-			message_time: entry_metadata.message_time,
-			source: entry_metadata.source.clone(),
-
-			parser_output: String::from(""),
-		}
-	}
-}
-
 
 ///! Metadata for a logfile line
 #[derive(Clone)]
