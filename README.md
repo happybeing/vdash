@@ -1,18 +1,13 @@
 # Safe Network node Dashboard
 
 `vdash` is a terminal based dashboard for monitoring Safe Network nodes. It is written in
-Rust, using [tui-rs](https://github.com/fdehau/tui-rs) to create the terminal UI
-and [linemux](https://github.com/jmagnuson/linemux) to monitor node logfiles on
-the local machine.
+Rust. The terminal GUI is implemented using [ratatui](https://github.com/ratatui-org/ratatui) and it monitors one or more node logfiles using [linemux](https://github.com/jmagnuson/linemux).
 
-**Status:** working on Windows, MacOS and Linux with local and public test networks.
+**Status:** working on Windows, MacOS and Linux with public test networks.
 
-`vdash` is already capable of monitoring multiple logfiles on the local machine
-so it wouldn't be hard to monitor multiple remote nodes by having a script pull
-logfiles from remote nodes to local copies monitored by `vdash`, but this is not
-on the roadmap. There may be existing tools that could do this so if anyone
-wants to look into that it would be great as I'm only making minor changes at
-the moment.
+`vdash` is already capable of monitoring multiple logfiles on the local machine, showing multiple metrics for each node including number of PUTS (chunks stored), current price being charged for storage, and node earnings. Many metrics appear both as numeric values and can be viewed in real-time graphical charts over time.
+
+Using `rsyslog` it should be possible to monitor logfiles for the local machine and from multiple remote machines too, though I have not tried this myself yet.
 
 Here's an early `vdash` (v0.2.0) working with a local testnet node:
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
@@ -21,8 +16,8 @@ Here's an early `vdash` (v0.2.0) working with a local testnet node:
 `vdash` will load historic metrics from one or more Safe node
 logfiles and display these with live updates in the terminal (see above).
 
-**'<-' and '->':** When monitoring multiple `safenode` logfiles you can cycle through
-the different nodes using left/right arrow keys.
+**'<-' and '->':** When monitoring multiple nodes you can cycle through
+them using the left/right arrow keys.
 
 **'i' and 'o':** Zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-').
 
@@ -44,8 +39,14 @@ For more details and progress see [Roadmap](#roadmap) (below).
 
 ## Operating Systems
 - **Linux:** works on Linux (tested on Ubuntu).
-- **Windows:** works on Windows 10.
-- **MacOS:** works on MacOS.
+- **Windows:** works on Windows 10. Not tested recently.
+- **MacOS:** works on MacOS. Not tested recently.
+
+## Install using Linux package manager
+
+`vdash` has been packaged for debian thanks to the generous efforts of Jonas Smedegaard. From late 2023 it will begin to be available in many downstream Linux distributions, but due to the pace of updates the packaged version is likely to be behind the version published at crates.io which is always up to date.
+
+You can check the status of package `safe-vdash` in your distribution and choose whether to install from there or get the most recent version as explained below.
 
 ## Install from crates.io
 
@@ -60,26 +61,26 @@ For more details and progress see [Roadmap](#roadmap) (below).
     cargo install vdash
     vdash --help
 
-2c. **Windows** install **vdash-crossterm:**
+2c. **Windows** install **vdash:**
 
-To install on Windows you must build manually and use the 'nightly' compiler
-until the 'itarget' feature becomes part of 'stable', so install Rust nightly
+Windows has not been tested recently so you may like to try using `cargo insall vdash` first to see if that now works. If not, you will need to build using Rust Nightly.
+
+Until the 'itarget' feature becomes part of 'stable', build manually and use the Rust Nightly compiler first install Rust Nightly
 using `rustup`:
 
     rustup toolchain install nightly
 
-To build `vdash-crossterm` on Windows, clone vdash, build with `+nightly` and use the binary it creates under `./taget/release`:
+To build `vdash` on Windows, clone vdash, build with `+nightly` and use the binary it creates under `./taget/release`:
 
     git clone https://github.com/happybeing/vdash
     cd vdash
-    cargo +nightly build -Z features=itarget --bin vdash-crossterm --release --no-default-features
+    cargo +nightly build -Z features=itarget --bin vdash --release --no-default-features
 
-    ./target/release/vdash-crossterm --help
+    ./target/release/vdash --help
 
 ## Using vdash - a Safe Network node Dashboard
 `vdash` provides a terminal based graphical dashboard of Safe Network node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
 
-**Status:** useful work-in-progress, help welcome!
 
 ## Get Safe Network pre-requisites
 1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
@@ -112,26 +113,41 @@ Typically you can just pass the paths of one or more node logfiles you want to m
 
 Keyboard commands for `vdash` are summarised in the introduction above.
 
+### vdash and 'glob' paths
+
+`vdash` accepts one or more file paths, but you can also specify one or more 'glob' paths which can scan a directory tree for matching files. This enables you to pick up new nodes added after `vdash` starts, either using the 'r' (re-scan) keyboard command, or automatically by giving a re-scanning period using the `--glob-scan` option on the command line.
+
+`vdash` scans all 'glob' paths provided on start-up and again whenever you press 'r'.
+
+Note that unlike a file path you must use quotation marks around a 'glob' path to prevent the shell from trying to expand it. In the examples you will need to replace `<USER>` with the appropriate home directory name for your account.
+
+Examples for Linux:
+
+    vdash --glob-path "/home/<USER>/.local/share/safe/node/*/logs/safenode.log"
+
+    vdash -g "$HOME/.local/share/safe/node/**/safenode.log" -g "./remote-node-logs/*/logs/safenode.log" --glob-scan 5
+
+Using double rather than single quotes enables you to use '$HOME' in the path instead of giving the home directory explicitly.
+
 ### Safe Node Setup
-**IMPORTANT:** Ignore this section until the Safe Network CLI has been restored to work with the changes being implemented to Safe Network code in 2023/Q2. For now, see **Using vdash With a Local Test Network** below.
 
 **IMPORTANT:** You must ensure the node logfile includes the telemetry information used by vdash by setting the logging level to 'trace' when you start your node (as in the example below). You control the node logging level by setting the environment variable `SN_LOG`.
 
 ```sh
 killall safenode
-rm -f ~/.safe/node/local-test-network/
+rm -rf ~/.local/share/safe/node
 SN_LOG=all safenode
 ```
 To start a node using `safenode` you should check you are using the correct parameters for your system setup.
 
-When your node has started run `vdash`, typically in a different terminal:
+When your node or nodes have started, run `vdash`, typically in a different terminal:
 ```sh
-vdash ~/.safe/node/local-node/safenode.log
+vdash ~/.local/share/safe/node/*/safenode.log
 ```
 Note:
 
 - `killall safenode` makes sure no existing nodes are still running, and
-  deleting the `local-test-network` directory prevents you picking up statistics from previous logfiles. If you leave the logfile in place then `vdash` will waste time
+  deleting the `node` directory prevents you picking up statistics from previous logfiles. If you leave the logfile in place then `vdash` will waste time
   processing that, although you can skip that process using a command line option.
 
 - setting SN_LOG ensures the logfiles contain the data which vdash needs, and
@@ -141,17 +157,18 @@ Note:
 	Using Windows Command Line:
 	```
 	set SN_LOG="all"
-	safe node join
+	safenode
 	```
 
 	Using Windows PowerShell:
 	```
 	$env:SN_LOG="all"
-	safe node join
+	safenode
 	```
 
 ### Using vdash With a Local Test Network
 
+**IMPORTANT:** This section is out of date and so will not work as shown. You can try `vdash` by participating in one of the public test networks which are announced on the Safe Network [forum](https://safenetforum.org). These are happening about once per week during 2023.
 
 1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), for example:
     ```sh
@@ -242,13 +259,14 @@ Where `vdash` is headed:
     - [x] code to get node bandwidth
     - [x] code to get total bandwidth
     - [ ] implement bandwidth node/total/max in last day 'progress' bar
-- [ ] Implement DashOverview: all nodes on one page (rename from DashSummary)
+- [x] Implement DashOverview: all nodes on one page (rename from DashSummary)
 - [x] trim NodeMetrics timeline
-- [ ] logtail-dash [Issue #1](https://github.com/happybeing/logfile-dash/issues/1): Implement popup help on ?, h, H
+- [x] Implement popup help on ?, h, H
 - [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
-- [ ] Implement --features="vdash" / --features="logtail" to select app and UI
 - [x] switch to crossterm only (v0.9.0)
-- [ ] port from tui-rs (deprecated) to ratatui (supported fork of tui-rs)
+- [x] port from tui-rs (deprecated) to ratatui (supported fork of tui-rs)
+- [x] Ability to provide 'glob' paths and re-scan them to add new nodes while running
+- [ ] Implement logfile checkpoints to allow re-starting `vdash` quickly, and without losing data
 
 ## LICENSE
 
