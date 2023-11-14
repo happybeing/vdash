@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
-use std::path::{Path};
+use std::path::Path;
 use chrono::{DateTime, Utc, Duration};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
@@ -930,14 +930,14 @@ impl NodeMetrics {
 			};
 			return true;
 		} else if line.contains("nanos accepted for record") {
-			if 	let Some(storage_payment) = self.parse_u64("Payment of NanoTokens(", line) {
+			if 	let Some(storage_payment) = self.parse_u64("payment of NanoTokens(", line) {
 				self.count_storage_payment(entry_time, storage_payment);
 				self.parser_output = format!("Payment received: {}", storage_payment);
 				return true;
 			};
-		} else if line.contains("connected peers") {
+		} else if line.contains("PeersInRoutingTable") {
 			let mut parser_output = String::from("connected peers:");
-			if let Some(peers_connected) = self.parse_u64("now we have #", line) {
+			if let Some(peers_connected) = self.parse_u64("PeersInRoutingTable(", line) {
 				self.count_peers_connected(entry_time, peers_connected);
 				parser_output = format!("{} {}", &parser_output, peers_connected);
 			};
