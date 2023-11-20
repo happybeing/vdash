@@ -266,7 +266,7 @@ Where `vdash` is headed:
 - [x] switch to crossterm only (v0.9.0)
 - [x] port from tui-rs (deprecated) to ratatui (supported fork of tui-rs)
 - [x] Ability to provide 'glob' paths and re-scan them to add new nodes while running
-- [ ] Implement logfile checkpoints to allow re-starting `vdash` quickly, and without losing data
+- [x] Implement logfile checkpoints to allow re-starting `vdash` quickly, and without losing data
 
 ## LICENSE
 
