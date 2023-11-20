@@ -1,5 +1,6 @@
 pub mod app;
 pub mod app_timelines;
+pub mod logfile_checkpoints;
 pub mod logfiles_manager;
 pub mod opt;
 pub mod timelines;

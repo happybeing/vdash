@@ -423,7 +423,7 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 	let constraints = vec![Constraint::Length(1); 1 + 2];
 	let gauges = Layout::default()
 		.direction(Direction::Vertical)
-		.constraints(constraints.as_ref())
+		.constraints::<&[Constraint]>(constraints.as_ref())
 		.split(columns[1]);
 
 	push_storage_metric(

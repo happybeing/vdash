@@ -2,8 +2,7 @@ use linemux::MuxedLines;
 use std::collections::HashMap;
 use glob::glob;
 
-use crate::custom::app::LogMonitor;
-use crate::custom::ui_status::StatusMessage;
+use crate::custom::app::{LogMonitor, DashState};
 
 pub struct LogfilesManager {
     pub logfiles_added: Vec<String>,
@@ -35,33 +34,62 @@ impl LogfilesManager {
         }
     }
 
-    pub async fn monitor_multi_paths(&mut self, filepaths: Vec<String>, monitors: &mut HashMap<String, LogMonitor>, status: &mut StatusMessage, disable_status: bool) {
-        if !disable_status { status.message(&format!("Loading {} files...", filepaths.len()), None); }
+    pub async fn monitor_multi_paths(&mut self, filepaths: Vec<String>, monitors: &mut HashMap<String, LogMonitor>, dash_state: &mut DashState, disable_status: bool) {
+        if !disable_status { dash_state.vdash_status.message(&format!("Loading {} files...", filepaths.len()), None); }
         for f in &filepaths {
-			self.monitor_path(&f.to_string(), monitors, status, disable_status).await;
+			self.monitor_path(&f.to_string(), monitors, dash_state, disable_status).await;
 		}
     }
 
-    pub async fn scan_multi_globpaths(&mut self, globpaths: Vec<String>, monitors: &mut HashMap<String, LogMonitor>, status: &mut StatusMessage, disable_status: bool) {
-        if !disable_status { status.message(&format!("Scanning {} globpaths...", globpaths.len()), None); }
+    pub async fn scan_multi_globpaths(&mut self, globpaths: Vec<String>, monitors: &mut HashMap<String, LogMonitor>, dash_state: &mut DashState, disable_status: bool) {
+        if !disable_status { dash_state.vdash_status.message(&format!("Scanning {} globpaths...", globpaths.len()), None); }
         for f in &globpaths {
-            self.scan_globpath(f.to_string(), monitors, status, disable_status).await;
+            self.scan_globpath(f.to_string(), monitors, dash_state, disable_status).await;
         }
     }
 
     // Attempts to setup a LogMonitor for the logfile at fullpath
-    pub async fn monitor_path(&mut self, fullpath: &String, monitors: &mut HashMap<String, LogMonitor>, status: &mut StatusMessage, disable_status: bool) {
+    pub async fn monitor_path(&mut self, fullpath: &String, monitors: &mut HashMap<String, LogMonitor>, dash_state: &mut DashState, disable_status: bool) {
         if self.logfiles_added.contains(&fullpath) {
             return;
         }
 
-        if !disable_status { status.message(&format!("file: {}", &fullpath), None); }
+        if !disable_status { dash_state.vdash_status.message(&format!("file: {}", &fullpath), None); }
 
-		let monitor = LogMonitor::new( fullpath.to_string());
+		let mut monitor = LogMonitor::new( fullpath.to_string());
+
+        let checkpoint_result = super::logfile_checkpoints::restore_checkpoint(&mut monitor);
+
+        let checkpoint_was_restored = match checkpoint_result {
+            Ok(message) => {
+                if message.len() > 0 {
+                    if !disable_status { dash_state.vdash_status.message(&format!("{}", &message), None); }
+                };
+                true
+            },
+            Err(e) => {
+                if !disable_status { dash_state.vdash_status.message(&format!("{}", &e.to_string()), None); }
+                false   // TODO note: do I need to handle version errors in some way? (due to change in serialised struct)
+            }
+        };
+
         let result = if super::app::OPT.lock().unwrap().ignore_existing {
             self.linemux_files.add_file(fullpath).await
         } else {
-            self.linemux_files.add_file_from_start(fullpath).await
+            if checkpoint_was_restored {
+                match monitor.load_logfile_from_time(dash_state, monitor.latest_checkpoint_time) {
+                    Ok(_) => Ok(std::path::PathBuf::from(fullpath)),
+                    Err(e) => Err(e),
+                }
+            } else {
+                match monitor.load_logfile_from_time(dash_state, None) {
+                    Ok(_) => self.linemux_files.add_file(fullpath).await,
+                    Err(e) => Err(e),
+                }
+
+                // // This method is 25% slower or worse
+                // self.linemux_files.add_file_from_start(fullpath).await
+            }
         };
 
         match  result {
@@ -81,8 +109,8 @@ impl LogfilesManager {
     }
 
     /// Scans (or re-scans) the globpath and attempts to setup LogMonitors for any files found
-    pub async fn scan_globpath(&mut self, globpath: String, monitors: &mut HashMap<String, LogMonitor>, status: &mut StatusMessage, disable_status: bool) {
-        if !disable_status { status.message(&format!("globpath: {}", globpath), None); }
+    pub async fn scan_globpath(&mut self, globpath: String, monitors: &mut HashMap<String, LogMonitor>, dash_state: &mut DashState, disable_status: bool) {
+        if !disable_status { dash_state.vdash_status.message(&format!("globpath: {}", globpath), None); }
 
         let paths_to_scan = globpath.clone();
         if !self.globpaths.contains(&globpath) { self.globpaths.push(globpath) }
@@ -91,7 +119,7 @@ impl LogfilesManager {
             match entry {
                 Ok(path) => {
                     if let Some(filepath) = path.to_str() {
-                        self.monitor_path(&filepath.to_string(), monitors, status, disable_status).await
+                        self.monitor_path(&filepath.to_string(), monitors, dash_state, disable_status).await
                     }
                 },
                 Err(e) => eprintln!("...globpath failed: {}", e),

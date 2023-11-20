@@ -63,15 +63,21 @@ pub enum MinMeanMax {
     Max = 3,
 }
 
-pub struct Timeline {
+use serde::{Serialize, Deserialize};
+use serde_with;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]pub struct Timeline {
 	pub name: String,
 	pub units_text: String,
 	pub is_mmm: bool,
 	pub is_cumulative:	bool,
+
+	#[serde(skip_serializing)]
+	#[serde(skip_deserializing)]
 	pub colour: Color,
 
 	pub last_non_zero_value: u64,
-	buckets: HashMap<&'static str, Buckets>,
+	buckets: HashMap<String, Buckets>,
 }
 
 impl Timeline {
@@ -81,7 +87,7 @@ impl Timeline {
 			units_text,
 			is_mmm,
 			is_cumulative,
-			buckets: HashMap::<&'static str, Buckets>::new(),
+			buckets: HashMap::<String, Buckets>::new(),
 			last_non_zero_value: 0,
 			colour,
 		}
@@ -93,7 +99,7 @@ impl Timeline {
 
 	pub fn add_bucket_set(&mut self, name: &'static str, duration: Duration, num_buckets: usize) {
 		self.buckets
-			.insert(name, Buckets::new(duration, num_buckets, self.is_mmm));
+			.insert(name.to_string(), Buckets::new(duration, num_buckets, self.is_mmm));
 	}
 
 	pub fn get_bucket_set(&self, timescale_name: &str) -> Option<&Buckets> {
@@ -168,15 +174,23 @@ impl Timeline {
 	}
 }
 
+use serde_with::DurationSeconds;
+use serde_with::serde_as;
+
 /// Buckets operate as a value series (e.g. count per bucket), or
 /// if Some(stats_mmm) they maintain min, mean and max series.
 
 // I use the same impl code for is_mmm true or false to avoid polymorphic code
+#[serde_as]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Buckets {
 	pub bucket_time: Option<DateTime<Utc>>,		// Start time of the active buckets
 	pub earliest_time: Option<DateTime<Utc>>,	// Earliest time passed to update_current_time()
 	pub latest_time: Option<DateTime<Utc>>,		// Most recent time passed to update_current_time()
+
+	#[serde_as(as = "DurationSeconds<i64>")]
 	pub total_duration: Duration,
+	#[serde_as(as = "DurationSeconds<i64>")]
 	pub bucket_duration: Duration,
 	pub num_buckets: usize,
 	pub values_total:	u64,

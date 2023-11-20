@@ -3,10 +3,11 @@
 // TODO consider colouring logfiles using regex's from https://github.com/bensadeh/tailspin
 
 use std::collections::HashMap;
-
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
+
+use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc, Duration};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
@@ -18,6 +19,7 @@ use super::app_timelines::{AppTimelines, TIMESCALES, APP_TIMELINES};
 use super::app_timelines::{STORAGE_COST_TIMELINE_KEY, EARNINGS_TIMELINE_KEY, PUTS_TIMELINE_KEY, GETS_TIMELINE_KEY, CONNECTIONS_TIMELINE_KEY, RAM_TIMELINE_KEY, ERRORS_TIMELINE_KEY};
 use super::opt::{Opt, MIN_TIMELINE_STEPS};
 use super::logfiles_manager::LogfilesManager;
+use super::logfile_checkpoints::save_checkpoint;
 
 pub const SAFENODE_BINARY_NAME: &str = "safenode";
 pub static SUMMARY_WINDOW_NAME: &str = "Summary of Monitored Nodes";
@@ -124,7 +126,7 @@ impl App {
 		}
 
 		if files_to_load.len() > 0 {
-			app.logfiles_manager.monitor_multi_paths(files_to_load, &mut app.monitors, &mut app.dash_state.vdash_status, false).await;
+			app.logfiles_manager.monitor_multi_paths(files_to_load, &mut app.monitors, &mut app.dash_state, false).await;
 		}
 
 		app.scan_glob_paths(false, false).await;
@@ -168,7 +170,7 @@ impl App {
 
 		if do_scan {
 			let opt_glob_paths = OPT.lock().unwrap().glob_paths.clone();
-			self.logfiles_manager.scan_multi_globpaths(opt_glob_paths, &mut self.monitors, &mut self.dash_state.vdash_status, disable_status).await;
+			self.logfiles_manager.scan_multi_globpaths(opt_glob_paths, &mut self.monitors, &mut self.dash_state, disable_status).await;
 		}
 	}
 
@@ -533,10 +535,13 @@ pub struct LogMonitor {
 	pub metrics: NodeMetrics,
 	pub metrics_status: StatefulList<String>,
 	pub is_debug_dashboard_log: bool,
+	pub latest_checkpoint_time: Option<DateTime<Utc>>,
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
+
+use super::logfile_checkpoints::LogfileCheckpoint;
 
 impl LogMonitor {
 	pub fn new(logfile_path: String) -> LogMonitor {
@@ -559,12 +564,32 @@ impl LogMonitor {
 			has_focus: false,
 			metrics_status: StatefulList::with_items(vec![]),
 			is_debug_dashboard_log,
+			latest_checkpoint_time: None,
 		}
 	}
 
 	pub fn is_node(&self) -> bool { return !self.is_debug_dashboard_log; }
 
-	pub fn load_logfile(&mut self, dash_state: &mut DashState) -> std::io::Result<()> {
+	pub fn from_checkpoint(&mut self, checkpoint: &LogfileCheckpoint) {
+		self.index = checkpoint.monitor_index;
+		self.latest_checkpoint_time = checkpoint.latest_entry_time;
+		self.metrics = checkpoint.monitor_metrics.clone();
+	}
+
+	pub fn to_checkpoint(&mut self, checkpoint: &mut LogfileCheckpoint) {
+		checkpoint.latest_entry_time = self.latest_checkpoint_time;
+		checkpoint.monitor_index = self.index;
+		checkpoint.monitor_metrics = self.metrics.clone();
+	}
+
+	// TODO if speed is an issue look at speeding up:
+	// TODO - LogEntry::decode_metadata()
+	// TODO - finding first log entry to decode using a bisection search
+	pub fn load_logfile_from_time(&mut self, dash_state: &mut DashState, after_time: Option<DateTime<Utc>>) -> std::io::Result<()> {
+		if let Some(after_time) = after_time {
+			dash_state.vdash_status.message(&format!("loading logfile after time: {}", after_time).to_string(), None);
+		}
+
 		use std::io::{BufRead, BufReader};
 
 		let f = File::open(self.logfile.to_string());
@@ -577,7 +602,7 @@ impl LogMonitor {
 
 		for line in f.lines() {
 			let line = line.expect("Unable to read line");
-			self.append_to_content(&line)?;
+			self.append_to_content_from_time(dash_state, &line, after_time)?;
 			if self.is_debug_dashboard_log {
 				dash_state._debug_window(&line);
 			}
@@ -592,14 +617,69 @@ impl LogMonitor {
 		Ok(())
 	}
 
-	pub fn append_to_content(&mut self, text: &str) -> Result<(), std::io::Error> {
-		if self.line_filter(&text) {
-			self._append_to_content(text)?; // Show in TUI
-			if self.is_debug_dashboard_log {
-				return Ok(());
-			}
-			self.metrics.gather_metrics(&text)?;
+	pub fn append_to_content(&mut self, line: &str, checkpoint_interval: u64) -> Result<String, std::io::Error> {
+		self.metrics.parser_output = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
+		// debug_log!(&self.parser_output.clone());
+
+		self.metrics.entry_metadata = LogEntry::decode_metadata(line);
+
+		if self.metrics.entry_metadata.is_none() {
+			// debug_log!("gather_metrics() - skipping bec. metadata missing");
+			return Ok("".to_string());	// Skip until start of first log message
 		}
+
+		self._append_to_content(line)?; // Show in TUI
+		if self.is_debug_dashboard_log {
+			return Ok("".to_string());
+		}
+
+		self.metrics.gather_metrics(&line)?;
+
+		if checkpoint_interval > 0 { 	// Checkpoints disabled by zero interval
+			return self.update_checkpoint(checkpoint_interval);
+		}
+
+		Ok("".to_string())
+	}
+
+	pub fn update_checkpoint(&mut self, checkpoint_interval: u64) -> Result<String, Error> {
+		if let Some(metadata) = &self.metrics.entry_metadata {
+			if self.latest_checkpoint_time.is_none() {
+				return save_checkpoint(self);
+			} else {
+				if let Some(latest_checkpoint_time) = self.latest_checkpoint_time {
+					if latest_checkpoint_time + Duration::seconds(checkpoint_interval as i64) < metadata.message_time {
+						return save_checkpoint(self);
+					}
+				}
+			}
+		}
+
+		Ok("".to_string())
+	}
+
+	pub fn append_to_content_from_time(&mut self, _dash_state: &mut DashState, line: &str, after_time: Option<DateTime<Utc>>) -> Result<(), std::io::Error> {
+		self.metrics.parser_output = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
+		// debug_log!(&self.parser_output.clone());
+
+		if let Some(entry_metadata) = LogEntry::decode_metadata(line) {
+			if let Some(after_time) = after_time {
+				if !entry_metadata.message_time.gt(&after_time) { return Ok(()); }
+			}
+
+			self.metrics.entry_metadata = Some(entry_metadata);
+		} else {
+			// debug_log!("gather_metrics() - skipping bec. metadata missing");
+			return Ok(());
+		}
+
+		self._append_to_content(line)?; // Show in TUI
+		if self.is_debug_dashboard_log {
+			return Ok(());
+		}
+
+		self.metrics.gather_metrics(&line)?;
+
 		Ok(())
 	}
 
@@ -613,12 +693,6 @@ impl LogMonitor {
 		}
 		Ok(())
 	}
-
-	// Some logfile lines are too numerous to include so we ignore them
-	// Returns true if the line is to be processed
-	fn line_filter(&mut self, _line: &str) -> bool {
-		true
-	}
 }
 
 use regex::Regex;
@@ -628,10 +702,12 @@ lazy_static::lazy_static! {
 }
 
 #[derive(PartialEq)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub enum NodeStatus {
 	Started,
 	Connecting,
 	Connected,
+	#[default]
 	Stopped,
 }
 
@@ -644,6 +720,7 @@ pub fn node_status_as_string(node_status: &NodeStatus) -> String {
 	}
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MmmStat {
 	sample_count:	u64,
 
@@ -679,6 +756,7 @@ impl MmmStat {
 	}
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeMetrics {
 	pub node_started: Option<DateTime<Utc>>,
 	pub running_message: Option<String>,
@@ -690,6 +768,8 @@ pub struct NodeMetrics {
 	pub app_timelines: AppTimelines,
 
 	pub entry_metadata: Option<LogMeta>,
+	#[serde(skip_serializing)]
+	#[serde(skip_deserializing)]
 	pub node_status: NodeStatus,
 	pub node_status_string: String,
 	pub node_inactive: bool,
@@ -723,11 +803,11 @@ pub struct NodeMetrics {
 	pub total_mb_read: f32,
 	pub total_mb_written: f32,
 
-	parser_output: String,
+	pub parser_output: String,
 }
 
 impl NodeMetrics {
-	fn new() -> NodeMetrics {
+	pub fn new() -> NodeMetrics {
 		let mut metrics = NodeMetrics {
 			// Start
 			node_started: None,
@@ -824,18 +904,6 @@ impl NodeMetrics {
 	///! Process a line from a SAFE Node logfile.
 	///! Use a created LogMeta to update metrics.
 	pub fn gather_metrics(&mut self, line: &str) -> Result<(), std::io::Error> {
-		self.parser_output = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
-		// debug_log!(&self.parser_output.clone());
-
-		if let Some(metadata) = LogEntry::decode_metadata(line) {
-			self.entry_metadata = Some(metadata);
-		}
-
-		if self.entry_metadata.is_none() {
-			// debug_log!("gather_metrics() - skipping bec. metadata missing");
-			return Ok(());	// Skip until start of first log message
-		}
-
 		let entry = LogEntry { logstring: String::from(line) };
 		let entry_metadata = self.entry_metadata.as_ref().unwrap().clone();
 		let entry_time = entry_metadata.message_time;
@@ -1225,7 +1293,7 @@ impl NodeMetrics {
 }
 
 ///! Metadata for a logfile line
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogMeta {
 	pub category: String, // First word ('INFO', 'WARN' etc.)
 	pub message_time: DateTime<Utc>,
@@ -1248,6 +1316,7 @@ impl LogMeta {
 		}
 	}
 }
+
 ///! Used to build a history of what is in the log, one LogMeta per line
 pub struct LogEntry {
 	pub logstring: String,			// One line of raw text from the logfile

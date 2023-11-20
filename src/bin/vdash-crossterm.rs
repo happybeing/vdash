@@ -55,12 +55,11 @@ enum Event<I> {
 use tokio_stream::StreamExt;
 use tokio::sync::mpsc;
 
-// RUSTFLAGS="-A unused" cargo run --bin logtail-crossterm --features="crossterm" /var/log/auth.log /var/log/dmesg
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-	let (opt_tick_rate, opt_debug_window) = {
+	let (opt_tick_rate, checkpoint_interval, opt_debug_window) = {
 		let opt = OPT.lock().unwrap();
-		(opt.tick_rate, opt.debug_window)
+		(opt.tick_rate, opt.checkpoint_interval, opt.debug_window)
 	};
 
 	env_logger::init();
@@ -210,9 +209,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 					let source = String::from(source_str);
 					// app.dash_state._debug_window(format!("{}: {}", source, line.line()).as_str());
 
+					let mut checkpoint_result: Result<String, std::io::Error> = Ok("".to_string());
 					match app.get_monitor_for_file_path(&source) {
 						Some(monitor) => {
-							monitor.append_to_content(line.line())?;
+							checkpoint_result = monitor.append_to_content(line.line(), checkpoint_interval);
 							if monitor.is_debug_dashboard_log {
 								app.dash_state._debug_window(line.line());
 							} else if app.dash_state.main_view == DashViewMain::DashSummary {
@@ -222,6 +222,16 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 						None => {
 							app.dash_state._debug_window(format!("NO MONITOR FOR: {}", source).as_str());
 						},
+					}
+					match checkpoint_result {
+						Ok(message) => {
+							if message.len() > 0 {
+								app.dash_state.vdash_status.message(&message, None);
+							}
+						},
+						Err(e) => {
+							app.dash_state.vdash_status.message(&e.to_string(), None);
+						}
 					}
 				},
 				Some(Err(e)) => {

@@ -36,6 +36,10 @@ pub struct Opt {
 	#[structopt(long, default_value = "0")]
 	pub glob_scan: i64,
 
+	/// Set checkpoint interval in seconds. 0 to disable checkpoints.
+	#[structopt(long, default_value = "300")]
+	pub checkpoint_interval: u64,
+
 	/// One or more logfiles to monitor
 	#[structopt(name = "LOGFILE")]
 	pub files: Vec<String>,

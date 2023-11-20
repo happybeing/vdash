@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Duration, Utc};
+use ratatui::style::Color;
 
 use super::app::OPT;
 use super::timelines::{Timeline, Buckets};
-use ratatui::style::Color;
 
 lazy_static::lazy_static! {
 	pub static ref TIMESCALES: std::vec::Vec<(&'static str, Duration)> = vec!(
@@ -42,9 +43,9 @@ pub const APP_TIMELINES: [(&str, &str, &str, bool, bool, Color); 7] = [
 ];
 
 /// Holds the Timeline structs for a node, as used by this app
-// #[derive(Default)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct AppTimelines {
-    timelines:  HashMap<&'static str, Timeline>,
+    timelines:  HashMap<String, Timeline>,
 }
 
 impl AppTimelines {
@@ -53,11 +54,11 @@ impl AppTimelines {
 		let opt_timeline_steps = { let opt = OPT.lock().unwrap(); opt.timeline_steps };
 
         let mut app_timelines = AppTimelines {
-            timelines: HashMap::<&'static str, Timeline>::new(),
+            timelines: HashMap::<String, Timeline>::new(),
 		};
 
         for (key, name, units_text, is_mmm, is_cumulative, colour) in APP_TIMELINES {
-            app_timelines.timelines.insert(key, Timeline::new(name.to_string(), units_text.to_string(), is_mmm, is_cumulative, colour));
+            app_timelines.timelines.insert(key.to_string(), Timeline::new(name.to_string(), units_text.to_string(), is_mmm, is_cumulative, colour));
         }
 
         for (_, timeline) in app_timelines.timelines.iter_mut() {
