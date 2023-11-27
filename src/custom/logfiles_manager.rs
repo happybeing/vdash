@@ -68,7 +68,8 @@ impl LogfilesManager {
                 true
             },
             Err(e) => {
-                if !disable_status { dash_state.vdash_status.message(&format!("{}", &e.to_string()), None); }
+                let message = &e.to_string();
+                if message.len() > 0 && !disable_status { dash_state.vdash_status.message(&format!("{}", message), None); }
                 false   // TODO note: do I need to handle version errors in some way? (due to change in serialised struct)
             }
         };

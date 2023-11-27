@@ -63,7 +63,8 @@ pub fn restore_checkpoint(monitor: &mut LogMonitor) -> Result<String, Error> {
                 Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
             };
         },
-        Err(e) => return Err(e),   // No checkpoint file found
+        // Suppress console error message when checkpoint file is not found
+        Err(e) => return Err(Error::new(ErrorKind::Other, "")),   // No checkpoint file found
     }
 
     Ok(format!("checkpoint restored from: {:?}", checkpoint_path.as_os_str()))
