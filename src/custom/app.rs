@@ -670,7 +670,7 @@ impl LogMonitor {
 			self.metrics.entry_metadata = Some(entry_metadata);
 		} else {
 			// debug_log!("gather_metrics() - skipping bec. metadata missing");
-			return Ok(());
+			if after_time.is_some() { return Ok(()); }
 		}
 
 		self._append_to_content(line)?; // Show in TUI
@@ -926,7 +926,7 @@ impl NodeMetrics {
 	}
 
 	///! Return a LogMeta and capture metadata for logfile node start:
-	///!	'Running sn_node v0.74.4'
+	///!	'Running safenode v0.98.32'
 	pub fn parse_start(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
 		let running_prefix = String::from("Running safenode ");
 
