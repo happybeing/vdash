@@ -768,8 +768,6 @@ pub struct NodeMetrics {
 	pub app_timelines: AppTimelines,
 
 	pub entry_metadata: Option<LogMeta>,
-	#[serde(skip_serializing)]
-	#[serde(skip_deserializing)]
 	pub node_status: NodeStatus,
 	pub node_status_string: String,
 	pub node_inactive: bool,
