@@ -79,7 +79,7 @@ impl LogfilesManager {
         } else {
             if checkpoint_was_restored {
                 match monitor.load_logfile_from_time(dash_state, monitor.latest_checkpoint_time) {
-                    Ok(_) => Ok(std::path::PathBuf::from(fullpath)),
+                    Ok(_) => self.linemux_files.add_file(fullpath).await,
                     Err(e) => Err(e),
                 }
             } else {
