@@ -71,9 +71,6 @@ use serde_with;
 	pub units_text: String,
 	pub is_mmm: bool,
 	pub is_cumulative:	bool,
-
-	#[serde(skip_serializing)]
-	#[serde(skip_deserializing)]
 	pub colour: Color,
 
 	pub last_non_zero_value: u64,
