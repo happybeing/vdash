@@ -541,6 +541,23 @@ pub struct LogMonitor {
 use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT_MONITOR: AtomicUsize = AtomicUsize::new(0);
 
+fn next_unused_index(monitors: &mut HashMap<String, LogMonitor>) -> usize {
+	let mut next_index = 0;
+
+	let mut index_unused = false;
+	while !index_unused {
+		next_index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
+
+		index_unused = true;
+		for (_logfile, monitor) in monitors.iter()  {
+			if next_index == monitor.index { index_unused = false; }
+		}
+	}
+
+	next_index
+}
+
+
 use super::logfile_checkpoints::LogfileCheckpoint;
 
 impl LogMonitor {
@@ -565,6 +582,53 @@ impl LogMonitor {
 			metrics_status: StatefulList::with_items(vec![]),
 			is_debug_dashboard_log,
 			latest_checkpoint_time: None,
+		}
+	}
+
+	/// Resolve any clash between self.index and index of other monitors which may happen
+	/// when mixing creation of new monitors with initialisation by restoring a checkpoint.
+	///
+	/// For a restored checkpoint the metrics should be set, so if one has metrics and the other
+	/// doesn't, the former is treated as older and given the lower index.
+	pub fn canonicalise_monitor_index(&mut self, monitors: &mut HashMap<String, LogMonitor>) {
+		let existing_index = NEXT_MONITOR.fetch_add(0, Ordering::Relaxed);
+		let next_index = next_unused_index(monitors);
+
+		let mut clash_monitor = None;
+		for (other_logfile, other) in monitors.iter_mut() {
+			if self.index == other.index && &self.logfile != other_logfile {
+				clash_monitor = Some(other);
+			}
+		}
+
+		if let Some(other) = clash_monitor {
+
+			let mut lower_index = self.index;
+			let mut higher_index = next_index;
+			if lower_index > higher_index {
+				lower_index = next_index;
+				higher_index = self.index;
+			}
+
+			// Default
+			self.index = higher_index;
+			other.index = lower_index;
+
+			// If we know the earlier of the two metrics, use that to order the index in self and other
+			if let Some(self_start_time) = self.metrics.node_started {
+				let flip = if let Some(other_start_time) = other.metrics.node_started {
+					self_start_time < other_start_time
+				} else {
+					true
+				};
+				if flip {
+					self.index = lower_index;
+					other.index = higher_index;
+				}
+			}
+		} else {
+			// next_index not used so restore state to avoid unnecessary increments
+			NEXT_MONITOR.store(existing_index, Ordering::Relaxed);
 		}
 	}
 

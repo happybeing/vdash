@@ -95,6 +95,7 @@ impl LogfilesManager {
 
         match  result {
             Ok(_) => {
+                monitor.canonicalise_monitor_index(monitors);
                 monitors.insert(fullpath.to_string(), monitor);
                 if !self.logfiles_added.contains(&fullpath) { self.logfiles_added.push(fullpath.to_string()); }
                 if let Some(index) = self.logfiles_failed.iter().position(|s| s == fullpath.as_str()) {
