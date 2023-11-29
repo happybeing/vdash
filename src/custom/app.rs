@@ -562,8 +562,6 @@ use super::logfile_checkpoints::LogfileCheckpoint;
 
 impl LogMonitor {
 	pub fn new(logfile_path: String) -> LogMonitor {
-		let index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
-
 		let mut is_debug_dashboard_log = false;
 		if let Some(debug_logfile) = &*DEBUG_LOGFILE.lock().unwrap() {
 			if let Some(debug_logfile_path) = debug_logfile.path().to_str() {
@@ -573,7 +571,7 @@ impl LogMonitor {
 
 		let opt_lines_max = { OPT.lock().unwrap().lines_max };
 		LogMonitor {
-			index,
+			index: 0,
 			logfile: logfile_path,
 			max_content: opt_lines_max,
 			metrics: NodeMetrics::new(),
@@ -591,6 +589,8 @@ impl LogMonitor {
 	/// For a restored checkpoint the metrics should be set, so if one has metrics and the other
 	/// doesn't, the former is treated as older and given the lower index.
 	pub fn canonicalise_monitor_index(&mut self, monitors: &mut HashMap<String, LogMonitor>) {
+		if self.index == 0 { self.index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed); }
+
 		let existing_index = NEXT_MONITOR.fetch_add(0, Ordering::Relaxed);
 		let next_index = next_unused_index(monitors);
 
