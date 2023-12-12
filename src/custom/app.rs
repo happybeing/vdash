@@ -844,8 +844,8 @@ pub struct NodeMetrics {
 	pub peers_connected: MmmStat,
 	pub memory_used_mb: MmmStat,
 
-	pub used_space: u64,
-	pub max_capacity: u64,
+	pub records_stored: u64,
+	pub records_max: u64,
 
 	pub system_cpu: f32,
 	pub system_memory: f32,
@@ -902,10 +902,9 @@ impl NodeMetrics {
 
 			// State (network)
 
-			// Disk use:
-			used_space: 0,
-			max_capacity: 0,
-
+			// Storage use:
+			records_stored: 0,
+			records_max: 0,
 
 			system_cpu: 0.0,
 			system_memory: 0.0,
@@ -1058,7 +1057,7 @@ impl NodeMetrics {
 				self.count_storage_cost(entry_time, storage_cost);
 				self.parser_output = format!("Storage cost: {}", storage_cost);
 			};
-			return true;
+			return false;	// Continue processing for records stored (parse_states())
 		} else if line.contains("nanos accepted for record") {
 			if 	let Some(storage_payment) = self.parse_u64("payment of NanoTokens(", line) {
 				self.count_storage_payment(entry_time, storage_payment);
@@ -1148,6 +1147,18 @@ impl NodeMetrics {
 			return true;
 		}
 
+		if content.contains("Cost is now") {
+			if let Some(records_stored) = self.parse_u64("for ", line) {
+				self.records_stored = records_stored;
+				self.parser_output = format!("Records stored: {}", records_stored);
+			};
+			if let Some(records_max) = self.parse_u64("stored of ", line) {
+				self.records_max = records_max;
+				self.parser_output = format!("{}, Max records: {}", self.parser_output, records_max);
+			};
+			return true;
+		}
+
 		if content.contains("Skipping ") {
 			let mut parser_output = String::from("Connected ({} lag)");
 			if let Some(events_skipped) = self.parse_usize("Skipping ", content) {
@@ -1233,18 +1244,6 @@ impl NodeMetrics {
 			self.parser_output = parser_output;
 			return true;
 		}
-
-		// Overall storage use / size
-		if let Some(used_space) = self.parse_u64("Used space:", content) {
-			self.used_space = used_space;
-			self.parser_output = format!("Used space: {}", used_space);
-			return true;
-		};
-		if let Some(max_capacity) = self.parse_u64("Max capacity:", content) {
-			self.max_capacity = max_capacity;
-			self.parser_output = format!("Max capacity: {}", max_capacity);
-			return true;
-		};
 
 		false
 	}

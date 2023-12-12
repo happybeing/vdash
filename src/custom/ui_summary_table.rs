@@ -17,6 +17,7 @@ pub enum NodeMetric {
     Index,
     StoragePayments,
     StorageCost,
+    Records,
     Puts,
     Gets,
     Errors,
@@ -25,16 +26,17 @@ pub enum NodeMetric {
     Status,
 }
 
-pub const COLUMN_HEADERS: [(NodeMetric, &str, &str); 9] = [
+pub const COLUMN_HEADERS: [(NodeMetric, &str, &str); 10] = [
 //  (node_metric,                   key/heading, format_string)
     (NodeMetric::Index,             "Node",         "{index:>4} "),
-    (NodeMetric::StoragePayments,   "Earned nanos", "{storage_payments:>17} "),
+    (NodeMetric::StoragePayments,   "Earned nanos", "{storage_payments:>14} "),
     (NodeMetric::StorageCost,       "StoreCost",    "{storage_cost:>11} "),
+    (NodeMetric::Records,           "Records",      "{records_stored:>11} "),
     (NodeMetric::Puts,              "PUTS",         "{puts:>11} "),
     (NodeMetric::Gets,              "GETS",         "{gets:>11} "),
     (NodeMetric::Errors,            "Errors",       "{errors:>11} "),
-    (NodeMetric::Peers,             "Connections",  "{connections:>11} "),
-    (NodeMetric::Memory,            "MB RAM",       "{memory:>11} "),
+    (NodeMetric::Peers,             "Peers",        "{connections:>7} "),
+    (NodeMetric::Memory,            "MB RAM",       "{memory:>7} "),
     (NodeMetric::Status,            "Status",       "  {status:<500} "),
 ];
 
@@ -52,6 +54,7 @@ pub fn sort_nodes_by_column(dash_state: &mut DashState, monitors: &mut HashMap<S
                     NodeMetric::Index =>            { a.index.cmp(&b.index) },
                     NodeMetric::StoragePayments =>  { a.metrics.storage_payments.total.cmp(&b.metrics.storage_payments.total) },
                     NodeMetric::StorageCost =>      { a.metrics.storage_cost.most_recent.cmp(&b.metrics.storage_cost.most_recent) },
+                    NodeMetric::Records =>          { a.metrics.records_stored.cmp(&b.metrics.records_stored) },
                     NodeMetric::Puts =>             { a.metrics.activity_puts.total.cmp(&b.metrics.activity_puts.total) },
                     NodeMetric::Gets =>             { a.metrics.activity_gets.total.cmp(&b.metrics.activity_gets.total) },
                     NodeMetric::Errors =>           { a.metrics.activity_errors.total.cmp(&b.metrics.activity_errors.total) },
@@ -75,6 +78,7 @@ pub fn format_table_row(monitor: &mut LogMonitor) -> String {
             NodeMetric::Index =>            { strfmt!(format_string, index => monitor.index + 1).unwrap() },
             NodeMetric::StoragePayments =>  { strfmt!(format_string, storage_payments  => monitor.metrics.storage_payments.total).unwrap() },
             NodeMetric::StorageCost =>      { strfmt!(format_string, storage_cost => monitor.metrics.storage_cost.most_recent).unwrap() },
+            NodeMetric::Records =>          { strfmt!(format_string, records_stored => monitor.metrics.records_stored).unwrap() },
             NodeMetric::Puts =>             { strfmt!(format_string, puts => monitor.metrics.activity_puts.total).unwrap() },
             NodeMetric::Gets =>             { strfmt!(format_string, gets => monitor.metrics.activity_gets.total).unwrap() },
             NodeMetric::Errors =>           { strfmt!(format_string, errors => monitor.metrics.activity_errors.total).unwrap() },
@@ -110,6 +114,7 @@ pub fn initialise_summary_headings(dash_state: &mut DashState) {
                 NodeMetric::Index =>            { strfmt!(format_string, index => *heading).unwrap() },
                 NodeMetric::StoragePayments =>  { strfmt!(format_string, storage_payments => *heading).unwrap() },
                 NodeMetric::StorageCost =>      { strfmt!(format_string, storage_cost => *heading).unwrap() },
+                NodeMetric::Records =>          { strfmt!(format_string, records_stored => *heading).unwrap() },
                 NodeMetric::Puts =>             { strfmt!(format_string, puts => *heading).unwrap() },
                 NodeMetric::Gets =>             { strfmt!(format_string, gets => *heading).unwrap() },
                 NodeMetric::Errors =>           { strfmt!(format_string, errors => *heading).unwrap() },

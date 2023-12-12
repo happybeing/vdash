@@ -18,6 +18,7 @@ struct SummaryStats {
 	active_node_count:	u32,
 
 	storage_cost:	MmmStat,
+	records:		MmmStat,
 	earnings:		MmmStat,
 	puts:			MmmStat,
 	gets:			MmmStat,
@@ -33,6 +34,7 @@ impl SummaryStats {
 			active_node_count: 0,
 
 			storage_cost: MmmStat::new(),
+			records: MmmStat::new(),
 			earnings: MmmStat::new(),
 			puts: MmmStat::new(),
 			gets: MmmStat::new(),
@@ -53,6 +55,7 @@ impl SummaryStats {
 				self.active_node_count += if monitor.metrics.is_node_active() {1} else {0};
 
 				self.storage_cost.add_sample(monitor.metrics.storage_cost.most_recent);
+				self.records.add_sample(monitor.metrics.records_stored);
 				self.earnings.add_sample(monitor.metrics.storage_payments.total);
 				self.puts.add_sample(monitor.metrics.activity_puts.total);
 				self.gets.add_sample(monitor.metrics.activity_gets.total);
@@ -103,14 +106,15 @@ fn draw_summary_stats_window(f: &mut Frame, area: Rect, dash_state: &mut DashSta
 		&active_nodes_text,
 	);
 
-	push_blank(&mut items);
 	push_subheading(&mut items, &String::from("                       Total                min          mean           max         "));
 	let earnings_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.earnings.total, crate::custom::app_timelines::EARNINGS_UNITS_TEXT, ss.earnings.min, ss.earnings.mean, ss.earnings.max);
+	let records_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.records.total, "", ss.records.min, ss.records.mean, ss.records.max);
 	let puts_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.puts.total, "", ss.puts.min, ss.puts.mean, ss.puts.max);
 	let gets_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.gets.total, "", ss.gets.min, ss.gets.mean, ss.gets.max);
 	let errors_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.errors.total, "", ss.errors.min, ss.errors.mean, ss.errors.max);
 
 	push_metric( &mut items, &"Earnings".to_string(), &earnings_text);
+	push_metric( &mut items, &"Records".to_string(), &records_text);
 	push_metric( &mut items, &"PUTS".to_string(), &puts_text);
 	push_metric( &mut items, &"GETS".to_string(), &gets_text);
 	push_metric( &mut items, &"ERRORS".to_string(), &errors_text);

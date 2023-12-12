@@ -371,10 +371,7 @@ pub fn draw_logfile(
 
 // TODO split into two sub functions, one for gauges, one for text strings
 fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
-	let used_string = format_size(monitor.metrics.used_space, 1);
-	let max_string = format_size(monitor.metrics.max_capacity, 1);
-
-	let heading = format!("Node {:>2} Resources - Chunk Store:  {:>9} of {} limit", monitor.index+1, &used_string, &max_string);
+	let heading = format!("Node {:>2} Resources", monitor.index+1);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
 		.block(
 			Block::default()
@@ -426,16 +423,22 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 		.constraints::<&[Constraint]>(constraints.as_ref())
 		.split(columns[1]);
 
-	push_storage_metric(
+		let max_string = if monitor.metrics.records_max > 0 {
+			format!("/{}", monitor.metrics.records_max)
+		} else {
+			String::from("")
+		};
+		push_storage_metric(
 		&mut storage_items,
-		&"Chunk storage".to_string(),
-		&format_size(monitor.metrics.used_space, 1)
+		&"Records".to_string(),
+		&format!("{}{}", monitor.metrics.records_stored, max_string)
 	);
 
+	let denominator = if monitor.metrics.records_max > 0 { monitor.metrics.records_max } else { 1 };
 	let gauge = Gauge2::default()
 		.block(Block::default())
 		.gauge_style(Style::default().fg(Color::Yellow))
-		.ratio(ratio(monitor.metrics.used_space, monitor.metrics.max_capacity));
+		.ratio(ratio(monitor.metrics.records_stored, denominator));
 	f.render_widget(gauge, gauges[1]);
 
 	// TODO lobby to re-instate in node logfile
@@ -539,11 +542,11 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 }
 
 // Return string representation in TB, MB, KB or bytes depending on magnitude
-fn format_size(bytes: u64, fractional_digits: usize) -> String {
-	use::byte_unit::Byte;
-	let bytes = Byte::from_bytes(bytes as u128);
-	bytes.get_appropriate_unit(false).format(fractional_digits)
-}
+// fn format_size(bytes: u64, fractional_digits: usize) -> String {
+// 	use::byte_unit::Byte;
+// 	let bytes = Byte::from_bytes(bytes as u128);
+// 	bytes.get_appropriate_unit(false).format(fractional_digits)
+// }
 
 // Return ratio from two u64
 fn ratio(numerator: u64, denomimator: u64) -> f64 {
@@ -565,7 +568,7 @@ pub fn push_storage_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 }
 
 pub fn push_storage_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
-	let s = format!("{:<13}:{:>9}", metric, value);
+	let s = format!("{:<11}:{:>11}", metric, value);
 	items.push(
 		ListItem::new(vec![Line::from(s.clone())])
 			.style(Style::default().fg(Color::Blue)),
