@@ -844,6 +844,9 @@ pub struct NodeMetrics {
 	pub peers_connected: MmmStat,
 	pub memory_used_mb: MmmStat,
 
+	pub wallet_balance: u64,
+	pub latest_earning: u64,
+
 	pub records_stored: u64,
 	pub records_max: u64,
 
@@ -901,6 +904,10 @@ impl NodeMetrics {
 			node_inactive: false,
 
 			// State (network)
+
+			// Wallet event:
+			wallet_balance: 0,
+			latest_earning: 0,
 
 			// Storage use:
 			records_stored: 0,
@@ -1245,6 +1252,21 @@ impl NodeMetrics {
 			return true;
 		}
 
+		// Misc stats
+		if content.contains("The new wallet balance is") {
+			let mut parser_output = String::from("");
+
+			if let Some(wallet_balance) = self.parse_u64("wallet balance is ", content) {
+				self.wallet_balance = wallet_balance;
+				parser_output = format!("{} , wallet_balance: {}", &parser_output, wallet_balance);
+			};
+			if let Some(latest_earning) = self.parse_u64("after earning ", content) {
+				self.latest_earning = latest_earning;
+				parser_output = format!("{} , latest_earning: {}", &parser_output, latest_earning);
+			};
+			self.parser_output = parser_output;
+			return true;
+		}
 		false
 	}
 

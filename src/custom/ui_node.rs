@@ -115,7 +115,14 @@ fn draw_node_stats(f: &mut Frame, area: Rect, monitor: &mut LogMonitor) {
 		&monitor.metrics.node_status_string,
 	);
 
-	push_subheading(&mut items, &"".to_string());
+	let wallet_balance = format!("{}",
+		monitor.metrics.wallet_balance.to_string(),
+	);
+	push_metric_with_units(&mut items,
+		&"Wallet".to_string(),
+		&wallet_balance,
+		&crate::custom::app_timelines::EARNINGS_UNITS_TEXT.to_string());
+
 	let storage_payments_txt = format!("{}",
 		monitor.metrics.storage_payments.total.to_string(),
 	);
