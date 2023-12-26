@@ -769,7 +769,6 @@ lazy_static::lazy_static! {
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub enum NodeStatus {
 	Started,
-	Connecting,
 	Connected,
 	#[default]
 	Stopped,
@@ -777,7 +776,6 @@ pub enum NodeStatus {
 
 pub fn node_status_as_string(node_status: &NodeStatus) -> String {
 	match node_status {
-		NodeStatus::Connecting => "Connecting".to_string(),
 		NodeStatus::Connected => "Connected".to_string(),
 		NodeStatus::Stopped => "Stopped".to_string(),
 		NodeStatus::Started => "Started".to_string(),
@@ -1037,11 +1035,7 @@ impl NodeMetrics {
 	///! Process a logfile entry
 	///! Returns true if the line has been processed and can be discarded
 	pub fn process_logfile_entry(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
-		return self.parse_data_response(
-			&line,
-			"Running as Node: SendToSection [ msg: MsgEnvelope { message: QueryResponse { response: QueryResponse::",
-		)
-		|| self.parse_timed_data(&line, &entry_metadata.message_time)
+		return self.parse_timed_data(&line, &entry_metadata.message_time)
 		|| self.parse_states(&line, &entry_metadata)
 		|| self.parse_start(&line, &entry_metadata);
 	}
@@ -1055,7 +1049,7 @@ impl NodeMetrics {
 			self.count_put(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
-		} else if line.contains("Editing Register success") {
+		} else if line.contains("Editing Register success") {	// TODO: no longer present, find new log message
 			self.count_put(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
@@ -1080,29 +1074,6 @@ impl NodeMetrics {
 			self.parser_output = parser_output;
 			return true;
 		}
-		return false;
-	}
-
-	///! Update data metrics from a handler response logfile entry
-	///! Returns true if the line has been processed and can be discarded
-	fn parse_data_response(&mut self, line: &String, pattern: &str) -> bool {
-		if let Some(mut response_start) = line.find(pattern) {
-			response_start += pattern.len();
-			let mut response = "";
-
-			if let Some(response_end) = line[response_start..].find(",") {
-				response = line.as_str()[response_start..response_start + response_end]
-					.as_ref();
-				if !response.is_empty() {
-					self.parser_output = format!("node activity: {}", response);
-				}
-			}
-			if response.is_empty() {
-				self.parser_output = format!("failed to parse_data_response: {}", line);
-			};
-
-			return true;
-		};
 		return false;
 	}
 
@@ -1136,18 +1107,6 @@ impl NodeMetrics {
 		let &content = &line.as_str();
 
 		// Node Status
-		if content.contains("Getting closest peers") {
-			self.node_status = NodeStatus::Connecting;
-			self.parser_output = String::from("Node status: Connecting");
-			return true;
-		}
-
-		if content.contains("Connected to the Network") {
-			self.node_status = NodeStatus::Connected; // Also set by some other matches
-			self.parser_output = String::from("Node status: Connected");
-			return true;
-		}
-
 		if content.contains("Node events channel closed") {
 			self.node_status = NodeStatus::Stopped;
 			self.parser_output = String::from("Node status: Disconnected");
@@ -1166,14 +1125,14 @@ impl NodeMetrics {
 			return true;
 		}
 
-		if content.contains("Skipping ") {
-			let mut parser_output = String::from("Connected ({} lag)");
-			if let Some(events_skipped) = self.parse_usize("Skipping ", content) {
-				parser_output = format!("{} ({})", &parser_output, events_skipped);
-			};
-			self.parser_output = parser_output;
-			return true;
-		}
+		// if content.contains("Skipping ") {
+		// 	let mut parser_output = String::from("Connected ({} lag)");
+		// 	if let Some(events_skipped) = self.parse_usize("Skipping ", content) {
+		// 		parser_output = format!("{} ({})", &parser_output, events_skipped);
+		// 	};
+		// 	self.parser_output = parser_output;
+		// 	return true;
+		// }
 
 		// Metrics
 		if content.contains("sn_logging::metrics") {
@@ -1270,21 +1229,21 @@ impl NodeMetrics {
 		false
 	}
 
-	fn parse_usize(&mut self, prefix: &str, content: &str) -> Option<usize> {
-		if let Some(position) = content.find(prefix) {
-			let word: Vec<&str> = content[position + prefix.len()..]
-				.trim()
-				.splitn(2, |c| c == ' ' || c == ',' || c== '}')
-				.collect();
-			if word.len() > 0 {
-				match word[0].parse::<usize>() {
-					Ok(value) => return Some(value),
-					Err(_e) => self.parser_output = format!("failed to parse '{}' as usize from: '{}'", word[0], &content[position + prefix.len()..]),
-				}
-			}
-		}
-		None
-	}
+	// fn parse_usize(&mut self, prefix: &str, content: &str) -> Option<usize> {
+	// 	if let Some(position) = content.find(prefix) {
+	// 		let word: Vec<&str> = content[position + prefix.len()..]
+	// 			.trim()
+	// 			.splitn(2, |c| c == ' ' || c == ',' || c== '}')
+	// 			.collect();
+	// 		if word.len() > 0 {
+	// 			match word[0].parse::<usize>() {
+	// 				Ok(value) => return Some(value),
+	// 				Err(_e) => self.parser_output = format!("failed to parse '{}' as usize from: '{}'", word[0], &content[position + prefix.len()..]),
+	// 			}
+	// 		}
+	// 	}
+	// 	None
+	// }
 
 	fn parse_u64(&mut self, prefix: &str, content: &str) -> Option<u64> {
 		if let Some(position) = content.find(prefix) {
