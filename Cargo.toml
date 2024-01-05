@@ -42,4 +42,4 @@ serde_with = { version = "3.4.0", features = ["chrono_0_4"] }
 
 [[bin]]
 name = "vdash"
-path = "src/bin/vdash-crossterm.rs"
+path = "src/bin/vdash.rs"
