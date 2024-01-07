@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use super::app::{DashState, LogMonitor, MmmStat, SUMMARY_WINDOW_NAME};
 
 use crate::custom::opt::{get_app_name, get_app_version};
-use crate::custom::ui::{ push_subheading, push_blank, push_metric};
+use crate::custom::ui::{ push_subheading, push_blank, push_metric, monetary_string};
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
@@ -106,8 +106,10 @@ fn draw_summary_stats_window(f: &mut Frame, area: Rect, dash_state: &mut DashSta
 		&active_nodes_text,
 	);
 
+	let units_text = if dash_state.ui_uses_currency { "" } else { crate::custom::app_timelines::EARNINGS_UNITS_TEXT };
+
 	push_subheading(&mut items, &String::from("                       Total                min          mean           max         "));
-	let earnings_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.earnings.total, crate::custom::app_timelines::EARNINGS_UNITS_TEXT, ss.earnings.min, ss.earnings.mean, ss.earnings.max);
+	let earnings_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", monetary_string(dash_state, ss.earnings.total), units_text, ss.earnings.min, ss.earnings.mean, ss.earnings.max);
 	let records_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.records.total, "", ss.records.min, ss.records.mean, ss.records.max);
 	let puts_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.puts.total, "", ss.puts.min, ss.puts.mean, ss.puts.max);
 	let gets_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.gets.total, "", ss.gets.min, ss.gets.mean, ss.gets.max);

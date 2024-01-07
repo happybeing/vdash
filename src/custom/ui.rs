@@ -2,11 +2,25 @@
 ///
 /// Edit src/custom/ui.rs to create a customised fork of logtail-dash
 
-use super::app::{App, DashViewMain};
+use super::app::{App, DashViewMain, DashState};
 use super::ui_summary::draw_summary_dash;
 use super::ui_node::draw_node_dash;
 use super::ui_help::draw_help_dash;
 use super::ui_debug::draw_debug_dash;
+
+/// Provides string representation of a nanos amount, in either nanos or currency depending on dash_state
+pub fn monetary_string(dash_state: &DashState, nanos: u64) -> String {
+	if dash_state.ui_uses_currency && dash_state.currency_per_token.is_some() {
+		let value = (dash_state.currency_per_token.unwrap() * (nanos as f32)) / 1e9 as f32;
+		return if value >= 0.01 {
+			format!("{:<1}{:.2}", dash_state.currency_symbol, value)
+		} else {
+			format!("{:<1}{}", dash_state.currency_symbol, value)
+		}
+	} else {
+		return format!("{}", nanos);
+	}
+}
 
 #[path = "../widgets/mod.rs"]
 pub mod widgets;
@@ -47,6 +61,7 @@ pub fn push_text(items: &mut Vec<ListItem>, subheading: &String, optional_style:
 			.style(style),
 	);
 }
+
 pub fn push_blank(items: &mut Vec<ListItem>) {
 	push_text(items, &String::from(""), None);
 }

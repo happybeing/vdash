@@ -36,6 +36,12 @@ pub async fn handle_keyboard_event(mut app: &mut App, event: &crossterm::event::
             }
         }
 
+        KeyCode::Char('$') => {
+            if app.dash_state.currency_per_token.is_some() {
+                app.dash_state.ui_uses_currency = !app.dash_state.ui_uses_currency;
+            }
+        }
+
         KeyCode::Char('s')|
         KeyCode::Char('S') => {
             app.preserve_node_selection();

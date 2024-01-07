@@ -73,9 +73,9 @@ pub struct App {
 
 impl App {
 	pub async fn new() -> Result<App, std::io::Error> {
-		let (opt_files, opt_globpaths, opt_debug_window, opt_timeline_steps) = {
+		let (opt_files, opt_globpaths, opt_debug_window, opt_timeline_steps, opt_currency_token_rate, opt_currency_symbol) = {
 			let opt = OPT.lock().unwrap();
-			(opt.files.clone(), opt.glob_paths.clone(), opt.debug_window, opt.timeline_steps)
+			(opt.files.clone(), opt.glob_paths.clone(), opt.debug_window, opt.timeline_steps, opt.currency_token_rate, opt.currency_symbol.clone())
 		};
 
 		let mut app = App {
@@ -86,6 +86,12 @@ impl App {
 			logfiles_manager: LogfilesManager::new(opt_globpaths.clone()),
 			next_glob_scan: None,
 		};
+
+		if opt_currency_token_rate > 0.0 {
+			app.dash_state.currency_per_token = Some(opt_currency_token_rate);
+			app.dash_state.currency_symbol = opt_currency_symbol;
+			app.dash_state.ui_uses_currency = true;
+		}
 
 		if opt_files.is_empty() && opt_globpaths.is_empty() {
 			eprintln!("{}: no logfile(s) or 'glob' paths provided.", Opt::clap().get_name());
@@ -1429,6 +1435,10 @@ pub struct DashState {
 	pub logfile_names_sorted: Vec<String>,
 	pub logfile_names_sorted_ascending: bool,
 
+	pub currency_symbol: String,
+	pub currency_per_token: Option<f32>,
+	pub ui_uses_currency: bool,
+
 	pub active_timescale: usize,
 	pub node_logfile_visible: bool,
 	pub dash_node_focus: String,
@@ -1464,6 +1474,10 @@ impl DashState {
 			previous_main_view: DashViewMain::DashSummary,
 			logfile_names_sorted: Vec::<String>::new(),	// Sorted by column
 			logfile_names_sorted_ascending: true,
+
+			currency_symbol: String::from(""),
+			currency_per_token: None,
+			ui_uses_currency: false,
 
 			active_timescale: 0,
 			node_logfile_visible: true,

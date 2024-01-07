@@ -31,7 +31,8 @@ pub fn draw_help_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
 	push_multiline_text(&mut items, "
     'n' or 'N'     :   Switch to Node Details which displays metrics for one node and lets you cycle through all monitored nodes.\n
     's' or 'S'     :   Switch to Summary Screen which provides a summary of every monitored node.\n
-    'r' or 'R'     :   Re-scan any 'glob' paths to add new nodes.
+    'r' or 'R'     :   Re-scan any 'glob' paths to add new nodes.\n
+    '$'            :   Toggle between nanos and a currency (if rate specified on the command line).
 
     'h', 'H' or '?':   Shows this help. Press 'n' or 's' to exit help.");
 
@@ -51,7 +52,7 @@ pub fn draw_help_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
     'o', 'O' or '-':   Zoom timeline out.
     'i', 'I' or '+':   Zoom timeline in.
 
-    'm' or 'M'     :   Cycle through minimum, mean and maximum values for a non-cumulative timeline such as Storage Cost.
+    'm' or 'M'     :   Cycle through min, mean, max values for non-cumulative timelines (e.g. Storage Cost).
 
     't':           :   Scroll timelines up. Only three of the available timelines are visible at one time.
     'T':           :   Scroll timelines down.

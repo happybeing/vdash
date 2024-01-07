@@ -12,7 +12,7 @@ use super::app::{DashState, LogMonitor};
 use super::timelines::Timeline;
 use crate::custom::timelines::{get_min_buckets_value, get_max_buckets_value, get_duration_text};
 
-use crate::custom::ui::{push_subheading, push_metric, push_metric_with_units, draw_sparkline};
+use crate::custom::ui::{push_subheading, push_metric, push_metric_with_units, draw_sparkline, monetary_string};
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
@@ -79,11 +79,11 @@ fn draw_node(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitor: &mu
 		.constraints(constraints.as_ref())
 		.split(area);
 
-	draw_node_stats(f, chunks[0], monitor);
+	draw_node_stats(f, dash_state, chunks[0], monitor);
 	draw_node_storage(f, chunks[1], dash_state, monitor);
 }
 
-fn draw_node_stats(f: &mut Frame, area: Rect, monitor: &mut LogMonitor) {
+fn draw_node_stats(f: &mut Frame, dash_state: &mut DashState, area: Rect, monitor: &mut LogMonitor) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
 
@@ -115,21 +115,19 @@ fn draw_node_stats(f: &mut Frame, area: Rect, monitor: &mut LogMonitor) {
 		&monitor.metrics.node_status_string,
 	);
 
-	let wallet_balance = format!("{}",
-		monitor.metrics.wallet_balance.to_string(),
-	);
+	let units_text = if dash_state.ui_uses_currency { "" } else { crate::custom::app_timelines::EARNINGS_UNITS_TEXT };
+
+	let wallet_balance = monetary_string(dash_state, monitor.metrics.wallet_balance);
 	push_metric_with_units(&mut items,
 		&"Wallet".to_string(),
 		&wallet_balance,
-		&crate::custom::app_timelines::EARNINGS_UNITS_TEXT.to_string());
+		&units_text.to_string());
 
-	let storage_payments_txt = format!("{}",
-		monitor.metrics.storage_payments.total.to_string(),
-	);
+	let storage_payments_txt = monetary_string(dash_state, monitor.metrics.storage_payments.total);
 	push_metric_with_units(&mut items,
 		&"Earnings".to_string(),
 		&storage_payments_txt,
-		&crate::custom::app_timelines::EARNINGS_UNITS_TEXT.to_string());
+		&units_text.to_string());
 
 	let chunk_fee_txt = if monitor.metrics.storage_cost.most_recent == 0 {
 		String::from("unknown")

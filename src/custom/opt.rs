@@ -40,6 +40,14 @@ pub struct Opt {
 	#[structopt(long, default_value = "300")]
 	pub checkpoint_interval: u64,
 
+	/// Token conversion rate as a positive floating point number (e.g. 3.345)
+	#[structopt(long, default_value = "-1")]
+	pub currency_token_rate: f32,
+
+	/// Single character symbol for currency (e.g. "£" or "€")
+	#[structopt(long, default_value = "$")]
+	pub currency_symbol: String,
+
 	/// One or more logfiles to monitor
 	#[structopt(name = "LOGFILE")]
 	pub files: Vec<String>,
