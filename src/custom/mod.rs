@@ -4,6 +4,7 @@ pub mod logfile_checkpoints;
 pub mod logfiles_manager;
 pub mod opt;
 pub mod timelines;
+pub mod web_requests;
 pub mod ui;
 pub mod ui_debug;
 pub mod ui_help;

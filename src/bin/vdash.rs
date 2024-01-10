@@ -95,15 +95,42 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 			next_update += Duration::from_secs(1);
 		}
 
-		let logfiles_future = app.logfiles_manager.linemux_files.next().fuse();
-		let events_future = rx.recv().fuse();
-		pin_mut!(logfiles_future, events_future);
+		let streams_future = handle_streams(&mut app, &mut terminal, &mut rx, opt_debug_window, checkpoint_interval).fuse();
+		let web_requests_future = custom::web_requests::handle_web_requests().fuse();
+
+		pin_mut!(streams_future, web_requests_future);
 
 		select! {
+			quit = streams_future => {
+				match quit {
+					Ok(quit) =>	if quit { break Ok(()) },
+					Err(_) => {},
+				}
+			},
+			r = web_requests_future => {
+				match r {
+					Ok(()) => {},
+					Err(_)=> {},
+				}
+			}
+		}
+
+	}
+}
+
+// Return true to signal program exit
+async fn handle_streams(app: &mut App, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>> , rx: &mut Rx, opt_debug_window: bool, checkpoint_interval: u64) -> Result<bool, Box<dyn Error>> {
+	let logfiles_future = app.logfiles_manager.linemux_files.next().fuse();
+	let events_future = rx.recv().fuse();
+	// let web_future = client.get("https://markhughes.com/getmyip.php").send().fuse();
+
+	pin_mut!(logfiles_future, events_future);
+
+	select! {
 			e = events_future => {
 			match e {
 				Some(Event::Input(event)) => {
-					if !self::custom::ui_keyboard::handle_keyboard_event(&mut app, &event, opt_debug_window).await {
+					if !self::custom::ui_keyboard::handle_keyboard_event(app, &event, opt_debug_window).await {
 						disable_raw_mode()?;
 						execute!(
 							terminal.backend_mut(),
@@ -111,9 +138,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 							DisableMouseCapture
 						)?;
 						terminal.show_cursor()?;
-						break Ok(());
+						return Ok(true);
 					}
-					terminal.draw(|f| draw_dashboard(f, &mut app)).unwrap();
+					terminal.draw(|f| draw_dashboard(f, app)).unwrap();
 				}
 
 				Some(Event::Tick) => {
@@ -169,8 +196,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 				}
 			}
 		},
-		}
 	}
+
+	Ok(false)
 }
 
 type Rx = tokio::sync::mpsc::UnboundedReceiver<Event<crossterm::event::KeyEvent>>;
@@ -200,6 +228,7 @@ fn initialise_events(tick_rate: u64) -> Rx {
 				}
 			}
 
+			// TODO remove duplicate code!
 			if last_tick.elapsed() >= tick_rate {
 				match tx.send(Event::Tick) {
 					Ok(()) => last_tick = Instant::now(),
