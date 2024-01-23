@@ -8,10 +8,9 @@ pub fn get_duration_text(duration: Duration) -> String {
 	return if duration.num_weeks() > 104 { format!("{} years", duration.num_days()/365) } else if
 			duration.num_weeks() > 4 { format!("{} weeks", duration.num_weeks()) } else if
 			duration.num_hours() > 48 { format!("{} days", duration.num_days()) } else if
-			duration.num_hours() > 2 { format!("{} hours", duration.num_hours()) } else if
-			duration.num_minutes() > 5 { format!("{} minutes", duration.num_minutes()) } else if
-			duration.num_seconds() > 0 { format!("{} seconds", duration.num_seconds()) } else
-			{ String::from("this(zero duration)") };
+			duration.num_hours() > 2 { format!("{} hrs", duration.num_hours()) } else if
+			duration.num_minutes() > 5 { format!("{} min", duration.num_minutes()) } else
+			 { format!("{} sec", duration.num_seconds()) };
 }
 
 pub fn get_max_buckets_value(buckets: &Vec<u64>) -> u64 {
