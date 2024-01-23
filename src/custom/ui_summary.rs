@@ -5,8 +5,9 @@ use std::collections::HashMap;
 
 use super::app::{DashState, LogMonitor, MmmStat, SUMMARY_WINDOW_NAME};
 
-use crate::custom::opt::{get_app_name, get_app_version};
-use crate::custom::ui::{ push_subheading, push_blank, push_metric, monetary_string};
+use super::opt::{get_app_name, get_app_version};
+use super::ui::{push_subheading, push_blank, push_metric, push_price, monetary_string};
+use super::web_requests::{SAFE_TOKEN_TICKER, BTC_TICKER};
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
@@ -79,7 +80,6 @@ pub fn draw_summary_dash(f: &mut Frame, dash_state: &mut DashState, monitors: &m
 		.margin(1)
 		.split(f.size());
 
-
 	let summary_list_widget = Block::default()
 			.borders(Borders::ALL)
 			.title(format!("{}  ({} v{}:  {})", String::from(SUMMARY_WINDOW_NAME), get_app_name(), get_app_version(),
@@ -95,6 +95,21 @@ pub fn draw_summary_dash(f: &mut Frame, dash_state: &mut DashState, monitors: &m
 }
 
 fn draw_summary_stats_window(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
+	let constraints = [
+		Constraint::Length(81	), 	// Summary Statistics Panel (left)
+		Constraint::Length(15),     // Live Prices Panel (right)
+	];
+
+	let chunks = Layout::default()
+		.direction(Direction::Horizontal)
+		.constraints(constraints.as_ref())
+		.split(area);
+
+	draw_summary_stats(f, chunks[0], dash_state, monitors);
+	draw_live_prices(f, chunks[1], dash_state, monitors);
+}
+
+fn draw_summary_stats(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitors: &mut HashMap<String, LogMonitor>) {
 	let mut items = Vec::<ListItem>::new();
 
 	let ss = SummaryStats::new(dash_state, monitors);
@@ -135,3 +150,50 @@ fn draw_summary_stats_window(f: &mut Frame, area: Rect, dash_state: &mut DashSta
 	f.render_widget(monitor_widget, area);
 }
 
+fn draw_live_prices(f: &mut Frame, area: Rect, _dash_state: &mut DashState, _monitors: &mut HashMap<String, LogMonitor>) {
+	let mut items = Vec::<ListItem>::new();
+
+	let mut constraints = [
+		Constraint::Length(3), 	// Live prices height (rows) for just one price
+		Constraint::Min(0),     // Rest for remainder
+	];
+
+
+	let prices = super::app::WEB_PRICES.lock().unwrap();
+	if let Some(snt_rate) = prices.snt_rate {
+		let value_text = format!("{}{:.2}", prices.currency_symbol, snt_rate);
+		push_price(&mut items, &SAFE_TOKEN_TICKER.to_string(), &value_text);
+
+		if let Some(btc_rate) = prices.btc_rate {
+			let btc_per_snt = snt_rate / btc_rate;
+			let btc_snt_text = format!("B{:.6}", btc_per_snt);
+			push_price(&mut items, &SAFE_TOKEN_TICKER.to_string(), &btc_snt_text);
+
+			let btc_currency_text = format!("{}{:.0}", prices.currency_symbol, btc_rate);
+			push_price(&mut items, &BTC_TICKER.to_string(), &btc_currency_text);
+
+			constraints = [
+				Constraint::Length(5), 	// Live prices height (rows) for three prices
+				Constraint::Min(0),     // Rest for remainder
+				];
+			}
+
+		let mut age_string = String::from("not available");
+		if let Some(last_update) = prices.last_update_time {
+			age_string = super::timelines::get_duration_text(chrono::Utc::now() - last_update);
+		}
+
+		let live_prices_title = format!("Prices ({})", age_string);
+		let items_widget = List::new(items).block(Block::default()
+		.title(live_prices_title)
+		.borders(Borders::ALL));
+
+		let chunks = Layout::default()
+		.direction(Direction::Vertical)
+		.constraints(constraints.as_ref())
+		.margin(1)
+		.split(area);
+
+		f.render_widget(items_widget, chunks[0]);
+	}
+}

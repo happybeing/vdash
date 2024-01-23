@@ -29,16 +29,16 @@ pub fn draw_help_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
 	push_blank(&mut items);
 	push_subheading(&mut items, &String::from("    Keyboard Commands"));
 	push_multiline_text(&mut items, "
-    'n' or 'N'     :   Switch to Node Details which displays metrics for one node and lets you cycle through all monitored nodes.\n
-    's' or 'S'     :   Switch to Summary Screen which provides a summary of every monitored node.\n
-    'r' or 'R'     :   Re-scan any 'glob' paths to add new nodes.\n
+    'n' or 'enter' :   Switch to Node Status where you can cycle through status of each node.\n
+    's' or 'enter' :   Switch to Summary of all monitored nodes.\n
+    'r'            :   Re-scan any 'glob' paths to add new nodes.\n
     '$'            :   Toggle between nanos and a currency (if rate specified on the command line).
 
-    'h', 'H' or '?':   Shows this help. Press 'n' or 's' to exit help.");
+    'h' or '?'     :   Shows this help. Press 'n' or 's' to exit help.");
 
 	push_blank(&mut items);
 	push_blank(&mut items);
-	push_subheading(&mut items, &String::from("    Node Details: selecting a node"));
+	push_subheading(&mut items, &String::from("    Node Status: selecting a node"));
 	push_blank(&mut items);
 
 	push_text(&mut items, &String::from("    Use right arrow and left arrow to cycle forward and backwards through multiple monitored nodes."), None);
@@ -46,22 +46,22 @@ pub fn draw_help_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
 
 	push_blank(&mut items);
 	push_blank(&mut items);
-	push_subheading(&mut items, &String::from("    Node Details: timelines"));
+	push_subheading(&mut items, &String::from("    Node Status: timelines"));
 
 	push_multiline_text(&mut items,"
-    'o', 'O' or '-':   Zoom timeline out.
-    'i', 'I' or '+':   Zoom timeline in.
+    'o' or '-'     :   Zoom timeline out.
+    'i' or '+'     :   Zoom timeline in.
 
-    'm' or 'M'     :   Cycle through min, mean, max values for non-cumulative timelines (e.g. Storage Cost).
+    'm'            :   Cycle through min, mean, max values for non-cumulative timelines (e.g. Storage Cost).
 
-    't':           :   Scroll timelines up. Only three of the available timelines are visible at one time.
+    't':           :   Scroll timelines up if some are hidden due to lack of vertical space.
     'T':           :   Scroll timelines down.
 
-    'l' or 'L'     :   Toggle between show logfile plus 3 timelines, or hide logfile to show all timelines.
+    'l'            :   Toggle between show logfile plus 3 timelines and hide logfile to show more timelines.
 	");
 
 	push_blank(&mut items);
-	push_subheading(&mut items, &String::from("    To exit Help press <ENTER>"));
+	push_subheading(&mut items, &String::from("    To exit Help press 'enter'"));
 
 	if dash_state.debug_window {
 		push_blank(&mut items);

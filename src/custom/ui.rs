@@ -11,11 +11,11 @@ use super::ui_debug::draw_debug_dash;
 /// Provides string representation of a nanos amount, in either nanos or currency depending on dash_state
 pub fn monetary_string(dash_state: &DashState, nanos: u64) -> String {
 	if dash_state.ui_uses_currency && dash_state.currency_per_token.is_some() {
-		let value = (dash_state.currency_per_token.unwrap() * (nanos as f32)) / 1e9 as f32;
+		let value = (dash_state.currency_per_token.unwrap() * (nanos as f64)) / 1e9 as f64;
 		return if value >= 0.01 {
 			format!("{:<1}{:.2}", dash_state.currency_symbol, value)
 		} else {
-			format!("{:<1}{}", dash_state.currency_symbol, value)
+			format!("{:<1}{:.9}", dash_state.currency_symbol, value)
 		}
 	} else {
 		return format!("{}", nanos);
@@ -74,6 +74,14 @@ pub fn push_multiline_text(mut items: &mut Vec<ListItem>, lines: &str) {
 
 pub fn push_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	let s = format!("{:<12}: {:>12}", metric, value);
+	items.push(
+		ListItem::new(vec![Line::from(s.clone())])
+			.style(Style::default().fg(Color::Blue)),
+	);
+}
+
+pub fn push_price(items: &mut Vec<ListItem>, metric: &String, value: &String) {
+	let s = format!("{:<4} {:<15}", metric, value);
 	items.push(
 		ListItem::new(vec![Line::from(s.clone())])
 			.style(Style::default().fg(Color::Blue)),
