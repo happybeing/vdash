@@ -14,7 +14,6 @@ pub struct LogfilesManager {
     pub linemux_files: MuxedLines,
 }
 
-// TODO maybe support re-scanning globpaths
 // TODO maybe add UI for display of lists (paths/globpaths/failed paths)
 // TODO maybe add UI for adding paths/globpaths interactively
 impl LogfilesManager {
