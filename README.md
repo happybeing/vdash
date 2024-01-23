@@ -1,28 +1,48 @@
 # Safe Network node Dashboard
 
 `vdash` is a terminal based dashboard for monitoring Safe Network nodes. It is written in
-Rust. The terminal GUI is implemented using [ratatui](https://github.com/ratatui-org/ratatui) and it monitors one or more node logfiles using [linemux](https://github.com/jmagnuson/linemux).
+Rust, the terminal GUI is implemented using [ratatui](https://github.com/ratatui-org/ratatui) and it monitors one or more node logfiles using [linemux](https://github.com/jmagnuson/linemux).
 
-**Status:** working on Windows, MacOS and Linux with public test networks.
+**Status:** working on Windows, MacOS and Linux with public and local test networks.
 
-`vdash` is already capable of monitoring multiple logfiles on the local machine, showing multiple metrics for each node including number of PUTS (chunks stored), current price being charged for storage, and node earnings. Many metrics appear both as numeric values and can be viewed in real-time graphical charts over time.
+`vdash` can monitor multiple logfiles on the local machine, showing multiple metrics for each node including number of PUTS (chunks stored), current price being charged for storage, and node earnings. Many metrics appear both as numeric values and can be viewed in real-time graphical charts over time.
 
-Using `rsyslog` it should be possible to monitor logfiles for the local machine and from multiple remote machines too, though I have not tried this myself yet.
+## Discussion and Bug Reports
+A Safe Network forum topic is the main forum for discussion: [Vdash - Node dashboard for Safe Network](https://safenetforum.org/t/vdash-node-dashboard-for-safe-network/32630)
+
+Bug reports and feature requests can be made in [github issues](https://github.com/happybeing/vdash/issues).
+
+## Remote Monitoring
+Remote logfiles could be monitored by using `rsyslog` to mirror them to the machine running `vdash`. This would allow multiple remote machines to be monitored from one machine.
+ I have not tried using `rsylog` but have monitored nodes on a remote machine by using `tail` over `ssh` to mirror a remote logfile to the machine running `vdash`.
 
 Here's an early `vdash` (v0.2.0) working with a local testnet node:
 <img src="./screenshots/vdash-v.0.2.4.gif" alt="screenshot of vdash v0.2.0">
 
 ## Features
 `vdash` will load historic metrics from one or more Safe node
-logfiles and display these with live updates in the terminal (see above).
+logfiles and display these with live updates in the terminal (see above). A list of keyboard commands is available by pressing '?', some of which are described below for the *Summary* and *Node Status* screens.
 
-**'<-' and '->':** When monitoring multiple nodes you can cycle through
-them using the left/right arrow keys.
+### Summary of Monitored Nodes
+**'arrow keys':** The up and down arrows select a row, containing data for one particular node. The left and right arrows select a column heading and sorts rows by the values in the selected column.
+
+**'space':** Pressing the space bar toggles sort of the selected column between ascending and descending.
+
+**'enter':** Switches the display to show *Node Status* of the node of the highlighted row.
+
+**'q':** Press 'q' to quit.
+
+**'?':** Shows help.
+
+### Node Status
+**'enter'** Switches the display back to the *Summary of Monitored Nodes*.
+
+**'arrow keys':** The left and right arrows shift the single node display between different nodes.
 
 **'i' and 'o':** Zoom the timeline scale in/out using 'i' and 'o' (or '+' and '-').
 
-**'t' and 'T':** Three timelines are visible at any one time but you can cycle
-through all timelines to bring them all into view by pressing 't' (forward) and 'T'
+**'t' and 'T':** If some timelines are not displayed due to lack of vertical space you can cycle
+through the timelines to bring them into view by pressing 't' (forward) and 'T'
 (backward).
 
 **'m' or 'M':** The Storage Cost timeline displays minimum, mean and maximum
@@ -31,11 +51,7 @@ press 'm' or 'M'.
 
 **'q':** Press 'q' to quit.
 
-Feature requests and discussion are currently summarised in the opening post of
-the Safe Network forum topic: [node Dashboard ideas
-please!](https://safenetforum.org/t/node-dashboard-ideas-please/32572?u=happybeing).
-
-For more details and progress see [Roadmap](#roadmap) (below).
+**'?':** Shows help.
 
 ## Operating Systems
 - **Linux:** works on Linux (tested on Ubuntu).
@@ -44,7 +60,7 @@ For more details and progress see [Roadmap](#roadmap) (below).
 
 ## Install using Linux package manager
 
-`vdash` has been packaged for debian thanks to the generous efforts of Jonas Smedegaard. From late 2023 it will begin to be available in many downstream Linux distributions, but due to the pace of updates the packaged version is likely to be behind the version published at crates.io which is always up to date.
+`vdash` has been packaged for debian thanks to the generous efforts of Jonas Smedegaard. From 2024 it will begin to be available in many downstream Linux distributions, but due to the pace of updates the packaged version is likely to be behind the version published at crates.io which is always up to date.
 
 You can check the status of package `safe-vdash` in your distribution and choose whether to install from there or get the most recent version as explained below.
 
@@ -129,72 +145,110 @@ Examples for Linux:
 
 Using double rather than single quotes enables you to use '$HOME' in the path instead of giving the home directory explicitly.
 
-### Safe Node Setup
+### Display of Token values
+`vdash` shows node earnings and storage cost in terms of Safe Network tokens as 'nanos' or billionths of a token. It can though
+be made to display token values in a local currency (e.g. U.S. dollar, British pound etc). For this it needs
+a way to obtain the conversion rate for the currency and be told what symbol to use in the
+display (e.g. "$", "£" etc.).
 
-**IMPORTANT:** You must ensure the node logfile includes the telemetry information used by vdash by setting the logging level to 'trace' when you start your node (as in the example below). You control the node logging level by setting the environment variable `SN_LOG`.
+You can do this by passing fixed values on the command line, or have
+`vdash` obtain live values using one of the supported web APIs.
+
+### Currency on the Command Line
+Two options allow you to specify the conversion rate and symbol for your chosen currency.
+
+For example, for a token value of 1.23 U.S. dollars you would use the following command line options:
+
+```
+--currency-symbol "$" --currency-token-rate 1.23
+```
+
+You can use the above to provide a default conversion and have live prices override this when available.
+
+For more type `vdash --help`.
+
+### Live Prices via Web API
+`vdash` can obtain the Safe Network token price in a specified currency from the
+Coingecko.com or Coinmarketcap.com web APIs provided you have an access key for the corresponding API. At this time, both offer both paid and free/demo API
+keys which you obtain by signing up for an account with those websites.
+
+If you have keys for one or both of these services you must pass them to `vdash` on the command line as shown below.
+
+In both cases a default polling interval is set by `vdash` that will not exceed the advertised number of API requests for a free API key, although this polling interval can be shortened by specifying the polling interval on the command line.
+
+For more type `vdash --help`.
+
+#### Coingecko.com
+To have `vdash` obtain the token rate from Coingecko.com include the following on the command line and replace `YOUR-API-KEY` with the API key you obtained from the service.
 
 ```sh
-killall safenode
+--currency-apiname "GBP" --currency-symbol "£" --coingecko-key "YOUR-API-KEY"
+```
+
+#### Coinmarketcap.com
+To have `vdash` obtain the token rate from Coinmarketcap.com include the following on the command line and replace `YOUR-API-KEY` with the API key you obtained from the service.
+
+```sh
+--currency-apiname "GBP" --currency-symbol "£" --coinmarketcap-key "YOUR-API-KEY"
+```
+
+### Safe Node Setup
+
+```sh
+pkill safenode
 rm -rf ~/.local/share/safe/node
-SN_LOG=all safenode
 ```
 To start a node using `safenode` you should check you are using the correct parameters for your system setup.
 
 When your node or nodes have started, run `vdash`, typically in a different terminal:
 ```sh
-vdash ~/.local/share/safe/node/*/safenode.log
+vdash --glob-path "$HOME/.local/share/safe/node/*/safenode.log"
 ```
+Modify the above example for your setup, and include any additional command line options as required.
+
+For example, to enable display of earnings and storage costs using local currency:
+```sh
+vdash --currency-apiname "USD" --currency-symbol "$" --glob-path "$HOME/.local/share/safe/node/*/logs/safenode.log"
+```
+
 Note:
 
-- `killall safenode` makes sure no existing nodes are still running, and
+- `pkill safenode` makes sure no existing nodes are still running, and
   deleting the `node` directory prevents you picking up statistics from previous logfiles. If you leave the logfile in place then `vdash` will waste time
   processing that, although you can skip that process using a command line option.
 
-- setting SN_LOG ensures the logfiles contain the data which vdash needs, and
-  excludes some that gets in the way.
-- On Windows to set SN_LOG environment variable:
+### Using vdash With a Live Network
 
-	Using Windows Command Line:
-	```
-	set SN_LOG="all"
-	safenode
-	```
+If you want to try `vdash` with a live network, check to see if one is running at the Safe Network community forum [releases category](https://safenetforum.org/c/development/releases/) and follow the instructions in the first post of the relevant topic.
 
-	Using Windows PowerShell:
-	```
-	$env:SN_LOG="all"
-	safenode
-	```
+Once you have started some nodes you can monitor them all at once using the following command (Linux version):
+
+```sh
+vdash --currency-apiname "USD" --currency-symbol "$" --glob-path "$HOME/.local/share/safe/node/*/logs/safenode.log"
+```
+
+There's a very welcoming and knowledgeable community there so if you need any help don't be shy to ask. Post a request on the forum topic and someone will be sure to help you get things working.
 
 ### Using vdash With a Local Test Network
 
-**IMPORTANT:** This section is out of date and so will not work as shown. You can try `vdash` by participating in one of the public test networks which are announced on the Safe Network [forum](https://safenetforum.org). These are happening about once per week during 2023.
+First clone the Safe Network repository and change directory into the cloned copy:
 
-1. **Start a local test network:** follow the instructions to [Run a local network](https://github.com/maidsafe/sn_api/tree/master/sn_cli#run-a-local-network), for example:
-    ```sh
-    rm -rf ~/.safe/node/local-test-network/
-    cd safe_network
-    killall safenode || true && SN_LOG=all cargo run --bin testnet -- -b --interval 100
-    ```
-    Windows: see "Note" immediately above for how to set SN_LOG on Windows.
+```sh
+git clone https://github.com/maidsafe/safe_network
+cd safe_network
+```
 
-2. **Run vdash:** in a different terminal window, start `vdash` with:
-    You can then run `vdash`, typically in a different terminal:
-    ```sh
-    vdash ~/.safe/node/local-test-network/safenode-*/safenode.log
-    ```
-    Or with a live network:
-    ```
-    vdash ~/.safe/node/local-node/safenode.log
-    ```
-3. **Upload files using Safe CLI:** using the Safe CLI you can perform operations on the local test network that will affect the node and the effects will be shown in `vdash`. For example, to [use the Safe CLI to upload files](https://github.com/maidsafe/sn_api/tree/master/sn_cli#files):
-    ```
-    safe files put ./<some-directory>/ --recursive
-    ```
+Then start a local test network using the instructions [here](https://github.com/maidsafe/safe_network/#run-your-maidsafe-local-test-network-in-4-easy-steps).
 
-If you want to try `vdash` with a live network, check to see if one is running at the Safe Network community forum: https://safenetforum.org
+You can then start `vdash` to display the status of the nodes in that network as follows:
 
-## Build
+```sh
+vdash --currency-apiname "USD" --currency-symbol "$" --glob-path "$HOME/.local/share/safe/node/*/logs/safenode.log"
+```
+
+If you return to the instructions [here](https://github.com/maidsafe/safe_network/#run-your-maidsafe-local-test-network-in-4-easy-steps) you can obtain some tokens to pay for your file uploads, and try uploading some files again using the instructions at that link, and monitor the activity of your test network nodes using `vdash`.
+
+## Build (for Developers Only)
 
 See [Get Safe Network Pre-requisites](#get-safe-network-pre-requisites).
 
@@ -222,51 +276,6 @@ VIRT   RES  SHR
 32768 6848 2440 x13 threads (release/musl)
 ```
 Note: the above figures are out of date but illustrate the point.
-
-# Roadmap
-Where `vdash` is headed:
-- [x] implement ability to parse logfiles
-  - [x] add --debug-parser to show results in second logfile
-  - [x] implement parsing log file for simple metrics and timeline
-  - [x] keep the debug UI available (selected with 'D' when using --debug-parse)
-- [x] change events to use tokio mpsc (unbounded) channel
-- [x] does tokio mpsc fix loss of updates from linemux (see linemux [issue #17](https://github.com/jmagnuson/linemux/issues/17))
-- [ ] implement node dashboard
-  - [x] node status summary page (single node)
-  - [x] debug window (--debug-window)
-  - [x] add basic node stats (age/PUTs/GETs)
-  - [x] scroll node logfile (arrow keys)
-  - [x] multiple nodes (navigate with tab and arrow keys)
-  - [ ] add a timeline
-    - [x] simple timeline with PUTS and GETS
-    - [x] implement multiple timeline durations (hour, minute etc)
-    - [x] add status/timeline for ERRORS
-    - [x] anchor 'now' to right border
-    - [ ] mod sparkline widget to have a minimum Y scale (e.g. 10 units)
-  - [ ] reduce lag in processing logfile changes
-    - [x] implement simple rate limit on redraws
-    - [x] implement update/redraw tick (for timeline and stats)
-    - [x] fix load from logfile to timeline (currently all ends up in last bucket)
-    - [x] change timeline scaling to use +/- an i/o keys rather than s, m, d etc
-    - [ ] optimise redraw rate limit
-    - [ ] make a CLI option for redraw rate limit
-  - [x] track safenode [issue #1126](https://github.com/maidsafe/safenode/issues/1126) (maintain Get/Put response in)
-  - [x] implement storage 'meter'
-    - [x] code to get node storage used
-    - [x] code to get free space on same device
-    - [x] implement storage used/free 'progress' bar
-  - [x] implement bandwidth 'meter'
-    - [x] code to get node bandwidth
-    - [x] code to get total bandwidth
-    - [ ] implement bandwidth node/total/max in last day 'progress' bar
-- [x] Implement DashOverview: all nodes on one page (rename from DashSummary)
-- [x] trim NodeMetrics timeline
-- [x] Implement popup help on ?, h, H
-- [x] FIXED by upate to tui-rs v0.11.0 [Issue #382](https://github.com/fdehau/tui-rs/issues/382): Window titles corrupted when using --debug-window
-- [x] switch to crossterm only (v0.9.0)
-- [x] port from tui-rs (deprecated) to ratatui (supported fork of tui-rs)
-- [x] Ability to provide 'glob' paths and re-scan them to add new nodes while running
-- [x] Implement logfile checkpoints to allow re-starting `vdash` quickly, and without losing data
 
 ## LICENSE
 
