@@ -58,7 +58,7 @@ impl WebPriceAPIs {
             currency_apiname: currency_apiname.clone(),
 
             current_api_key: None,
-            switching_api_interval: Duration::minutes(DEFAULT_SWITCH_API_POLL_INTERVAL),
+            switching_api_interval: Duration::seconds(DEFAULT_SWITCH_API_POLL_INTERVAL),
 
             coingecko_api_key: coingecko_api_key,
             coingecko_next_poll: None,
@@ -135,6 +135,12 @@ impl WebPriceAPIs {
             let mut prices = super::app::WEB_PRICES.lock()?;
             let time_now = Some(Utc::now());
             if let Some(btcprices) = json["bitcoin"].as_object() {
+                let currency_key = &self.currency_apiname.as_str().to_lowercase();
+                if !btcprices.contains_key(currency_key) {
+                    let message = format!("unrecognised API value for --currency-apiname option: {}", currency_key);
+                    return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, message.as_str())));
+                }
+
                 prices.btc_rate = btcprices[self.currency_apiname.to_lowercase().as_str()].as_f64();
             }
             if let Some(token_prices) = json["maidsafecoin"].as_object() {
@@ -143,6 +149,8 @@ impl WebPriceAPIs {
                 return Ok(prices.snt_rate);
             }
         }
+
+
         Ok(None)
     }
 
@@ -150,6 +158,8 @@ impl WebPriceAPIs {
     // Returns the currency_per_token rate if successful
     pub async fn get_coinmarketcap_prices(&mut self) -> Result<Option<f64>, Box<dyn std::error::Error>> {
         let mut currency_per_token = None;
+        let mut error = None;
+
         if let Some(api_key) = &self.coinmarketcap_api_key {
             let response: reqwest::Response = reqwest::Client::builder()
             // .pool_idle_timeout(None)
@@ -168,7 +178,13 @@ impl WebPriceAPIs {
                 data["EMAID"].as_array().is_some_and(|emaid| {
                     emaid[0].as_object().is_some_and(|emaid_0| {
                         emaid_0["quote"].as_object().is_some_and(|quote| {
-                            quote[self.currency_apiname.as_str()].as_object().is_some_and(|usd| {
+                            let currency_key = &self.currency_apiname.as_str().to_uppercase();
+                            if !quote.contains_key(currency_key) {
+                                let message = format!("unrecognised API value for --currency-apiname option: {}", currency_key);
+                                error = Some(std::io::Error::new(std::io::ErrorKind::Other, message.as_str()));
+                                return false;
+                            }
+                            quote[currency_key].as_object().is_some_and(|usd| {
                                 usd["price"].as_f64().is_some_and(|token_price|{
                                     let mut prices = super::app::WEB_PRICES.lock().unwrap();
                                     prices.snt_rate = Some(token_price);
@@ -181,6 +197,10 @@ impl WebPriceAPIs {
                     })
                 })
             });
+        }
+
+        if error.is_some() {
+            return Err(Box::new(error.unwrap()));
         }
 
         Ok(currency_per_token)

@@ -101,7 +101,16 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 				Ok(Some(currency_per_token)) => { app.dash_state.currency_per_token = Some(currency_per_token); },
 				Ok(None) => {},
 				Err(e) => {
-					app.dash_state.vdash_status.message(&format!("{}", e), None);
+					disable_raw_mode()?;
+					execute!(
+						terminal.backend_mut(),
+						LeaveAlternateScreen,
+						DisableMouseCapture
+					)?;
+					terminal.show_cursor()?;
+					// app.dash_state.vdash_status.message(&format!("Web API error, {}", e), None);
+					eprintln!("Web API error, {}", e);
+					return Ok(());
 				},
 			};
 			let prices = custom::app::WEB_PRICES.lock().unwrap();
