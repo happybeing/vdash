@@ -41,12 +41,33 @@ pub struct Opt {
 	pub checkpoint_interval: u64,
 
 	/// Token conversion rate as a positive floating point number (e.g. 3.345)
+	/// This will be used if the price APIs are not used or failing.
 	#[structopt(long, default_value = "-1")]
-	pub currency_token_rate: f32,
+	pub currency_token_rate: f64,
+
+	/// Fiat currency name for API
+	#[structopt(long, default_value = "USD")]
+	pub currency_apiname: String,
 
 	/// Single character symbol for currency (e.g. "£" or "€")
 	#[structopt(long, default_value = "$")]
 	pub currency_symbol: String,
+
+	/// Coingecko.com API key
+	#[structopt(long)]
+	pub coingecko_key: Option<String>,
+
+	/// Coingecko.com API polling interval (minutes)
+	#[structopt(long, default_value = "30")]
+	pub coingecko_interval: usize,
+
+	/// Coinmarketcap.com API key
+	#[structopt(long)]
+	pub coinmarketcap_key: Option<String>,
+
+	/// Coinmarketcap.com API polling interval (minutes)
+	#[structopt(long, default_value = "30")]
+	pub coinmarketcap_interval: usize,
 
 	/// One or more logfiles to monitor
 	#[structopt(name = "LOGFILE")]
