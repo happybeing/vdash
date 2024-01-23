@@ -62,6 +62,11 @@ lazy_static::lazy_static! {
 		Mutex::<Opt>::new(Opt::from_args());
 }
 
+lazy_static::lazy_static! {
+	pub static ref WEB_PRICES: Mutex<super::web_requests::WebPrices> =
+		Mutex::<super::web_requests::WebPrices>::new(super::web_requests::WebPrices::new());
+}
+
 pub struct App {
 	pub dash_state: DashState,
 	pub monitors: HashMap<String, LogMonitor>,
@@ -73,9 +78,11 @@ pub struct App {
 
 impl App {
 	pub async fn new() -> Result<App, std::io::Error> {
-		let (opt_files, opt_globpaths, opt_debug_window, opt_timeline_steps, opt_currency_token_rate, opt_currency_symbol) = {
+		let (opt_files, opt_globpaths, opt_debug_window, opt_timeline_steps,
+			opt_currency_token_rate, opt_currency_symbol, opt_currency_apiname) = {
 			let opt = OPT.lock().unwrap();
-			(opt.files.clone(), opt.glob_paths.clone(), opt.debug_window, opt.timeline_steps, opt.currency_token_rate, opt.currency_symbol.clone())
+			(opt.files.clone(), opt.glob_paths.clone(), opt.debug_window, opt.timeline_steps,
+			opt.currency_token_rate, opt.currency_symbol.clone(), opt.currency_apiname.clone())
 		};
 
 		let mut app = App {
@@ -87,11 +94,15 @@ impl App {
 			next_glob_scan: None,
 		};
 
+		app.dash_state.currency_symbol = opt_currency_symbol.clone();
 		if opt_currency_token_rate > 0.0 {
 			app.dash_state.currency_per_token = Some(opt_currency_token_rate);
-			app.dash_state.currency_symbol = opt_currency_symbol;
 			app.dash_state.ui_uses_currency = true;
 		}
+
+		let mut web_prices = WEB_PRICES.lock().unwrap();
+		web_prices.currency_symbol = opt_currency_symbol;
+		web_prices.currency_apiname = opt_currency_apiname;
 
 		if opt_files.is_empty() && opt_globpaths.is_empty() {
 			eprintln!("{}: no logfile(s) or 'glob' paths provided.", Opt::clap().get_name());
@@ -1436,7 +1447,7 @@ pub struct DashState {
 	pub logfile_names_sorted_ascending: bool,
 
 	pub currency_symbol: String,
-	pub currency_per_token: Option<f32>,
+	pub currency_per_token: Option<f64>,
 	pub ui_uses_currency: bool,
 
 	pub active_timescale: usize,
