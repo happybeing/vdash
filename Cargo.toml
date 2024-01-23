@@ -1,7 +1,7 @@
 [package]
 name = "vdash"
 description = "Safe Network safenode Dashboard"
-version = "0.16.4"
+version = "0.17.0"
 authors = ["Mark <git@happybeing.com>"]
 license = "GPL-3.0"
 homepage = "https://github.com/happybeing/vdash"
@@ -39,7 +39,7 @@ glob = "0.3.1"
 serde = {version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 serde_with = { version = "3.4.0", features = ["chrono_0_4"] }
-reqwest = "0.11.23"
+reqwest = { version = "0.11.23", default_features = false, features = ["rustls-tls"] }
 
 [[bin]]
 name = "vdash"
