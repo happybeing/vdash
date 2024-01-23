@@ -1,4 +1,4 @@
-//! This app monitors and logfiles and displays status in the terminal
+//! This app monitors logfiles and displays status in the terminal
 //!
 //! It is based on logtail-dash, which is a basic logfile dashboard
 //! and also a framework for similar apps with customised dashboard
@@ -57,9 +57,11 @@ use tokio::sync::mpsc;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
-	let (opt_tick_rate, checkpoint_interval, opt_debug_window) = {
+	let (opt_tick_rate, checkpoint_interval, opt_debug_window,
+		coingecho_api_key, coinmarketcap_api_key, currency_apiname) = {
 		let opt = OPT.lock().unwrap();
-		(opt.tick_rate, opt.checkpoint_interval, opt.debug_window)
+		(opt.tick_rate, opt.checkpoint_interval, opt.debug_window,
+			opt.coingecko_key.clone(), opt.coinmarketcap_key.clone(), opt.currency_apiname.clone())
 	};
 
 	env_logger::init();
@@ -69,6 +71,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 		Ok(app) => app,
 		Err(_e) => return Ok(()),
 	};
+
+	let mut web_apis = crate::custom::web_requests::WebPriceAPIs::new(coingecho_api_key, coinmarketcap_api_key, &currency_apiname);
 
 	// Terminal initialization
 	enable_raw_mode()?;
@@ -93,112 +97,96 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 			.expect("Time went backwards") {
 			terminal.draw(|f| draw_dashboard(f, &mut app))?;
 			next_update += Duration::from_secs(1);
+			match web_apis.handle_web_requests().await {
+				Ok(Some(currency_per_token)) => { app.dash_state.currency_per_token = Some(currency_per_token); },
+				Ok(None) => {},
+				Err(e) => {
+					app.dash_state.vdash_status.message(&format!("{}", e), None);
+				},
+			};
+			let prices = custom::app::WEB_PRICES.lock().unwrap();
+			if prices.snt_rate.is_some() {
+				app.dash_state.currency_per_token = prices.snt_rate;
+			}
 		}
 
-		let streams_future = handle_streams(&mut app, &mut terminal, &mut rx, opt_debug_window, checkpoint_interval).fuse();
-		let web_requests_future = custom::web_requests::handle_web_requests().fuse();
+		let logfiles_future = app.logfiles_manager.linemux_files.next().fuse();
+		let events_future = rx.recv().fuse();
 
-		pin_mut!(streams_future, web_requests_future);
+		pin_mut!(logfiles_future, events_future);
 
 		select! {
-			quit = streams_future => {
-				match quit {
-					Ok(quit) =>	if quit { break Ok(()) },
-					Err(_) => {},
+				e = events_future => {
+				match e {
+					Some(Event::Input(event)) => {
+						if !self::custom::ui_keyboard::handle_keyboard_event(&mut app, &event, opt_debug_window).await {
+							disable_raw_mode()?;
+							execute!(
+								terminal.backend_mut(),
+								LeaveAlternateScreen,
+								DisableMouseCapture
+							)?;
+							terminal.show_cursor()?;
+							return Ok(());
+						}
+						terminal.draw(|f| draw_dashboard(f, &mut app)).unwrap();
+					}
+
+					Some(Event::Tick) => {
+						app.update_timelines(&Utc::now());
+						app.scan_glob_paths(true, true).await;
+						// draw_dashboard(&mut f, &dash_state, &mut monitors).unwrap();
+						// draw_dashboard(f, &dash_state, &mut monitors)?;
+					}
+
+					None => {},
 				}
 			},
-			r = web_requests_future => {
-				match r {
-					Ok(()) => {},
-					Err(_)=> {},
-				}
-			}
-		}
+				line = logfiles_future => {
+				match line {
+					Some(Ok(line)) => {
+						trace!("logfiles_future line");
+						let source_str = line.source().to_str().unwrap();
+						let source = String::from(source_str);
+						// app.dash_state._debug_window(format!("{}: {}", source, line.line()).as_str());
 
-	}
-}
-
-// Return true to signal program exit
-async fn handle_streams(app: &mut App, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>> , rx: &mut Rx, opt_debug_window: bool, checkpoint_interval: u64) -> Result<bool, Box<dyn Error>> {
-	let logfiles_future = app.logfiles_manager.linemux_files.next().fuse();
-	let events_future = rx.recv().fuse();
-	// let web_future = client.get("https://markhughes.com/getmyip.php").send().fuse();
-
-	pin_mut!(logfiles_future, events_future);
-
-	select! {
-			e = events_future => {
-			match e {
-				Some(Event::Input(event)) => {
-					if !self::custom::ui_keyboard::handle_keyboard_event(app, &event, opt_debug_window).await {
-						disable_raw_mode()?;
-						execute!(
-							terminal.backend_mut(),
-							LeaveAlternateScreen,
-							DisableMouseCapture
-						)?;
-						terminal.show_cursor()?;
-						return Ok(true);
-					}
-					terminal.draw(|f| draw_dashboard(f, app)).unwrap();
-				}
-
-				Some(Event::Tick) => {
-					app.update_timelines(&Utc::now());
-					app.scan_glob_paths(true, true).await;
-				// draw_dashboard(&mut f, &dash_state, &mut monitors).unwrap();
-				// draw_dashboard(f, &dash_state, &mut monitors)?;
-				}
-
-				None => {},
-			}
-		},
-			line = logfiles_future => {
-			match line {
-				Some(Ok(line)) => {
-					trace!("logfiles_future line");
-					let source_str = line.source().to_str().unwrap();
-					let source = String::from(source_str);
-					// app.dash_state._debug_window(format!("{}: {}", source, line.line()).as_str());
-
-					let mut checkpoint_result: Result<String, std::io::Error> = Ok("".to_string());
-					match app.get_monitor_for_file_path(&source) {
-						Some(monitor) => {
-							checkpoint_result = monitor.append_to_content(line.line(), checkpoint_interval);
-							if monitor.is_debug_dashboard_log {
-								app.dash_state._debug_window(line.line());
-							} else if app.dash_state.main_view == DashViewMain::DashSummary {
-								app.update_summary_window();
-							}
-						},
-						None => {
-							app.dash_state._debug_window(format!("NO MONITOR FOR: {}", source).as_str());
-						},
-					}
-					match checkpoint_result {
-						Ok(message) => {
-							if message.len() > 0 {
-								app.dash_state.vdash_status.message(&message, None);
-							}
-						},
-						Err(e) => {
-							app.dash_state.vdash_status.message(&e.to_string(), None);
+						let mut checkpoint_result: Result<String, std::io::Error> = Ok("".to_string());
+						match app.get_monitor_for_file_path(&source) {
+							Some(monitor) => {
+								checkpoint_result = monitor.append_to_content(line.line(), checkpoint_interval);
+								if monitor.is_debug_dashboard_log {
+									app.dash_state._debug_window(line.line());
+								} else if app.dash_state.main_view == DashViewMain::DashSummary {
+									app.update_summary_window();
+								}
+							},
+							None => {
+								app.dash_state._debug_window(format!("NO MONITOR FOR: {}", source).as_str());
+							},
 						}
+						match checkpoint_result {
+							Ok(message) => {
+								if message.len() > 0 {
+									app.dash_state.vdash_status.message(&message, None);
+								}
+							},
+							Err(e) => {
+								app.dash_state.vdash_status.message(&e.to_string(), None);
+							}
+						}
+					},
+					Some(Err(e)) => {
+						app.dash_state._debug_window(format!("logfile error: {:#?}", e).as_str());
+						panic!("{}", e)
 					}
-				},
-				Some(Err(e)) => {
-					app.dash_state._debug_window(format!("logfile error: {:#?}", e).as_str());
-					panic!("{}", e)
+					None => {
+						app.dash_state._debug_window(format!("logfile error: None").as_str());
+						()
+					}
 				}
-				None => {
-					app.dash_state._debug_window(format!("logfile error: None").as_str());
-					()
-				}
-			}
-		},
+			},
+		}
 	}
-
-	Ok(false)
 }
 
 type Rx = tokio::sync::mpsc::UnboundedReceiver<Event<crossterm::event::KeyEvent>>;
