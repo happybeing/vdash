@@ -137,7 +137,7 @@ impl WebPriceAPIs {
             if let Some(btcprices) = json["bitcoin"].as_object() {
                 let currency_key = &self.currency_apiname.as_str().to_lowercase();
                 if !btcprices.contains_key(currency_key) {
-                    let message = format!("unrecognised API value for --currency-apiname option: {}", currency_key);
+                    let message = format!("unrecognised API value for --currency-apiname option: {}", &self.currency_apiname.as_str());
                     return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, message.as_str())));
                 }
 
@@ -180,7 +180,7 @@ impl WebPriceAPIs {
                         emaid_0["quote"].as_object().is_some_and(|quote| {
                             let currency_key = &self.currency_apiname.as_str().to_uppercase();
                             if !quote.contains_key(currency_key) {
-                                let message = format!("unrecognised API value for --currency-apiname option: {}", currency_key);
+                                let message = format!("unrecognised API value for --currency-apiname option: {}", &self.currency_apiname.as_str());
                                 error = Some(std::io::Error::new(std::io::ErrorKind::Other, message.as_str()));
                                 return false;
                             }
