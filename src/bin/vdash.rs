@@ -101,14 +101,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 				Ok(Some(currency_per_token)) => { app.dash_state.currency_per_token = Some(currency_per_token); },
 				Ok(None) => {},
 				Err(e) => {
-					disable_raw_mode()?;
-					execute!(
-						terminal.backend_mut(),
-						LeaveAlternateScreen,
-						DisableMouseCapture
-					)?;
-					terminal.show_cursor()?;
-					// app.dash_state.vdash_status.message(&format!("Web API error, {}", e), None);
+					_ = reset_terminal(&mut terminal);
 					eprintln!("Web API error, {}", e);
 					return Ok(());
 				},
@@ -129,14 +122,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 				match e {
 					Some(Event::Input(event)) => {
 						if !self::custom::ui_keyboard::handle_keyboard_event(&mut app, &event, opt_debug_window).await {
-							disable_raw_mode()?;
-							execute!(
-								terminal.backend_mut(),
-								LeaveAlternateScreen,
-								DisableMouseCapture
-							)?;
-							terminal.show_cursor()?;
-							return Ok(());
+							return reset_terminal(&mut terminal);
+							// disable_raw_mode()?;
+							// execute!(
+							// 	terminal.backend_mut(),
+							// 	LeaveAlternateScreen,
+							// 	DisableMouseCapture
+							// )?;
+							// terminal.show_cursor()?;
+							// return Ok(());
 						}
 						terminal.draw(|f| draw_dashboard(f, &mut app)).unwrap();
 					}
@@ -196,6 +190,17 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 			},
 		}
 	}
+}
+
+fn reset_terminal(terminal: &mut Terminal::<CrosstermBackend<std::io::Stdout>>) -> Result<(), Box<dyn Error>> {
+	disable_raw_mode()?;
+	execute!(
+		terminal.backend_mut(),
+		LeaveAlternateScreen,
+		DisableMouseCapture
+	)?;
+	terminal.show_cursor()?;
+	Ok(())
 }
 
 type Rx = tokio::sync::mpsc::UnboundedReceiver<Event<crossterm::event::KeyEvent>>;
