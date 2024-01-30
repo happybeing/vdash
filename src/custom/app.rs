@@ -441,7 +441,7 @@ impl App {
 			if let Some(monitor) = self.monitors.get_mut(&filepath) {
 				if !monitor.is_debug_dashboard_log {
 					monitor.metrics.update_node_status_string();
-					let node_summary = super::ui_summary_table::format_table_row(monitor);
+					let node_summary = super::ui_summary_table::format_table_row(&self.dash_state, monitor);
 					self.append_to_summary_window(&node_summary);
 				}
 			}

@@ -124,7 +124,11 @@ fn draw_summary_stats(f: &mut Frame, area: Rect, dash_state: &mut DashState, mon
 	let units_text = if dash_state.ui_uses_currency { "" } else { crate::custom::app_timelines::EARNINGS_UNITS_TEXT };
 
 	push_subheading(&mut items, &String::from("                       Total                min          mean           max         "));
-	let earnings_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", monetary_string(dash_state, ss.earnings.total), units_text, ss.earnings.min, ss.earnings.mean, ss.earnings.max);
+	let earnings_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}",
+		monetary_string(dash_state, ss.earnings.total), units_text,
+		monetary_string(dash_state, ss.earnings.min),
+		monetary_string(dash_state, ss.earnings.mean),
+		monetary_string(dash_state, ss.earnings.max));
 	let records_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.records.total, "", ss.records.min, ss.records.mean, ss.records.max);
 	let puts_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.puts.total, "", ss.puts.min, ss.puts.mean, ss.puts.max);
 	let gets_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", ss.gets.total, "", ss.gets.min, ss.gets.mean, ss.gets.max);
@@ -138,7 +142,7 @@ fn draw_summary_stats(f: &mut Frame, area: Rect, dash_state: &mut DashState, mon
 
 	push_blank(&mut items);
 	push_subheading(&mut items, &String::from("                                            min          mean           max         "));
-	let storage_cost_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12} {}", "-", "", ss.storage_cost.min, ss.storage_cost.mean, ss.storage_cost.max, crate::custom::app_timelines::EARNINGS_UNITS_TEXT);
+	let storage_cost_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12} {}", "-", "", monetary_string(dash_state, ss.storage_cost.min), monetary_string(dash_state, ss.storage_cost.mean), monetary_string(dash_state, ss.storage_cost.max), units_text);
 	let connections_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12}", "-", "", ss.connections.min, ss.connections.mean, ss.connections.max);
 	let ram_text = format!("{:>14} {:<6}{:>12}  {:>12}  {:>12} {}", "-", "", ss.ram.min, ss.ram.mean, ss.ram.max, "MB");
 

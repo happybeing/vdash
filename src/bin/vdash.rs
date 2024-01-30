@@ -98,7 +98,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 			terminal.draw(|f| draw_dashboard(f, &mut app))?;
 			next_update += Duration::from_secs(1);
 			match web_apis.handle_web_requests().await {
-				Ok(Some(currency_per_token)) => { app.dash_state.currency_per_token = Some(currency_per_token); },
+				Ok(Some(currency_per_token)) => {
+					app.dash_state.currency_per_token = Some(currency_per_token);
+					app.update_summary_window();
+				},
 				Ok(None) => {},
 				Err(e) => {
 					_ = reset_terminal(&mut terminal);
@@ -123,14 +126,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 					Some(Event::Input(event)) => {
 						if !self::custom::ui_keyboard::handle_keyboard_event(&mut app, &event, opt_debug_window).await {
 							return reset_terminal(&mut terminal);
-							// disable_raw_mode()?;
-							// execute!(
-							// 	terminal.backend_mut(),
-							// 	LeaveAlternateScreen,
-							// 	DisableMouseCapture
-							// )?;
-							// terminal.show_cursor()?;
-							// return Ok(());
 						}
 						terminal.draw(|f| draw_dashboard(f, &mut app)).unwrap();
 					}
@@ -138,6 +133,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 					Some(Event::Tick) => {
 						app.update_timelines(&Utc::now());
 						app.scan_glob_paths(true, true).await;
+						terminal.draw(|f| draw_dashboard(f, &mut app)).unwrap();
 						// draw_dashboard(&mut f, &dash_state, &mut monitors).unwrap();
 						// draw_dashboard(f, &dash_state, &mut monitors)?;
 					}

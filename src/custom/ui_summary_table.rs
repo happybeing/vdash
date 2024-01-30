@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use super::app::{DashState, LogMonitor};
+use super::ui::monetary_string;
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
@@ -29,8 +30,8 @@ pub enum NodeMetric {
 pub const COLUMN_HEADERS: [(NodeMetric, &str, &str); 10] = [
 //  (node_metric,                   key/heading, format_string)
     (NodeMetric::Index,             "Node",         "{index:>4} "),
-    (NodeMetric::StoragePayments,   "Earned nanos", "{storage_payments:>14} "),
-    (NodeMetric::StorageCost,       "StoreCost",    "{storage_cost:>11} "),
+    (NodeMetric::StoragePayments,   "Earned nanos", "{storage_payments:>13} "),
+    (NodeMetric::StorageCost,       "StoreCost",    "{storage_cost:>13} "),
     (NodeMetric::Records,           "Records",      "{records_stored:>11} "),
     (NodeMetric::Puts,              "PUTS",         "{puts:>11} "),
     (NodeMetric::Gets,              "GETS",         "{gets:>11} "),
@@ -69,15 +70,15 @@ pub fn sort_nodes_by_column(dash_state: &mut DashState, monitors: &mut HashMap<S
     });
 }
 
-pub fn format_table_row(monitor: &mut LogMonitor) -> String {
+pub fn format_table_row(dash_state: &DashState, monitor: &mut LogMonitor) -> String {
     let mut row_text = String::from("");
 
     for i in 0..COLUMN_HEADERS.len() {
         let (metric, _heading, format_string) = &COLUMN_HEADERS[i];
         row_text += &match metric {
             NodeMetric::Index =>            { strfmt!(format_string, index => monitor.index + 1).unwrap() },
-            NodeMetric::StoragePayments =>  { strfmt!(format_string, storage_payments  => monitor.metrics.storage_payments.total).unwrap() },
-            NodeMetric::StorageCost =>      { strfmt!(format_string, storage_cost => monitor.metrics.storage_cost.most_recent).unwrap() },
+            NodeMetric::StoragePayments =>  { strfmt!(format_string, storage_payments  => monetary_string(dash_state, monitor.metrics.storage_payments.total)).unwrap() },
+            NodeMetric::StorageCost =>      { strfmt!(format_string, storage_cost => monetary_string(dash_state, monitor.metrics.storage_cost.most_recent)).unwrap() },
             NodeMetric::Records =>          { strfmt!(format_string, records_stored => monitor.metrics.records_stored).unwrap() },
             NodeMetric::Puts =>             { strfmt!(format_string, puts => monitor.metrics.activity_puts.total).unwrap() },
             NodeMetric::Gets =>             { strfmt!(format_string, gets => monitor.metrics.activity_gets.total).unwrap() },

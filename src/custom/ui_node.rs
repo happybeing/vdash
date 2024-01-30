@@ -10,6 +10,7 @@ use self::widgets::gauge::Gauge2;
 
 use super::app::{DashState, LogMonitor};
 use super::timelines::Timeline;
+use crate::custom::app_timelines::EARNINGS_UNITS_TEXT;
 use crate::custom::timelines::{get_min_buckets_value, get_max_buckets_value, get_duration_text};
 
 use crate::custom::ui::{push_subheading, push_metric, push_metric_with_units, draw_sparkline, monetary_string};
@@ -294,7 +295,11 @@ fn draw_timeline(
 			let mut max_bucket_value = get_max_buckets_value(buckets);
 			let mut min_bucket_value = get_min_buckets_value(buckets);
 			let label_stats = if timeline.is_cumulative {
-				format!("{} {} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
+				if  dash_state.ui_uses_currency && timeline.units_text == EARNINGS_UNITS_TEXT {
+					format!("{} in last {}", monetary_string(dash_state, bucket_set.values_total), duration_text)
+				} else {
+					format!("{} {} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
+				}
 			} else {
 				dash_state._debug_window(format!("min: {} max: {}", min_bucket_value, max_bucket_value).as_str());
 				if max_bucket_value == 0 {max_bucket_value = timeline.last_non_zero_value;}

@@ -76,7 +76,7 @@ impl WebPriceAPIs {
     /// If the default API fails to return a value, switches to using the alternate API
     /// for the next cycle (setting a shorter interval for the retry).
     ///
-    /// /// Returns the currency_per_token rate if successful
+    /// Returns the currency_per_token rate if successful
     pub async fn handle_web_requests(&mut self) -> Result<Option<f64>, Box<dyn std::error::Error>> {
         let now = Utc::now();
 
@@ -162,7 +162,6 @@ impl WebPriceAPIs {
 
         if let Some(api_key) = &self.coinmarketcap_api_key {
             let response: reqwest::Response = reqwest::Client::builder()
-            // .pool_idle_timeout(None)
                 .build()?
                 .get("https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest")
                 .header("X-CMC_PRO_API_KEY", api_key)
