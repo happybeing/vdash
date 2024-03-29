@@ -1,25 +1,27 @@
 ///! Application logic
 //
 // TODO consider colouring logfiles using regex's from https://github.com/bensadeh/tailspin
-
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
 
-use serde::{Serialize, Deserialize};
-use chrono::{DateTime, Utc, Duration};
+use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use tempfile::NamedTempFile;
 
 use crate::shared::util::StatefulList;
 
-use super::timelines::{MinMeanMax, get_duration_text};
-use super::app_timelines::{AppTimelines, TIMESCALES, APP_TIMELINES};
-use super::app_timelines::{STORAGE_COST_TIMELINE_KEY, EARNINGS_TIMELINE_KEY, PUTS_TIMELINE_KEY, GETS_TIMELINE_KEY, CONNECTIONS_TIMELINE_KEY, RAM_TIMELINE_KEY, ERRORS_TIMELINE_KEY};
-use super::opt::{Opt, MIN_TIMELINE_STEPS};
-use super::logfiles_manager::LogfilesManager;
+use super::app_timelines::{AppTimelines, APP_TIMELINES, TIMESCALES};
+use super::app_timelines::{
+	CONNECTIONS_TIMELINE_KEY, EARNINGS_TIMELINE_KEY, ERRORS_TIMELINE_KEY, GETS_TIMELINE_KEY,
+	PUTS_TIMELINE_KEY, RAM_TIMELINE_KEY, STORAGE_COST_TIMELINE_KEY,
+};
 use super::logfile_checkpoints::save_checkpoint;
+use super::logfiles_manager::LogfilesManager;
+use super::opt::{Opt, MIN_TIMELINE_STEPS};
+use super::timelines::{get_duration_text, MinMeanMax};
 
 pub const SAFENODE_BINARY_NAME: &str = "safenode";
 pub static SUMMARY_WINDOW_NAME: &str = "Summary of Monitored Nodes";
@@ -78,11 +80,25 @@ pub struct App {
 
 impl App {
 	pub async fn new() -> Result<App, std::io::Error> {
-		let (opt_files, opt_globpaths, opt_debug_window, opt_timeline_steps,
-			opt_currency_token_rate, opt_currency_symbol, opt_currency_apiname) = {
+		let (
+			opt_files,
+			opt_globpaths,
+			opt_debug_window,
+			opt_timeline_steps,
+			opt_currency_token_rate,
+			opt_currency_symbol,
+			opt_currency_apiname,
+		) = {
 			let opt = OPT.lock().unwrap();
-			(opt.files.clone(), opt.glob_paths.clone(), opt.debug_window, opt.timeline_steps,
-			opt.currency_token_rate, opt.currency_symbol.clone(), opt.currency_apiname.clone())
+			(
+				opt.files.clone(),
+				opt.glob_paths.clone(),
+				opt.debug_window,
+				opt.timeline_steps,
+				opt.currency_token_rate,
+				opt.currency_symbol.clone(),
+				opt.currency_apiname.clone(),
+			)
 		};
 
 		let mut app = App {
@@ -105,7 +121,10 @@ impl App {
 		web_prices.currency_apiname = opt_currency_apiname;
 
 		if opt_files.is_empty() && opt_globpaths.is_empty() {
-			eprintln!("{}: no logfile(s) or 'glob' paths provided.", Opt::clap().get_name());
+			eprintln!(
+				"{}: no logfile(s) or 'glob' paths provided.",
+				Opt::clap().get_name()
+			);
 			return exit_with_usage("missing logfiles");
 		}
 
@@ -143,15 +162,21 @@ impl App {
 		}
 
 		if files_to_load.len() > 0 {
-			app.logfiles_manager.monitor_multi_paths(files_to_load, &mut app.monitors, &mut app.dash_state, false).await;
+			app
+				.logfiles_manager
+				.monitor_multi_paths(files_to_load, &mut app.monitors, &mut app.dash_state, false)
+				.await;
 		}
 
 		app.scan_glob_paths(false, false).await;
 
 		if app.logfiles_manager.logfiles_added.len() > 0 {
-			app.logfile_with_focus = app.logfiles_manager.logfiles_added[0].clone();	// Save to give focus
+			app.logfile_with_focus = app.logfiles_manager.logfiles_added[0].clone(); // Save to give focus
 		} else {
-			app.dash_state.vdash_status.message(&"No files to monitor, please start a node and try again.".to_string(), None);
+			app.dash_state.vdash_status.message(
+				&"No files to monitor, please start a node and try again.".to_string(),
+				None,
+			);
 			return exit_with_usage("no files to monitor.");
 		}
 
@@ -168,7 +193,9 @@ impl App {
 	}
 
 	pub async fn scan_glob_paths(&mut self, timed: bool, disable_status: bool) {
-		if self.logfiles_manager.globpaths.len() == 0 { return; }
+		if self.logfiles_manager.globpaths.len() == 0 {
+			return;
+		}
 		let opt_globs_scan = OPT.lock().unwrap().glob_scan;
 
 		let mut do_scan = !timed;
@@ -187,7 +214,15 @@ impl App {
 
 		if do_scan {
 			let opt_glob_paths = OPT.lock().unwrap().glob_paths.clone();
-			self.logfiles_manager.scan_multi_globpaths(opt_glob_paths, &mut self.monitors, &mut self.dash_state, disable_status).await;
+			self
+				.logfiles_manager
+				.scan_multi_globpaths(
+					opt_glob_paths,
+					&mut self.monitors,
+					&mut self.dash_state,
+					disable_status,
+				)
+				.await;
 		}
 	}
 
@@ -240,7 +275,9 @@ impl App {
 	}
 
 	pub fn set_logfile_with_focus(&mut self, logfile_name: String) {
-		if logfile_name.len() == 0 { return; }
+		if logfile_name.len() == 0 {
+			return;
+		}
 
 		match self.get_monitor_with_focus() {
 			Some(fading_monitor) => {
@@ -267,16 +304,23 @@ impl App {
 	}
 
 	pub fn change_focus_next(&mut self) {
-		if self.logfiles_manager.logfiles_added.len() == 0 { return; }
+		if self.logfiles_manager.logfiles_added.len() == 0 {
+			return;
+		}
 
-		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
+		let opt_debug_window = {
+			let opt = OPT.lock().unwrap();
+			opt.debug_window
+		};
 
 		if self.dash_state.main_view == DashViewMain::DashDebug {
 			return;
 		}
 
 		if self.dash_state.main_view == DashViewMain::DashSummary {
-			if self.dash_state.summary_window_heading_selected < self.dash_state.summary_window_headings.items.len() - 1 {
+			if self.dash_state.summary_window_heading_selected
+				< self.dash_state.summary_window_headings.items.len() - 1
+			{
 				self.dash_state.summary_window_heading_selected += 1;
 				self.update_summary_window();
 			}
@@ -308,9 +352,14 @@ impl App {
 	}
 
 	pub fn change_focus_previous(&mut self) {
-		if self.logfiles_manager.logfiles_added.len() == 0 { return; }
+		if self.logfiles_manager.logfiles_added.len() == 0 {
+			return;
+		}
 
-		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
+		let opt_debug_window = {
+			let opt = OPT.lock().unwrap();
+			opt.debug_window
+		};
 
 		if self.dash_state.main_view == DashViewMain::DashDebug {
 			return;
@@ -334,10 +383,7 @@ impl App {
 			}
 		}
 
-		if opt_debug_window
-			&& previous_i == len - 1
-			&& self.logfile_with_focus != DEBUG_WINDOW_NAME
-		{
+		if opt_debug_window && previous_i == len - 1 && self.logfile_with_focus != DEBUG_WINDOW_NAME {
 			self.set_logfile_with_focus(DEBUG_WINDOW_NAME.to_string());
 			return;
 		}
@@ -359,17 +405,26 @@ impl App {
 		}
 	}
 
-	pub fn handle_arrow_up(&mut self)   { self.handle_arrow(false); }
+	pub fn handle_arrow_up(&mut self) {
+		self.handle_arrow(false);
+	}
 
-	pub fn handle_arrow_down(&mut self) { self.handle_arrow( true); }
+	pub fn handle_arrow_down(&mut self) {
+		self.handle_arrow(true);
+	}
 
 	pub fn handle_arrow(&mut self, is_down: bool) {
-		if self.logfiles_manager.logfiles_added.len() == 0 { return; }
+		if self.logfiles_manager.logfiles_added.len() == 0 {
+			return;
+		}
 
-		let opt_debug_window = { let opt = OPT.lock().unwrap(); opt.debug_window };
+		let opt_debug_window = {
+			let opt = OPT.lock().unwrap();
+			opt.debug_window
+		};
 
 		let list = match self.dash_state.main_view {
-			DashViewMain::DashSummary => { Some(&mut self.dash_state.summary_window_rows) }
+			DashViewMain::DashSummary => Some(&mut self.dash_state.summary_window_rows),
 			DashViewMain::DashNode => {
 				if let Some(monitor) = self.get_monitor_with_focus() {
 					Some(&mut monitor.content)
@@ -379,7 +434,7 @@ impl App {
 					None
 				}
 			}
-			DashViewMain::DashHelp => { None }
+			DashViewMain::DashHelp => None,
 			DashViewMain::DashDebug => {
 				if opt_debug_window {
 					Some(&mut self.dash_state.debug_window_list)
@@ -395,27 +450,47 @@ impl App {
 	}
 
 	pub fn preserve_node_selection(&mut self) {
-		if self.logfiles_manager.logfiles_added.len() == 0 { return; }
+		if self.logfiles_manager.logfiles_added.len() == 0 {
+			return;
+		}
 
 		if self.dash_state.main_view == DashViewMain::DashSummary {
 			if let Some(selected_index) = self.dash_state.summary_window_rows.state.selected() {
 				let selected_logfile = &self.dash_state.logfile_names_sorted[selected_index];
-				if let Some(node_index) = self.logfiles_manager.logfiles_added.iter().position(|s| s == selected_logfile.as_str()) {
+				if let Some(node_index) = self
+					.logfiles_manager
+					.logfiles_added
+					.iter()
+					.position(|s| s == selected_logfile.as_str())
+				{
 					self.change_focus_to(node_index);
 				}
 			}
 		} else if self.dash_state.main_view == DashViewMain::DashNode {
 			for index in 0..self.dash_state.logfile_names_sorted.len() {
 				if self.dash_state.logfile_names_sorted[index] == self.logfile_with_focus {
-					self.dash_state.summary_window_rows.state.select(Some(index));
+					self
+						.dash_state
+						.summary_window_rows
+						.state
+						.select(Some(index));
 					break;
 				}
 			}
 
 			if let Some(monitor) = self.get_monitor_with_focus() {
 				let selected_logfile = monitor.logfile.clone();
-				if let Some(node_index) = self.dash_state.logfile_names_sorted.iter().position(|s| s == selected_logfile.as_str()) {
-					self.dash_state.summary_window_rows.state.select(Some(node_index));
+				if let Some(node_index) = self
+					.dash_state
+					.logfile_names_sorted
+					.iter()
+					.position(|s| s == selected_logfile.as_str())
+				{
+					self
+						.dash_state
+						.summary_window_rows
+						.state
+						.select(Some(node_index));
 				}
 			}
 		}
@@ -429,7 +504,9 @@ impl App {
 		self.dash_state.summary_window_rows = StatefulList::new();
 
 		// TODO could avoid this repeated copy by ensuring both are modified at the same time
-		self.dash_state.logfile_names_sorted = self.logfiles_manager.logfiles_added
+		self.dash_state.logfile_names_sorted = self
+			.logfiles_manager
+			.logfiles_added
 			.iter()
 			.map(|f| f.clone())
 			.collect();
@@ -447,23 +524,35 @@ impl App {
 			}
 		}
 
-		self.dash_state.summary_window_rows.state.select(current_selection);
+		self
+			.dash_state
+			.summary_window_rows
+			.state
+			.select(current_selection);
 	}
 
-	fn append_to_summary_window(&mut self, text: &str){
-		self.dash_state.summary_window_rows.items.push(text.to_string());
+	fn append_to_summary_window(&mut self, text: &str) {
+		self
+			.dash_state
+			.summary_window_rows
+			.items
+			.push(text.to_string());
 
 		let len = self.dash_state.summary_window_rows.items.len();
 
 		if len > self.dash_state.max_summary_window {
-			self.dash_state.summary_window_rows.items = self.dash_state
+			self.dash_state.summary_window_rows.items = self
+				.dash_state
 				.summary_window_rows
 				.items
 				.split_off(len - self.dash_state.max_summary_window);
 		} else {
-			self.dash_state.summary_window_rows.state.select(Some(len - 1));
+			self
+				.dash_state
+				.summary_window_rows
+				.state
+				.select(Some(len - 1));
 		}
-
 	}
 
 	pub fn toggle_logfile_area(&mut self) {
@@ -478,38 +567,36 @@ impl App {
 	}
 
 	pub fn scale_timeline_down(&mut self) {
-		if self.dash_state.active_timescale == TIMESCALES.len()-1 {
+		if self.dash_state.active_timescale == TIMESCALES.len() - 1 {
 			return;
 		}
 		self.dash_state.active_timescale += 1;
 	}
 
-    pub fn top_timeline_next(&mut self) {
-        if self.dash_state.top_timeline < APP_TIMELINES.len() {
-            self.dash_state.top_timeline += 1;
-        }
-        else {
-            self.dash_state.top_timeline = 0;
-        }
-    }
+	pub fn top_timeline_next(&mut self) {
+		if self.dash_state.top_timeline < APP_TIMELINES.len() {
+			self.dash_state.top_timeline += 1;
+		} else {
+			self.dash_state.top_timeline = 0;
+		}
+	}
 
-    pub fn top_timeline_previous(&mut self) {
-        if self.dash_state.top_timeline > 0 {
-            self.dash_state.top_timeline -= 1;
-        }
-        else {
-            self.dash_state.top_timeline = APP_TIMELINES.len() - 1;
-        }
-    }
+	pub fn top_timeline_previous(&mut self) {
+		if self.dash_state.top_timeline > 0 {
+			self.dash_state.top_timeline -= 1;
+		} else {
+			self.dash_state.top_timeline = APP_TIMELINES.len() - 1;
+		}
+	}
 
-    // Rotate UI display state through Min, Mean, Max values
-    pub fn bump_mmm_ui_mode(&mut self) {
-        self.dash_state.bump_mmm_ui_mode();
-    }
+	// Rotate UI display state through Min, Mean, Max values
+	pub fn bump_mmm_ui_mode(&mut self) {
+		self.dash_state.bump_mmm_ui_mode();
+	}
 
-    pub fn mmm_ui_mode(&mut self) -> &MinMeanMax {
-        return self.dash_state.mmm_ui_mode();
-    }
+	pub fn mmm_ui_mode(&mut self) -> &MinMeanMax {
+		return self.dash_state.mmm_ui_mode();
+	}
 }
 
 /// Move selection forward or back without wrapping at start or end
@@ -541,7 +628,7 @@ fn exit_with_usage(reason: &str) -> Result<App, std::io::Error> {
 	return Err(Error::new(ErrorKind::Other, reason));
 }
 
-const NODE_INACTIVITY_TIMEOUT_S: i64 = 20;	// Seconds with no log message before node becomes 'inactive'
+const NODE_INACTIVITY_TIMEOUT_S: i64 = 20; // Seconds with no log message before node becomes 'inactive'
 
 pub struct LogMonitor {
 	pub index: usize,
@@ -566,14 +653,15 @@ fn next_unused_index(monitors: &mut HashMap<String, LogMonitor>) -> usize {
 		next_index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
 
 		index_unused = true;
-		for (_logfile, monitor) in monitors.iter()  {
-			if next_index == monitor.index { index_unused = false; }
+		for (_logfile, monitor) in monitors.iter() {
+			if next_index == monitor.index {
+				index_unused = false;
+			}
 		}
 	}
 
 	next_index
 }
-
 
 use super::logfile_checkpoints::LogfileCheckpoint;
 
@@ -606,7 +694,9 @@ impl LogMonitor {
 	/// For a restored checkpoint the metrics should be set, so if one has metrics and the other
 	/// doesn't, the former is treated as older and given the lower index.
 	pub fn canonicalise_monitor_index(&mut self, monitors: &mut HashMap<String, LogMonitor>) {
-		if self.index == 0 { self.index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed); }
+		if self.index == 0 {
+			self.index = NEXT_MONITOR.fetch_add(1, Ordering::Relaxed);
+		}
 
 		let existing_index = NEXT_MONITOR.fetch_add(0, Ordering::Relaxed);
 		let next_index = next_unused_index(monitors);
@@ -619,7 +709,6 @@ impl LogMonitor {
 		}
 
 		if let Some(other) = clash_monitor {
-
 			let mut lower_index = self.index;
 			let mut higher_index = next_index;
 			if lower_index > higher_index {
@@ -649,7 +738,9 @@ impl LogMonitor {
 		}
 	}
 
-	pub fn is_node(&self) -> bool { return !self.is_debug_dashboard_log; }
+	pub fn is_node(&self) -> bool {
+		return !self.is_debug_dashboard_log;
+	}
 
 	pub fn from_checkpoint(&mut self, checkpoint: &LogfileCheckpoint) {
 		self.index = checkpoint.monitor_index;
@@ -666,9 +757,16 @@ impl LogMonitor {
 	// TODO if speed is an issue look at speeding up:
 	// TODO - LogEntry::decode_metadata()
 	// TODO - finding first log entry to decode using a bisection search
-	pub fn load_logfile_from_time(&mut self, dash_state: &mut DashState, after_time: Option<DateTime<Utc>>) -> std::io::Result<()> {
+	pub fn load_logfile_from_time(
+		&mut self,
+		dash_state: &mut DashState,
+		after_time: Option<DateTime<Utc>>,
+	) -> std::io::Result<()> {
 		if let Some(after_time) = after_time {
-			dash_state.vdash_status.message(&format!("loading logfile after time: {}", after_time).to_string(), None);
+			dash_state.vdash_status.message(
+				&format!("loading logfile after time: {}", after_time).to_string(),
+				None,
+			);
 		}
 
 		use std::io::{BufRead, BufReader};
@@ -690,7 +788,8 @@ impl LogMonitor {
 		}
 
 		if self.content.items.len() > 0 {
-			self.content
+			self
+				.content
 				.state
 				.select(Some(self.content.items.len() - 1));
 		}
@@ -698,15 +797,19 @@ impl LogMonitor {
 		Ok(())
 	}
 
-	pub fn append_to_content(&mut self, line: &str, checkpoint_interval: u64) -> Result<String, std::io::Error> {
+	pub fn append_to_content(
+		&mut self,
+		line: &str,
+		checkpoint_interval: u64,
+	) -> Result<String, std::io::Error> {
 		self.metrics.parser_output = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
-		// debug_log!(&self.parser_output.clone());
+																																												// debug_log!(&self.parser_output.clone());
 
 		self.metrics.entry_metadata = LogEntry::decode_metadata(line);
 
 		if self.metrics.entry_metadata.is_none() {
 			// debug_log!("gather_metrics() - skipping bec. metadata missing");
-			return Ok("".to_string());	// Skip until start of first log message
+			return Ok("".to_string()); // Skip until start of first log message
 		}
 
 		self._append_to_content(line)?; // Show in TUI
@@ -716,7 +819,8 @@ impl LogMonitor {
 
 		self.metrics.gather_metrics(&line)?;
 
-		if checkpoint_interval > 0 { 	// Checkpoints disabled by zero interval
+		if checkpoint_interval > 0 {
+			// Checkpoints disabled by zero interval
 			return self.update_checkpoint(checkpoint_interval);
 		}
 
@@ -729,7 +833,9 @@ impl LogMonitor {
 				return save_checkpoint(self);
 			} else {
 				if let Some(latest_checkpoint_time) = self.latest_checkpoint_time {
-					if latest_checkpoint_time + Duration::seconds(checkpoint_interval as i64) < metadata.message_time {
+					if latest_checkpoint_time + Duration::seconds(checkpoint_interval as i64)
+						< metadata.message_time
+					{
 						return save_checkpoint(self);
 					}
 				}
@@ -739,19 +845,28 @@ impl LogMonitor {
 		Ok("".to_string())
 	}
 
-	pub fn append_to_content_from_time(&mut self, _dash_state: &mut DashState, line: &str, after_time: Option<DateTime<Utc>>) -> Result<(), std::io::Error> {
+	pub fn append_to_content_from_time(
+		&mut self,
+		_dash_state: &mut DashState,
+		line: &str,
+		after_time: Option<DateTime<Utc>>,
+	) -> Result<(), std::io::Error> {
 		self.metrics.parser_output = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
-		// debug_log!(&self.parser_output.clone());
+																																												// debug_log!(&self.parser_output.clone());
 
 		if let Some(entry_metadata) = LogEntry::decode_metadata(line) {
 			if let Some(after_time) = after_time {
-				if !entry_metadata.message_time.gt(&after_time) { return Ok(()); }
+				if !entry_metadata.message_time.gt(&after_time) {
+					return Ok(());
+				}
 			}
 
 			self.metrics.entry_metadata = Some(entry_metadata);
 		} else {
 			// debug_log!("gather_metrics() - skipping bec. metadata missing");
-			if after_time.is_some() { return Ok(()); }
+			if after_time.is_some() {
+				return Ok(());
+			}
 		}
 
 		self._append_to_content(line)?; // Show in TUI
@@ -782,8 +897,7 @@ lazy_static::lazy_static! {
 		Regex::new(r"\[(?P<time_string>[^ ]{27}) (?P<category>[A-Z]{4,6}) (?P<source>.*)\](?P<message>.*)").expect("The regex failed to compile. This is a bug.");
 }
 
-#[derive(PartialEq)]
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Default, Debug, Serialize, Deserialize)]
 pub enum NodeStatus {
 	Started,
 	Connected,
@@ -801,24 +915,24 @@ pub fn node_status_as_string(node_status: &NodeStatus) -> String {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MmmStat {
-	sample_count:	u64,
+	sample_count: u64,
 
-	pub most_recent:	u64,
-	pub total:	u64,
-	pub min:	u64,
-	pub mean:	u64,
-	pub max:	u64,
+	pub most_recent: u64,
+	pub total: u64,
+	pub min: u64,
+	pub mean: u64,
+	pub max: u64,
 }
 
 impl MmmStat {
 	pub fn new() -> MmmStat {
 		MmmStat {
-			sample_count:	0,
-			most_recent: 	0,
-			total: 	0,
-			min: 	u64::MAX,
-			mean:	0,
-			max:	0,
+			sample_count: 0,
+			most_recent: 0,
+			total: 0,
+			min: u64::MAX,
+			mean: 0,
+			max: 0,
 		}
 	}
 
@@ -831,7 +945,9 @@ impl MmmStat {
 		if self.min > value || self.min == u64::MAX {
 			self.min = value;
 		}
-		if self.max < value { self.max = value; }
+		if self.max < value {
+			self.max = value;
+		}
 	}
 }
 
@@ -876,8 +992,8 @@ pub struct NodeMetrics {
 	pub total_mb_received: f32,
 	pub total_mb_transmitted: f32,
 
-	pub cpu_usage_percent:	f32,
-	pub cpu_usage_percent_max:	f32,
+	pub cpu_usage_percent: f32,
+	pub cpu_usage_percent_max: f32,
 	pub bytes_read: u64,
 	pub bytes_written: u64,
 	pub total_mb_read: f32,
@@ -954,7 +1070,9 @@ impl NodeMetrics {
 		metrics
 	}
 
-	pub fn is_node_active(&self) -> bool {return !self.node_inactive;}
+	pub fn is_node_active(&self) -> bool {
+		return !self.node_inactive;
+	}
 
 	pub fn update_node_status_string(&mut self) {
 		let node_inactive_timeout = Duration::seconds(NODE_INACTIVITY_TIMEOUT_S);
@@ -987,7 +1105,9 @@ impl NodeMetrics {
 	///! Process a line from a SAFE Node logfile.
 	///! Use a created LogMeta to update metrics.
 	pub fn gather_metrics(&mut self, line: &str) -> Result<(), std::io::Error> {
-		let entry = LogEntry { logstring: String::from(line) };
+		let entry = LogEntry {
+			logstring: String::from(line),
+		};
 		let entry_metadata = self.entry_metadata.as_ref().unwrap().clone();
 		let entry_time = entry_metadata.message_time;
 
@@ -1021,7 +1141,8 @@ impl NodeMetrics {
 			self.parser_output = format!(
 				"START node {} at {}",
 				String::from(version.clone()),
-				self.node_started
+				self
+					.node_started
 					.map_or(String::from("None"), |m| format!("{}", m))
 			);
 
@@ -1036,11 +1157,15 @@ impl NodeMetrics {
 			self.node_process_id = self.parse_u64(process_id_prefix, line);
 			let process_id = match &self.node_process_id {
 				Some(process_id) => process_id.to_string(),
-				None => String::from("unknown")
+				None => String::from("unknown"),
 			};
 
 			if let Some(peer_id) = self.parse_string("PeerId: ", line) {
-				self.parser_output = format!("Node pid: {} peer_id: {}", String::from(process_id.clone()), peer_id);
+				self.parser_output = format!(
+					"Node pid: {} peer_id: {}",
+					String::from(process_id.clone()),
+					peer_id
+				);
 				self.node_peer_id = Some(peer_id);
 			}
 			return true;
@@ -1053,8 +1178,8 @@ impl NodeMetrics {
 	///! Returns true if the line has been processed and can be discarded
 	pub fn process_logfile_entry(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
 		return self.parse_timed_data(&line, &entry_metadata.message_time)
-		|| self.parse_states(&line, &entry_metadata)
-		|| self.parse_start(&line, &entry_metadata);
+			|| self.parse_states(&line, &entry_metadata)
+			|| self.parse_start(&line, &entry_metadata);
 	}
 
 	fn parse_timed_data(&mut self, line: &String, entry_time: &DateTime<Utc>) -> bool {
@@ -1066,7 +1191,8 @@ impl NodeMetrics {
 			self.count_put(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
-		} else if line.contains("Editing Register success") {	// TODO: no longer present, find new log message
+		} else if line.contains("Editing Register success") {
+			// TODO: no longer present, find new log message
 			self.count_put(&entry_time);
 			self.node_status = NodeStatus::Connected;
 			return true;
@@ -1075,9 +1201,9 @@ impl NodeMetrics {
 				self.count_storage_cost(entry_time, storage_cost);
 				self.parser_output = format!("Storage cost: {}", storage_cost);
 			};
-			return false;	// Continue processing for records stored (parse_states())
+			return false; // Continue processing for records stored (parse_states())
 		} else if line.contains("nanos accepted for record") {
-			if 	let Some(storage_payment) = self.parse_u64("payment of NanoTokens(", line) {
+			if let Some(storage_payment) = self.parse_u64("payment of NanoTokens(", line) {
 				self.count_storage_payment(entry_time, storage_payment);
 				self.parser_output = format!("Payment received: {}", storage_payment);
 				return true;
@@ -1103,7 +1229,7 @@ impl NodeMetrics {
 
 			if let Some(string_end) = line[string_start..].find("\"") {
 				string = line.as_str()[string_start..string_start + string_end].as_ref()
-				} else {
+			} else {
 				string = line.as_str()[string_start..].as_ref()
 			}
 			if string.is_empty() {
@@ -1111,7 +1237,11 @@ impl NodeMetrics {
 			}
 		};
 
-		if string.len() > 0 { Some(String::from(string)) } else { None }
+		if string.len() > 0 {
+			Some(String::from(string))
+		} else {
+			None
+		}
 	}
 
 	///! Capture state updates from a logfile entry
@@ -1131,11 +1261,11 @@ impl NodeMetrics {
 		}
 
 		if content.contains("Cost is now") {
-			if let Some(records_stored) = self.parse_u64("for ", line) {
+			if let Some(records_stored) = self.parse_u64("records_stored: ", line) {
 				self.records_stored = records_stored;
 				self.parser_output = format!("Records stored: {}", records_stored);
 			};
-			if let Some(records_max) = self.parse_u64("stored of ", line) {
+			if let Some(records_max) = self.parse_u64("max_records: ", line) {
 				self.records_max = records_max;
 				self.parser_output = format!("{}, Max records: {}", self.parser_output, records_max);
 			};
@@ -1165,11 +1295,19 @@ impl NodeMetrics {
 			};
 			if let Some(system_memory_used_mb) = self.parse_float32("system_memory_used_mb\":", content) {
 				self.system_memory_used_mb = system_memory_used_mb;
-				parser_output = format!("{} , System Memory Use (MB): {}", &parser_output, system_memory_used_mb);
+				parser_output = format!(
+					"{} , System Memory Use (MB): {}",
+					&parser_output, system_memory_used_mb
+				);
 			};
-			if let Some(system_memory_usage_percent) = self.parse_float32("system_memory_usage_percent\":", content) {
+			if let Some(system_memory_usage_percent) =
+				self.parse_float32("system_memory_usage_percent\":", content)
+			{
 				self.system_memory_usage_percent = system_memory_usage_percent;
-				parser_output = format!("{} , System Memory Use (%): {}", &parser_output, system_memory_usage_percent);
+				parser_output = format!(
+					"{} , System Memory Use (%): {}",
+					&parser_output, system_memory_usage_percent
+				);
 			};
 
 			// Networking
@@ -1183,25 +1321,36 @@ impl NodeMetrics {
 			};
 			if let Some(bytes_transmitted) = self.parse_u64("bytes_transmitted\":", content) {
 				self.bytes_transmitted = bytes_transmitted;
-				parser_output = format!("{} , bytes_transmitted: {}", &parser_output, bytes_transmitted);
+				parser_output = format!(
+					"{} , bytes_transmitted: {}",
+					&parser_output, bytes_transmitted
+				);
 			};
 			if let Some(total_mb_received) = self.parse_float32("total_mb_received\":", content) {
 				self.total_mb_received = total_mb_received;
-				parser_output = format!("{} , total_mb_received: {}", &parser_output, total_mb_received);
+				parser_output = format!(
+					"{} , total_mb_received: {}",
+					&parser_output, total_mb_received
+				);
 			};
 			if let Some(total_mb_transmitted) = self.parse_float32("total_mb_transmitted\":", content) {
 				self.total_mb_transmitted = total_mb_transmitted;
-				parser_output = format!("{} , total_mb_transmitted: {}", &parser_output, total_mb_transmitted);
+				parser_output = format!(
+					"{} , total_mb_transmitted: {}",
+					&parser_output, total_mb_transmitted
+				);
 			};
 
 			// Node Resources
 			if let Some(cpu_usage_percent) = self.parse_float32("\"cpu_usage_percent\":", content) {
-
 				self.cpu_usage_percent = cpu_usage_percent;
 				if cpu_usage_percent > self.cpu_usage_percent_max {
 					self.cpu_usage_percent_max = cpu_usage_percent;
 				}
-				parser_output = format!("{}  cpu: {}, cpu_max {}", &parser_output, cpu_usage_percent, self.cpu_usage_percent_max);
+				parser_output = format!(
+					"{}  cpu: {}, cpu_max {}",
+					&parser_output, cpu_usage_percent, self.cpu_usage_percent_max
+				);
 			};
 			if let Some(memory_used_mb) = self.parse_float32("\"memory_used_mb\":", content) {
 				self.count_memory_used_mb(&entry_metadata.message_time, memory_used_mb as u64);
@@ -1221,7 +1370,10 @@ impl NodeMetrics {
 			};
 			if let Some(total_mb_written) = self.parse_float32("total_mb_written\":", content) {
 				self.total_mb_written = total_mb_written;
-				parser_output = format!("{} , total_mb_written: {}", &parser_output, total_mb_written);
+				parser_output = format!(
+					"{} , total_mb_written: {}",
+					&parser_output, total_mb_written
+				);
 			};
 
 			self.parser_output = parser_output;
@@ -1266,12 +1418,18 @@ impl NodeMetrics {
 		if let Some(position) = content.find(prefix) {
 			let word: Vec<&str> = content[position + prefix.len()..]
 				.trim()
-				.splitn(2, |c| c == ' ' || c == ',' || c== '}' || c== ')')
+				.splitn(2, |c| c == ' ' || c == ',' || c == '}' || c == ')')
 				.collect();
 			if word.len() > 0 {
 				match word[0].parse::<u64>() {
 					Ok(value) => return Some(value),
-					Err(_e) => self.parser_output = format!("failed to parse '{}' as u64 from: '{}'", word[0], &content[position + prefix.len()..]),
+					Err(_e) => {
+						self.parser_output = format!(
+							"failed to parse '{}' as u64 from: '{}'",
+							word[0],
+							&content[position + prefix.len()..]
+						)
+					}
 				}
 			}
 		}
@@ -1282,12 +1440,18 @@ impl NodeMetrics {
 		if let Some(position) = content.find(prefix) {
 			let word: Vec<&str> = content[position + prefix.len()..]
 				.trim()
-				.splitn(2, |c| c == ' ' || c == ',' || c== '}')
+				.splitn(2, |c| c == ' ' || c == ',' || c == '}')
 				.collect();
 			if word.len() > 0 {
 				match word[0].parse::<f32>() {
 					Ok(value) => return Some(value),
-					Err(_e) => self.parser_output = format!("failed to parse '{}' as float from: '{}'", word[0], &content[position + prefix.len()..]),
+					Err(_e) => {
+						self.parser_output = format!(
+							"failed to parse '{}' as float from: '{}'",
+							word[0],
+							&content[position + prefix.len()..]
+						)
+					}
 				}
 			}
 		}
@@ -1298,7 +1462,7 @@ impl NodeMetrics {
 		if let Some(start) = content.find(prefix) {
 			let word: Vec<&str> = content[start + prefix.len()..]
 				.trim_start()
-				.splitn(2, |c| c == ' ' || c == ',' || c== '}')
+				.splitn(2, |c| c == ' ' || c == ',' || c == '}')
 				.collect();
 			if word.len() > 0 {
 				return Some(word[0].to_string());
@@ -1346,7 +1510,7 @@ impl NodeMetrics {
 
 	fn apply_timeline_sample(&mut self, timeline_key: &str, time: &DateTime<Utc>, value: u64) {
 		if let Some(timeline) = self.app_timelines.get_timeline_by_key(timeline_key) {
-				timeline.update_value(time, value);
+			timeline.update_value(time, value);
 		}
 	}
 }
@@ -1378,7 +1542,7 @@ impl LogMeta {
 
 ///! Used to build a history of what is in the log, one LogMeta per line
 pub struct LogEntry {
-	pub logstring: String,			// One line of raw text from the logfile
+	pub logstring: String, // One line of raw text from the logfile
 }
 
 impl LogEntry {
@@ -1407,7 +1571,7 @@ impl LogEntry {
 				}
 				Err(e) => {
 					debug_log!(format!("ERROR parsing logfile time: {}", e).as_str());
-					return None
+					return None;
 				}
 			};
 			let parser_output = format!(
@@ -1429,9 +1593,7 @@ impl LogEntry {
 }
 
 ///! Active UI at top level
-#[derive(PartialEq)]
-#[derive(Clone)]
-#[derive(Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum DashViewMain {
 	DashSummary,
 	DashNode,
@@ -1453,10 +1615,10 @@ pub struct DashState {
 	pub active_timescale: usize,
 	pub node_logfile_visible: bool,
 	pub dash_node_focus: String,
-    pub mmm_ui_mode:   MinMeanMax,
-    pub top_timeline: usize,  // Timeline to show at top of UI
+	pub mmm_ui_mode: MinMeanMax,
+	pub top_timeline: usize, // Timeline to show at top of UI
 
-	pub summary_window_heading: String,	// TODO delete in favour of...
+	pub summary_window_heading: String, // TODO delete in favour of...
 	pub summary_window_headings: StatefulList<String>,
 	pub summary_window_heading_selected: usize,
 	pub summary_window_rows: StatefulList<String>,
@@ -1477,13 +1639,15 @@ use super::ui_status::StatusMessage;
 
 impl DashState {
 	pub fn new() -> DashState {
-
 		let mut new_dash = DashState {
-			vdash_status: StatusMessage::new(&String::from(UI_STATUS_DEFAULT_MESSAGE), &Duration::seconds(UI_STATUS_DEFAULT_DURATION_S)),
+			vdash_status: StatusMessage::new(
+				&String::from(UI_STATUS_DEFAULT_MESSAGE),
+				&Duration::seconds(UI_STATUS_DEFAULT_DURATION_S),
+			),
 
 			main_view: DashViewMain::DashSummary,
 			previous_main_view: DashViewMain::DashSummary,
-			logfile_names_sorted: Vec::<String>::new(),	// Sorted by column
+			logfile_names_sorted: Vec::<String>::new(), // Sorted by column
 			logfile_names_sorted_ascending: true,
 
 			currency_symbol: String::from(""),
@@ -1494,7 +1658,7 @@ impl DashState {
 			node_logfile_visible: true,
 			dash_node_focus: String::new(),
 			mmm_ui_mode: MinMeanMax::Mean,
-            top_timeline: 0,
+			top_timeline: 0,
 
 			summary_window_heading: String::from(""),
 			summary_window_headings: StatefulList::new(),
@@ -1537,18 +1701,21 @@ impl DashState {
 		};
 	}
 
-    // Rotate UI display state through Min, Mean, Max values
-    pub fn bump_mmm_ui_mode(&mut self) {
-        match &self.mmm_ui_mode {
-            MinMeanMax::Min => self.mmm_ui_mode = MinMeanMax::Mean,
-            MinMeanMax::Mean => self.mmm_ui_mode = MinMeanMax::Max,
-            MinMeanMax::Max => self.mmm_ui_mode = MinMeanMax::Min,
-        }
-    }
+	// Rotate UI display state through Min, Mean, Max values
+	pub fn bump_mmm_ui_mode(&mut self) {
+		match &self.mmm_ui_mode {
+			MinMeanMax::Min => self.mmm_ui_mode = MinMeanMax::Mean,
+			MinMeanMax::Mean => self.mmm_ui_mode = MinMeanMax::Max,
+			MinMeanMax::Max => self.mmm_ui_mode = MinMeanMax::Min,
+		}
+	}
 
-	pub fn top_timeline_index(&self)  -> usize { return self.top_timeline; }
-	pub fn mmm_ui_mode(&self) -> &MinMeanMax { &self.mmm_ui_mode }
-
+	pub fn top_timeline_index(&self) -> usize {
+		return self.top_timeline;
+	}
+	pub fn mmm_ui_mode(&self) -> &MinMeanMax {
+		&self.mmm_ui_mode
+	}
 }
 
 pub struct DashVertical {
@@ -1576,8 +1743,7 @@ pub fn save_focus(app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashHelp => {}
 
-		DashViewMain::DashSummary|
-		DashViewMain::DashNode => {
+		DashViewMain::DashSummary | DashViewMain::DashNode => {
 			if let Some(focus) = app.get_logfile_with_focus() {
 				app.dash_state.dash_node_focus = focus;
 			}
@@ -1590,8 +1756,7 @@ pub fn restore_focus(app: &mut App) {
 	match app.dash_state.main_view {
 		DashViewMain::DashHelp => {}
 
-		DashViewMain::DashSummary|
-		DashViewMain::DashNode => {
+		DashViewMain::DashSummary | DashViewMain::DashNode => {
 			app.set_logfile_with_focus(app.dash_state.dash_node_focus.clone())
 		}
 		DashViewMain::DashDebug => {
