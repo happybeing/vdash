@@ -903,6 +903,7 @@ pub enum NodeStatus {
 	Connected,
 	#[default]
 	Stopped,
+	Shunned,
 }
 
 pub fn node_status_as_string(node_status: &NodeStatus) -> String {
@@ -910,6 +911,7 @@ pub fn node_status_as_string(node_status: &NodeStatus) -> String {
 		NodeStatus::Connected => "Connected".to_string(),
 		NodeStatus::Stopped => "Stopped".to_string(),
 		NodeStatus::Started => "Started".to_string(),
+		NodeStatus::Shunned => "SHUNNED".to_string(),
 	}
 }
 
@@ -964,6 +966,7 @@ pub struct NodeMetrics {
 
 	pub entry_metadata: Option<LogMeta>,
 	pub node_status: NodeStatus,
+	pub node_bad_behaviour: String,
 	pub node_status_string: String,
 	pub node_inactive: bool,
 
@@ -1031,6 +1034,7 @@ impl NodeMetrics {
 
 			// State (node)
 			node_status: NodeStatus::Stopped,
+			node_bad_behaviour: String::from(""),
 			node_status_string: String::from(""),
 			node_inactive: false,
 
@@ -1079,7 +1083,9 @@ impl NodeMetrics {
 
 		let mut node_status_string = node_status_as_string(&self.node_status);
 
-		if let Some(metadata) = &self.entry_metadata {
+		if self.node_status == NodeStatus::Shunned {
+			node_status_string = format!("SHUNNED ({})", self.node_bad_behaviour);
+		} else if let Some(metadata) = &self.entry_metadata {
 			let idle_time = Utc::now() - metadata.system_time;
 			if idle_time > node_inactive_timeout {
 				self.node_inactive = true;
@@ -1175,9 +1181,10 @@ impl NodeMetrics {
 	}
 
 	///! Process a logfile entry
-	///! Returns true if the line has been processed and can be discarded
+	///! Returns true if node is being shunned, or the line has been processed and can be discarded
 	pub fn process_logfile_entry(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
-		return self.parse_timed_data(&line, &entry_metadata.message_time)
+		return self.node_status == NodeStatus::Shunned
+			|| self.parse_timed_data(&line, &entry_metadata.message_time)
 			|| self.parse_states(&line, &entry_metadata)
 			|| self.parse_start(&line, &entry_metadata);
 	}
@@ -1213,6 +1220,15 @@ impl NodeMetrics {
 			if let Some(peers_connected) = self.parse_u64("PeersInRoutingTable(", line) {
 				self.count_peers_connected(entry_time, peers_connected);
 				parser_output = format!("{} {}", &parser_output, peers_connected);
+			};
+			self.parser_output = parser_output;
+			return true;
+		} else if line.contains("consider us as BAD") {
+			let mut parser_output = String::from("Node being SHUNNED");
+			self.node_status = NodeStatus::Shunned;
+			if let Some(bad_behaviour) = self.parse_string("due to ", line) {
+				self.node_bad_behaviour = bad_behaviour.clone();
+				parser_output = format!("Shunned due to '{}'", bad_behaviour);
 			};
 			self.parser_output = parser_output;
 			return true;
