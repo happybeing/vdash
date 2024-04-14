@@ -1226,7 +1226,7 @@ impl NodeMetrics {
 		} else if line.contains("consider us as BAD") {
 			let mut parser_output = String::from("Node being SHUNNED");
 			self.node_status = NodeStatus::Shunned;
-			if let Some(bad_behaviour) = self.parse_string("due to ", line) {
+			if let Some(bad_behaviour) = self.parse_string("due to \"", line) {
 				self.node_bad_behaviour = bad_behaviour.clone();
 				parser_output = format!("Shunned due to '{}'", bad_behaviour);
 			};
