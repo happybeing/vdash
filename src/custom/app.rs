@@ -1140,7 +1140,7 @@ impl NodeMetrics {
 		let running_prefix = String::from("Running safenode ");
 
 		if line.starts_with(&running_prefix) {
-			self.node_status = NodeStatus::Started;
+			self.set_node_status(NodeStatus::Started);
 			let message = line.to_string();
 			let version = String::from(line[running_prefix.len()..].to_string());
 			self.node_started = Some(entry_metadata.message_time);
@@ -1183,8 +1183,7 @@ impl NodeMetrics {
 	///! Process a logfile entry
 	///! Returns true if node is being shunned, or the line has been processed and can be discarded
 	pub fn process_logfile_entry(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
-		return self.node_status == NodeStatus::Shunned
-			|| self.parse_timed_data(&line, &entry_metadata.message_time)
+		return self.parse_timed_data(&line, &entry_metadata.message_time)
 			|| self.parse_states(&line, &entry_metadata)
 			|| self.parse_start(&line, &entry_metadata);
 	}
@@ -1192,16 +1191,16 @@ impl NodeMetrics {
 	fn parse_timed_data(&mut self, line: &String, entry_time: &DateTime<Utc>) -> bool {
 		if line.contains("Retrieved record from disk") {
 			self.count_get(&entry_time);
-			self.node_status = NodeStatus::Connected;
+			self.set_node_status(NodeStatus::Connected);
 			return true;
 		} else if line.contains("Wrote record") || line.contains("ValidSpendRecordPutFromNetwork") {
 			self.count_put(&entry_time);
-			self.node_status = NodeStatus::Connected;
+			self.set_node_status(NodeStatus::Connected);
 			return true;
 		} else if line.contains("Editing Register success") {
 			// TODO: no longer present, find new log message
 			self.count_put(&entry_time);
-			self.node_status = NodeStatus::Connected;
+			self.set_node_status(NodeStatus::Connected);
 			return true;
 		} else if line.contains("Cost is now") {
 			if let Some(storage_cost) = self.parse_u64("Cost is now ", line) {
@@ -1225,7 +1224,7 @@ impl NodeMetrics {
 			return true;
 		} else if line.contains("consider us as BAD") {
 			let mut parser_output = String::from("Node being SHUNNED");
-			self.node_status = NodeStatus::Shunned;
+			self.set_node_status(NodeStatus::Shunned);
 			if let Some(bad_behaviour) = self.parse_string("due to \"", line) {
 				self.node_bad_behaviour = bad_behaviour.clone();
 				parser_output = format!("Shunned due to '{}'", bad_behaviour);
@@ -1234,6 +1233,13 @@ impl NodeMetrics {
 			return true;
 		}
 		return false;
+	}
+
+	// Set status unless currently shunned
+	fn set_node_status(&mut self, new_status: NodeStatus) {
+		if self.node_status != NodeStatus::Shunned {
+			self.node_status = new_status;
+		}
 	}
 
 	///! Update data metrics from a handler response logfile entry
@@ -1271,7 +1277,7 @@ impl NodeMetrics {
 
 		// Node Status
 		if content.contains("Node events channel closed") {
-			self.node_status = NodeStatus::Stopped;
+			self.set_node_status(NodeStatus::Stopped);
 			self.parser_output = String::from("Node status: Disconnected");
 			return true;
 		}
