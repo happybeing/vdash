@@ -984,6 +984,8 @@ pub struct NodeMetrics {
 	pub records_stored: u64,
 	pub records_max: u64,
 
+	pub shun_notifications: u64,
+
 	pub system_cpu: f32,
 	pub system_memory: f32,
 	pub system_memory_used_mb: f32,
@@ -1048,6 +1050,8 @@ impl NodeMetrics {
 			records_stored: 0,
 			records_max: 0,
 
+			shun_notifications: 0,
+
 			system_cpu: 0.0,
 			system_memory: 0.0,
 			system_memory_used_mb: 0.0,
@@ -1084,7 +1088,10 @@ impl NodeMetrics {
 		let mut node_status_string = node_status_as_string(&self.node_status);
 
 		if self.node_status == NodeStatus::Shunned {
-			node_status_string = format!("SHUNNED ({})", self.node_bad_behaviour);
+			node_status_string = format!(
+				"Shunned x{} ({})",
+				self.shun_notifications, self.node_bad_behaviour
+			);
 		} else if let Some(metadata) = &self.entry_metadata {
 			let idle_time = Utc::now() - metadata.system_time;
 			if idle_time > node_inactive_timeout {
@@ -1225,6 +1232,7 @@ impl NodeMetrics {
 		} else if line.contains("consider us as BAD") {
 			let mut parser_output = String::from("Node being SHUNNED");
 			self.set_node_status(NodeStatus::Shunned);
+			self.shun_notifications = self.shun_notifications + 1;
 			if let Some(bad_behaviour) = self.parse_string("due to \"", line) {
 				self.node_bad_behaviour = bad_behaviour.clone();
 				parser_output = format!("Shunned due to '{}'", bad_behaviour);
