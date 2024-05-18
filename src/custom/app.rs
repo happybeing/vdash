@@ -1211,8 +1211,11 @@ impl NodeMetrics {
 			return true;
 		} else if line.contains("Cost is now") {
 			if let Some(storage_cost) = self.parse_u64("Cost is now ", line) {
-				self.count_storage_cost(entry_time, storage_cost);
-				self.parser_output = format!("Storage cost: {}", storage_cost);
+				// Ignore storage cost of zero as that means the record is already paid for
+				if storage_cost > 0 {
+					self.count_storage_cost(entry_time, storage_cost);
+					self.parser_output = format!("Storage cost: {}", storage_cost);
+				}
 			};
 			return false; // Continue processing for records stored (parse_states())
 		} else if line.contains("nanos accepted for record") {
