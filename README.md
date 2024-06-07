@@ -1,6 +1,6 @@
-# Safe Network node Dashboard
+# Autononomi node Dashboard
 
-`vdash` is a terminal based dashboard for monitoring Safe Network nodes. It is written in
+`vdash` is a terminal based dashboard for monitoring Autononomi nodes. It is written in
 Rust, the terminal GUI is implemented using [ratatui](https://github.com/ratatui-org/ratatui) and it monitors one or more node logfiles using [linemux](https://github.com/jmagnuson/linemux).
 
 **Status:** working on Windows, MacOS and Linux with public and local test networks.
@@ -8,7 +8,7 @@ Rust, the terminal GUI is implemented using [ratatui](https://github.com/ratatui
 `vdash` can monitor multiple logfiles on the local machine, showing multiple metrics for each node including number of PUTS (chunks stored), current price being charged for storage, and node earnings. Many metrics appear both as numeric values and can be viewed in real-time graphical charts over time.
 
 ## Discussion and Bug Reports
-A Safe Network forum topic is the main forum for discussion: [Vdash - Node dashboard for Safe Network](https://safenetforum.org/t/vdash-node-dashboard-for-safe-network/32630)
+A Autononomi forum topic is the main forum for discussion: [Vdash - Node dashboard for Autonomi nodes](https://forum.autonomi.community/t/vdash-dashboard-for-autonomi-nodes/32630?u=happybeing)
 
 Bug reports and feature requests can be made in [github issues](https://github.com/happybeing/vdash/issues).
 
@@ -94,16 +94,16 @@ To build `vdash` on Windows, clone vdash, build with `+nightly` and use the bina
 
     ./target/release/vdash --help
 
-## Using vdash - a Safe Network node Dashboard
-`vdash` provides a terminal based graphical dashboard of Safe Network node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
+## Using vdash - a Autononomi node Dashboard
+`vdash` provides a terminal based graphical dashboard of Autononomi node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
 
 
-## Get Safe Network pre-requisites
+## Get Autononomi pre-requisites
 1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-2. **Get the Safe CLI:** either download using an install script or build the Safe CLI locally. Instructions for both options are [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#safe-network-cli).
+2. **Get the Autonomi Node Applications:** There are two options for running nodes at the launch of the beta on 5th June 2024. The `node-launchpad` is a simple terminal based UI (TUI) and the `safenode-manager` is command line program for 'power users', although the community can help you use either. See https://autonomi.com for details of how to obtain these apps and join the beta.
 
-3. **Get the Safe node:** when you have the Safe CLI working you can install the node software with the command ` safe node install` (details [here](https://github.com/maidsafe/sn_api/tree/master/sn_cli#node-install)).
+3. **Start your Autonomi Nodes:** See https://docs.autonomi.com for documentation and join the [forum](https://forum.autonomi.community) if you need help.
 
 You are now ready to install `vdash` and can test it by running a local test network.
 
@@ -113,19 +113,23 @@ For help:
 
     vdash --help
 
-Typically you can just pass the paths of one or more node logfiles you want to monitor. For example, to run `vdash` first start your Safe Network node(s) with one or more `safenode` commands. Then, assuming their logfiles are in the standard location start `vdash` with:
+Typically you can just pass the paths of one or more node logfiles you want to monitor. For example, to run `vdash` first start your Autononomi node(s) with on of the Autonomi Node Applications (see above).
+
+Then, start `vdash`. You can give a path to one or more logfiles. You can also use `-g` to specify a glob path. When you provide a glob path you can press 'r' to re-scan the path for logfiles after starting more nodes.
+
+The path to logfiles vary depending on which Autonomi Node Application you are using, and also on your operating system. The following are just examples so you will need to provide paths for your particular setup.
 
 **Linux:**
 
-    vdash ~/.local/share/safe/node/*/logs/safenode.log
+    vdash -g "/home/<USERNAME>/.local/share/safe/node/safenode*/logs/safenode.log"
 
 **Mac:**
 
-    vdash "/Users/<username>/Library/Application Support/safe/node/*/logs/safenode.log"
+    vdash "/Users/<USERNAME>/Library/Application Support/safe/node/*/logs/safenode.log"
 
 **Windows:**
 
-    vdash C:\Users\<username>\AppData\Roaming\safe\node\*\logs\safenode.log
+    vdash C:\Users\<USERNAME>\AppData\Roaming\safe\node\*\logs\safenode.log
 
 Keyboard commands for `vdash` are summarised in the introduction above.
 
@@ -137,16 +141,16 @@ Keyboard commands for `vdash` are summarised in the introduction above.
 
 Note that unlike a file path you must use quotation marks around a 'glob' path to prevent the shell from trying to expand it. In the examples you will need to replace `<USER>` with the appropriate home directory name for your account.
 
-Examples for Linux:
+Example for Linux:
 
-    vdash --glob-path "/home/<USER>/.local/share/safe/node/*/logs/safenode.log"
-
-    vdash -g "$HOME/.local/share/safe/node/**/safenode.log" -g "./remote-node-logs/*/logs/safenode.log" --glob-scan 5
+    vdash --glob-path "$HOME/.local/share/safe/node/safenode*/logs/safenode.log"
 
 Using double rather than single quotes enables you to use '$HOME' in the path instead of giving the home directory explicitly.
 
+The path to logfiles vary depending on which Autonomi Node Application you are using, and also on your operating system. The following are just examples so you will need to provide paths for your particular setup.
+
 ### Display of Token values
-`vdash` shows node earnings and storage cost in terms of Safe Network tokens as 'nanos' or billionths of a token. It can though
+`vdash` shows node earnings and storage cost in terms of Autononomi tokens as 'nanos' or billionths of a token. It can though
 be made to display token values in a local currency (e.g. U.S. dollar, British pound etc). For this it needs
 a way to obtain the conversion rate for the currency and be told what symbol to use in the
 display (e.g. "$", "£" etc.).
@@ -168,7 +172,7 @@ You can use the above to provide a default conversion and have live prices overr
 For more type `vdash --help`.
 
 ### Live Prices via Web API
-`vdash` can obtain the Safe Network token price in a specified currency from the
+`vdash` can obtain the Autononomi token price in a specified currency from the
 Coingecko.com or Coinmarketcap.com web APIs provided you have an access key for the corresponding API. At this time, both offer both paid and free/demo API
 keys which you obtain by signing up for an account with those websites.
 
@@ -192,13 +196,9 @@ To have `vdash` obtain the token rate from Coinmarketcap.com include the followi
 --currency-apiname "GBP" --currency-symbol "£" --coinmarketcap-key "YOUR-API-KEY"
 ```
 
-### Safe Node Setup
+### Using vdash
 
-```sh
-pkill safenode
-rm -rf ~/.local/share/safe/node
-```
-To start a node using `safenode` you should check you are using the correct parameters for your system setup.
+Start your nodes using an Autonomi Node Application.
 
 When your node or nodes have started, run `vdash`, typically in a different terminal:
 ```sh
@@ -211,31 +211,14 @@ For example, to enable display of earnings and storage costs using local currenc
 vdash --currency-apiname "USD" --currency-symbol "$" --glob-path "$HOME/.local/share/safe/node/*/logs/safenode.log"
 ```
 
-Note:
-
-- `pkill safenode` makes sure no existing nodes are still running, and
-  deleting the `node` directory prevents you picking up statistics from previous logfiles. If you leave the logfile in place then `vdash` will waste time
-  processing that, although you can skip that process using a command line option.
-
-### Using vdash With a Live Network
-
-If you want to try `vdash` with a live network, check to see if one is running at the Safe Network community forum [releases category](https://safenetforum.org/c/development/releases/) and follow the instructions in the first post of the relevant topic.
-
-Once you have started some nodes you can monitor them all at once using the following command (Linux version):
-
-```sh
-vdash --currency-apiname "USD" --currency-symbol "$" --glob-path "$HOME/.local/share/safe/node/*/logs/safenode.log"
-```
-
-There's a very welcoming and knowledgeable community there so if you need any help don't be shy to ask. Post a request on the forum topic and someone will be sure to help you get things working.
-
 ### Using vdash With a Local Test Network
 
-First clone the Safe Network repository and change directory into the cloned copy:
+First clone the Autononomi repository and change directory into the cloned copy and checkout branch `stable`:
 
 ```sh
 git clone https://github.com/maidsafe/safe_network
 cd safe_network
+git checkout stable
 ```
 
 Then start a local test network using the instructions [here](https://github.com/maidsafe/safe_network/#run-your-maidsafe-local-test-network-in-4-easy-steps).
@@ -250,7 +233,7 @@ If you return to the instructions [here](https://github.com/maidsafe/safe_networ
 
 ## Build (for Developers Only)
 
-See [Get Safe Network Pre-requisites](#get-safe-network-pre-requisites).
+See [Get Autononomi Pre-requisites](#get-autonomi-pre-requisites).
 
 ### Get code
 ```
