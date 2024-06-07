@@ -894,7 +894,7 @@ impl LogMonitor {
 use regex::Regex;
 lazy_static::lazy_static! {
 	static ref LOG_LINE_PATTERN: Regex =
-		Regex::new(r"\[(?P<time_string>[^ ]{27}) (?P<category>[A-Z]{4,6}) (?P<source>.*)\](?P<message>.*)").expect("The regex failed to compile. This is a bug.");
+		Regex::new(r"\[(?P<time_string>[^ ]{27}) (?P<category>[A-Z]{4,6}) (?P<source>[^\]]*)\] (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
 }
 
 #[derive(PartialEq, Clone, Default, Debug, Serialize, Deserialize)]
@@ -1796,6 +1796,34 @@ pub fn restore_focus(app: &mut App) {
 			if let Some(debug_logfile) = app.get_debug_dashboard_logfile() {
 				app.set_logfile_with_focus(debug_logfile);
 			}
+		}
+	}
+}
+#[cfg(test)]
+mod tests {
+
+	mod log_parsing {
+		use std::str::FromStr;
+
+		use chrono::{DateTime, Utc};
+
+		use crate::custom::app::LogEntry;
+
+		#[test]
+		fn it_parses() {
+			let message_time = "2024-03-23T19:38:32.350118Z";
+			let source = "sn_networking::event";
+			let category = "WARN";
+			let message = "MsgReceivedError: InternalMsgChannelDropped";
+			let line = format!("[{} {} {}] {}", message_time, category, source, message);
+			let metadata = LogEntry::decode_metadata(&line).unwrap();
+
+			let message_time: DateTime<Utc> = DateTime::from_str(message_time).unwrap();
+
+			assert_eq!(metadata.category, category);
+			assert_eq!(metadata.message_time, message_time);
+			assert_eq!(metadata.source, source);
+			assert_eq!(metadata.message, message);
 		}
 	}
 }
