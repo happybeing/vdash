@@ -26,6 +26,7 @@ pub fn save_checkpoint(monitor: &mut LogMonitor) -> Result<String, Error> {
 
     let mut checkpoint = LogfileCheckpoint::new();
     monitor.to_checkpoint(&mut checkpoint);
+    checkpoint.latest_entry_time = last_entry_time;
 
     let checkpoint_string = serde_json::to_string(&checkpoint).unwrap();
     match fs::write(checkpoint_tmp_path.clone(), checkpoint_string) {
