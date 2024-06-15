@@ -973,7 +973,7 @@ pub struct NodeMetrics {
 	pub activity_gets: MmmStat,
 	pub activity_puts: MmmStat,
 	pub activity_errors: MmmStat,
-	pub storage_payments: MmmStat,
+	pub nanos_earned: MmmStat,
 	pub storage_cost: MmmStat,
 	pub peers_connected: MmmStat,
 	pub memory_used_mb: MmmStat,
@@ -1030,7 +1030,7 @@ impl NodeMetrics {
 			activity_errors: MmmStat::new(),
 
 			// Storage Payments
-			storage_payments: MmmStat::new(),
+			nanos_earned: MmmStat::new(),
 			storage_cost: MmmStat::new(),
 			peers_connected: MmmStat::new(),
 
@@ -1218,10 +1218,10 @@ impl NodeMetrics {
 				}
 			};
 			return false; // Continue processing for records stored (parse_states())
-		} else if line.contains("nanos accepted for record") {
-			if let Some(storage_payment) = self.parse_u64("payment of NanoTokens(", line) {
-				self.count_storage_payment(entry_time, storage_payment);
-				self.parser_output = format!("Payment received: {}", storage_payment);
+		} else if line.contains("after earning ") {
+			if let Some(nanos_earned) = self.parse_u64("after earning ", line) {
+				self.count_nanos_earned(entry_time, nanos_earned);
+				self.parser_output = format!("Payment received: {}", nanos_earned);
 				return true;
 			};
 		} else if line.contains("PeersInRoutingTable") {
@@ -1521,9 +1521,9 @@ impl NodeMetrics {
 		self.apply_timeline_sample(ERRORS_TIMELINE_KEY, time, 1);
 	}
 
-	fn count_storage_payment(&mut self, time: &DateTime<Utc>, storage_payment: u64) {
-		self.storage_payments.add_sample(storage_payment);
-		self.apply_timeline_sample(EARNINGS_TIMELINE_KEY, time, storage_payment);
+	fn count_nanos_earned(&mut self, time: &DateTime<Utc>, nanos_earned: u64) {
+		self.nanos_earned.add_sample(nanos_earned);
+		self.apply_timeline_sample(EARNINGS_TIMELINE_KEY, time, nanos_earned);
 	}
 
 	fn count_storage_cost(&mut self, time: &DateTime<Utc>, storage_cost: u64) {

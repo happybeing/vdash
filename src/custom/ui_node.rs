@@ -1,6 +1,5 @@
 ///! Terminal based interface and dashboard
 ///!
-
 use chrono::Utc;
 use std::collections::HashMap;
 
@@ -11,15 +10,17 @@ use self::widgets::gauge::Gauge2;
 use super::app::{DashState, LogMonitor};
 use super::timelines::Timeline;
 use crate::custom::app_timelines::EARNINGS_UNITS_TEXT;
-use crate::custom::timelines::{get_min_buckets_value, get_max_buckets_value, get_duration_text};
+use crate::custom::timelines::{get_duration_text, get_max_buckets_value, get_min_buckets_value};
 
-use crate::custom::ui::{push_subheading, push_metric, push_metric_with_units, draw_sparkline, monetary_string};
+use crate::custom::ui::{
+	draw_sparkline, monetary_string, push_metric, push_metric_with_units, push_subheading,
+};
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
-	widgets::{Block, Borders, List, ListItem},
 	style::{Color, Modifier, Style},
 	text::Line,
+	widgets::{Block, Borders, List, ListItem},
 	Frame,
 };
 
@@ -31,19 +32,25 @@ pub fn draw_node_dash(
 	let size = f.size();
 	let chunks_with_3_bands = Layout::default()
 		.direction(Direction::Vertical)
-		.constraints([
-			Constraint::Length(12), // Stats summary and graphs
-			Constraint::Length(18), // Timelines
-			Constraint::Min(0),     // Logfile panel
-		].as_ref())
+		.constraints(
+			[
+				Constraint::Length(12), // Stats summary and graphs
+				Constraint::Length(18), // Timelines
+				Constraint::Min(0),     // Logfile panel
+			]
+			.as_ref(),
+		)
 		.split(size);
 
 	let chunks_with_2_bands = Layout::default()
 		.direction(Direction::Vertical)
-		.constraints([
-			Constraint::Length(12), // Stats summary and graphs
-			Constraint::Min(0),     // Timelines
-		].as_ref())
+		.constraints(
+			[
+				Constraint::Length(12), // Stats summary and graphs
+				Constraint::Min(0),     // Timelines
+			]
+			.as_ref(),
+		)
 		.split(size);
 
 	for entry in monitors.into_iter() {
@@ -53,7 +60,13 @@ pub fn draw_node_dash(
 				// Stats and Graphs / Timelines / Logfile
 				draw_node(f, chunks_with_3_bands[0], dash_state, &mut monitor);
 				draw_timelines_panel(f, chunks_with_3_bands[1], dash_state, &mut monitor);
-				draw_bottom_panel(f, chunks_with_3_bands[2], dash_state, &logfile, &mut monitor);
+				draw_bottom_panel(
+					f,
+					chunks_with_3_bands[2],
+					dash_state,
+					&logfile,
+					&mut monitor,
+				);
 				return;
 			} else {
 				// Stats and Graphs / Timelines
@@ -84,7 +97,12 @@ fn draw_node(f: &mut Frame, area: Rect, dash_state: &mut DashState, monitor: &mu
 	draw_node_storage(f, chunks[1], dash_state, monitor);
 }
 
-fn draw_node_stats(f: &mut Frame, dash_state: &mut DashState, area: Rect, monitor: &mut LogMonitor) {
+fn draw_node_stats(
+	f: &mut Frame,
+	dash_state: &mut DashState,
+	area: Rect,
+	monitor: &mut LogMonitor,
+) {
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
 
@@ -104,11 +122,7 @@ fn draw_node_stats(f: &mut Frame, dash_state: &mut DashState, area: Rect, monito
 	if let Some(node_start_time) = monitor.metrics.node_started {
 		node_uptime_txt = get_duration_text(Utc::now() - node_start_time);
 	}
-	push_metric(
-		&mut items,
-		&"Node Uptime".to_string(),
-		&node_uptime_txt,
-	);
+	push_metric(&mut items, &"Node Uptime".to_string(), &node_uptime_txt);
 
 	push_metric(
 		&mut items,
@@ -116,38 +130,44 @@ fn draw_node_stats(f: &mut Frame, dash_state: &mut DashState, area: Rect, monito
 		&monitor.metrics.node_status_string,
 	);
 
-	let units_text = if dash_state.ui_uses_currency { "" } else { crate::custom::app_timelines::EARNINGS_UNITS_TEXT };
+	let units_text = if dash_state.ui_uses_currency {
+		""
+	} else {
+		crate::custom::app_timelines::EARNINGS_UNITS_TEXT
+	};
 
 	let wallet_balance = monetary_string(dash_state, monitor.metrics.wallet_balance);
-	push_metric_with_units(&mut items,
+	push_metric_with_units(
+		&mut items,
 		&"Wallet".to_string(),
 		&wallet_balance,
-		&units_text.to_string());
+		&units_text.to_string(),
+	);
 
-	let storage_payments_txt = monetary_string(dash_state, monitor.metrics.storage_payments.total);
-	push_metric_with_units(&mut items,
+	let storage_payments_txt = monetary_string(dash_state, monitor.metrics.nanos_earned.total);
+	push_metric_with_units(
+		&mut items,
 		&"Earnings".to_string(),
 		&storage_payments_txt,
-		&units_text.to_string());
+		&units_text.to_string(),
+	);
 
 	let chunk_fee_txt = if monitor.metrics.storage_cost.most_recent == 0 {
 		String::from("unknown")
 	} else {
-		format!("{} ({}-{}){} ",
-		monitor.metrics.storage_cost.most_recent.to_string(),
-		monitor.metrics.storage_cost.min.to_string(),
-		monitor.metrics.storage_cost.max.to_string(),
-		crate::custom::app_timelines::STORAGE_COST_UNITS_TEXT,)
+		format!(
+			"{} ({}-{}){} ",
+			monitor.metrics.storage_cost.most_recent.to_string(),
+			monitor.metrics.storage_cost.min.to_string(),
+			monitor.metrics.storage_cost.max.to_string(),
+			crate::custom::app_timelines::STORAGE_COST_UNITS_TEXT,
+		)
 	};
 
-	push_metric(&mut items,
-		&"Storage Cost".to_string(),
-		&chunk_fee_txt);
+	push_metric(&mut items, &"Storage Cost".to_string(), &chunk_fee_txt);
 
 	let connections_text = format!("{}", monitor.metrics.peers_connected.most_recent);
-	push_metric(&mut items,
-	&"Connections".to_string(),
-	&connections_text);
+	push_metric(&mut items, &"Connections".to_string(), &connections_text);
 
 	push_metric(
 		&mut items,
@@ -194,8 +214,8 @@ fn draw_timelines_panel(
 		// if let Some(b_time) = monitor.metrics.sparkline_bucket_time {
 		// 	dash_state._debug_window(format!("sparkline_b_time: {}", b_time).as_str());
 		// 	dash_state._debug_window(
-			// 		format!(
-				// 			"sparkline_b_width: {}",
+		// 		format!(
+		// 			"sparkline_b_width: {}",
 		// 			monitor.metrics.sparkline_bucket_width
 		// 		)
 		// 		.as_str(),
@@ -227,14 +247,13 @@ fn draw_timelines_panel(
 			.constraints(
 				[
 					// Three timelines
-					Constraint::Percentage(100/num_timelines_visible),
-					Constraint::Percentage(100/num_timelines_visible),
-					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
 				]
 				.as_ref(),
 			)
 			.split(area);
-
 
 		let chunks_fat = Layout::default()
 			.direction(Direction::Vertical)
@@ -242,27 +261,45 @@ fn draw_timelines_panel(
 			.constraints(
 				[
 					// Tailored to display all timelines in APP_TIMELINES (currently 7)
-					Constraint::Percentage(100/num_timelines_visible),
-					Constraint::Percentage(100/num_timelines_visible),
-					Constraint::Percentage(100/num_timelines_visible),
-					Constraint::Percentage(100/num_timelines_visible),
-					Constraint::Percentage(100/num_timelines_visible),
-					Constraint::Percentage(100/num_timelines_visible),
-					Constraint::Percentage(100/num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
+					Constraint::Percentage(100 / num_timelines_visible),
 				]
 				.as_ref(),
 			)
 			.split(area);
 
 		let mut index = dash_state.top_timeline_index() + 1;
-		for i in 1 ..= num_timelines_visible {
+		for i in 1..=num_timelines_visible {
 			if index > monitor.metrics.app_timelines.get_num_timelines() {
 				index = 1;
 			}
-			let timeline_index = if dash_state.node_logfile_visible {index} else {i as usize};
-			if let Some(timeline) = monitor.metrics.app_timelines.get_timeline_by_index(timeline_index - 1) {
-				let chunk = if dash_state.node_logfile_visible {&chunks_slim} else {&chunks_fat};
-				draw_timeline(f, chunk[i as usize - 1], dash_state, timeline, active_timescale_name);
+			let timeline_index = if dash_state.node_logfile_visible {
+				index
+			} else {
+				i as usize
+			};
+			if let Some(timeline) = monitor
+				.metrics
+				.app_timelines
+				.get_timeline_by_index(timeline_index - 1)
+			{
+				let chunk = if dash_state.node_logfile_visible {
+					&chunks_slim
+				} else {
+					&chunks_fat
+				};
+				draw_timeline(
+					f,
+					chunk[i as usize - 1],
+					dash_state,
+					timeline,
+					active_timescale_name,
+				);
 			}
 			index += 1;
 		}
@@ -281,11 +318,13 @@ fn draw_timeline(
 	let mmm_ui_mode = dash_state.mmm_ui_mode();
 	let mmm_text = if timeline.is_mmm {
 		match mmm_ui_mode {
-			MinMeanMax::Min => {" Min "}
-			MinMeanMax::Mean => {" Mean"}
-			MinMeanMax::Max => {" Max "}
+			MinMeanMax::Min => " Min ",
+			MinMeanMax::Mean => " Mean",
+			MinMeanMax::Max => " Max ",
 		}
-	} else { "" };
+	} else {
+		""
+	};
 
 	if let Some(bucket_set) = timeline.get_bucket_set(active_timescale_name) {
 		if let Some(buckets) = timeline.get_buckets(active_timescale_name, Some(mmm_ui_mode)) {
@@ -295,23 +334,44 @@ fn draw_timeline(
 			let mut max_bucket_value = get_max_buckets_value(buckets);
 			let mut min_bucket_value = get_min_buckets_value(buckets);
 			let label_stats = if timeline.is_cumulative {
-				if  dash_state.ui_uses_currency && timeline.units_text == EARNINGS_UNITS_TEXT {
-					format!("{} in last {}", monetary_string(dash_state, bucket_set.values_total), duration_text)
+				if dash_state.ui_uses_currency && timeline.units_text == EARNINGS_UNITS_TEXT {
+					format!(
+						"{} in last {}",
+						monetary_string(dash_state, bucket_set.values_total),
+						duration_text
+					)
 				} else {
-					format!("{} {} in last {}", bucket_set.values_total, timeline.units_text, duration_text)
+					format!(
+						"{} {} in last {}",
+						bucket_set.values_total, timeline.units_text, duration_text
+					)
 				}
 			} else {
-				dash_state._debug_window(format!("min: {} max: {}", min_bucket_value, max_bucket_value).as_str());
-				if max_bucket_value == 0 {max_bucket_value = timeline.last_non_zero_value;}
-				if min_bucket_value == u64::MAX || min_bucket_value == 0 {min_bucket_value = max_bucket_value;}
-				format!("range {}-{} {} in last {}", min_bucket_value,  max_bucket_value, timeline.units_text, duration_text)
+				dash_state
+					._debug_window(format!("min: {} max: {}", min_bucket_value, max_bucket_value).as_str());
+				if max_bucket_value == 0 {
+					max_bucket_value = timeline.last_non_zero_value;
+				}
+				if min_bucket_value == u64::MAX || min_bucket_value == 0 {
+					min_bucket_value = max_bucket_value;
+				}
+				format!(
+					"range {}-{} {} in last {}",
+					min_bucket_value, max_bucket_value, timeline.units_text, duration_text
+				)
 			};
 			let label_scale = if max_bucket_value > 0 {
-				format!( " (vertical scale: 0-{} {})", max_bucket_value, timeline.units_text)
+				format!(
+					" (vertical scale: 0-{} {})",
+					max_bucket_value, timeline.units_text
+				)
 			} else {
 				String::from("")
 			};
-			let timeline_label = format!("{}{}: {}{}", timeline.name, mmm_text, label_stats, label_scale);
+			let timeline_label = format!(
+				"{}{}: {}{}",
+				timeline.name, mmm_text, label_stats, label_scale
+			);
 			draw_sparkline(f, area, &buckets, &timeline_label, timeline.colour);
 		};
 	};
@@ -343,12 +403,7 @@ fn draw_bottom_panel(
 	}
 }
 
-pub fn draw_logfile(
-	f: &mut Frame,
-	area: Rect,
-	logfile: &String,
-	monitor: &mut LogMonitor,
-) {
+pub fn draw_logfile(f: &mut Frame, area: Rect, logfile: &String, monitor: &mut LogMonitor) {
 	let highlight_style = match monitor.has_focus {
 		true => Style::default()
 			.bg(Color::LightGreen)
@@ -380,8 +435,13 @@ pub fn draw_logfile(
 }
 
 // TODO split into two sub functions, one for gauges, one for text strings
-fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, monitor: &mut LogMonitor) {
-	let heading = format!("Node {:>2} Resources", monitor.index+1);
+fn draw_node_storage(
+	f: &mut Frame,
+	area: Rect,
+	_dash_state: &mut DashState,
+	monitor: &mut LogMonitor,
+) {
+	let heading = format!("Node {:>2} Resources", monitor.index + 1);
 	let monitor_widget = List::new(Vec::<ListItem>::new())
 		.block(
 			Block::default()
@@ -401,8 +461,8 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 		.margin(1)
 		.constraints(
 			[
-				Constraint::Length(2),	// Rows for storage gauges
-				Constraint::Min(8),		// Rows for other metrics
+				Constraint::Length(2), // Rows for storage gauges
+				Constraint::Min(8),    // Rows for other metrics
 			]
 			.as_ref(),
 		)
@@ -412,13 +472,7 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 	let columns = Layout::default()
 		.direction(Direction::Horizontal)
 		.margin(0)
-		.constraints(
-			[
-				Constraint::Length(27),
-				Constraint::Min(12),
-			]
-			.as_ref(),
-		)
+		.constraints([Constraint::Length(27), Constraint::Min(12)].as_ref())
 		.split(rows[0]);
 
 	let mut storage_items = Vec::<ListItem>::new();
@@ -433,18 +487,22 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 		.constraints::<&[Constraint]>(constraints.as_ref())
 		.split(columns[1]);
 
-		let max_string = if monitor.metrics.records_max > 0 {
-			format!("/{}", monitor.metrics.records_max)
-		} else {
-			String::from("")
-		};
-		push_storage_metric(
+	let max_string = if monitor.metrics.records_max > 0 {
+		format!("/{}", monitor.metrics.records_max)
+	} else {
+		String::from("")
+	};
+	push_storage_metric(
 		&mut storage_items,
 		&"Records".to_string(),
-		&format!("{}{}", monitor.metrics.records_stored, max_string)
+		&format!("{}{}", monitor.metrics.records_stored, max_string),
 	);
 
-	let denominator = if monitor.metrics.records_max > 0 { monitor.metrics.records_max } else { 1 };
+	let denominator = if monitor.metrics.records_max > 0 {
+		monitor.metrics.records_max
+	} else {
+		1
+	};
 	let gauge = Gauge2::default()
 		.block(Block::default())
 		.gauge_style(Style::default().fg(Color::Yellow))
@@ -464,74 +522,56 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 	// 	&device_limit_string
 	// );
 
-	let storage_text_widget = List::new(storage_items).block(
-		Block::default()
-			.borders(Borders::NONE)
-	);
+	let storage_text_widget = List::new(storage_items).block(Block::default().borders(Borders::NONE));
 	f.render_widget(storage_text_widget, columns[0]);
 
 	let mut text_items = Vec::<ListItem>::new();
 	// push_storage_subheading(&mut text_items, &"".to_string());
 	push_storage_subheading(&mut text_items, &"Network".to_string());
 
-	const UPDATE_INTERVAL: u64 = 5;	// Match value in s from maidsafe/safe_network/sn_logging/metrics.rs
+	const UPDATE_INTERVAL: u64 = 5; // Match value in s from maidsafe/safe_network/sn_logging/metrics.rs
 
-	let current_rx_text = format!("{:9} B/s",
-		monitor.metrics.bytes_written / UPDATE_INTERVAL,
-	);
+	let current_rx_text = format!("{:9} B/s", monitor.metrics.bytes_written / UPDATE_INTERVAL,);
 
-	push_storage_metric(
-		&mut text_items,
-		&"Current Rx".to_string(),
-		&current_rx_text
-	);
+	push_storage_metric(&mut text_items, &"Current Rx".to_string(), &current_rx_text);
 
-	let current_tx_text = format!("{:9} B/s",
-		monitor.metrics.bytes_read / UPDATE_INTERVAL,
-	);
+	let current_tx_text = format!("{:9} B/s", monitor.metrics.bytes_read / UPDATE_INTERVAL,);
 
-	push_storage_metric(
-		&mut text_items,
-		&"Current Tx".to_string(),
-		&current_tx_text
-	);
+	push_storage_metric(&mut text_items, &"Current Tx".to_string(), &current_tx_text);
 
-	let total_rx_text = format!("{:<13}: {:.0} / {:.0} MB",
-		"Total Rx",
-		monitor.metrics.total_mb_read,
-		monitor.metrics.total_mb_received,
+	let total_rx_text = format!(
+		"{:<13}: {:.0} / {:.0} MB",
+		"Total Rx", monitor.metrics.total_mb_read, monitor.metrics.total_mb_received,
 	);
 
 	text_items.push(
-		ListItem::new(vec![Line::from(total_rx_text.clone())])
-			.style(Style::default().fg(Color::Blue)),
+		ListItem::new(vec![Line::from(total_rx_text.clone())]).style(Style::default().fg(Color::Blue)),
 	);
 
-	let total_tx_text = format!("{:<13}: {:.0} / {:.0} MB",
-		"Total Tx",
-		monitor.metrics.total_mb_written,
-		monitor.metrics.total_mb_transmitted,
+	let total_tx_text = format!(
+		"{:<13}: {:.0} / {:.0} MB",
+		"Total Tx", monitor.metrics.total_mb_written, monitor.metrics.total_mb_transmitted,
 	);
 
 	text_items.push(
-		ListItem::new(vec![Line::from(total_tx_text.clone())])
-			.style(Style::default().fg(Color::Blue)),
+		ListItem::new(vec![Line::from(total_tx_text.clone())]).style(Style::default().fg(Color::Blue)),
 	);
 
 	push_storage_subheading(&mut text_items, &"Load".to_string());
 
-	let node_text = format!("{:<13}: CPU {:8.2} (MAX {:2.2}) MEM {}MB",
+	let node_text = format!(
+		"{:<13}: CPU {:8.2} (MAX {:2.2}) MEM {}MB",
 		"Node",
 		monitor.metrics.cpu_usage_percent,
 		monitor.metrics.cpu_usage_percent_max,
 		monitor.metrics.memory_used_mb.most_recent,
 	);
 	text_items.push(
-		ListItem::new(vec![Line::from(node_text.clone())])
-			.style(Style::default().fg(Color::Blue)),
+		ListItem::new(vec![Line::from(node_text.clone())]).style(Style::default().fg(Color::Blue)),
 	);
 
-	let system_text = format!("{:<13}: CPU {:8.2} MEM {:.0} / {:.0} MB {:.1}%",
+	let system_text = format!(
+		"{:<13}: CPU {:8.2} MEM {:.0} / {:.0} MB {:.1}%",
 		"System",
 		monitor.metrics.system_cpu,
 		monitor.metrics.system_memory_used_mb,
@@ -539,15 +579,11 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 		monitor.metrics.system_memory_usage_percent,
 	);
 	text_items.push(
-		ListItem::new(vec![Line::from(system_text.clone())])
-			.style(Style::default().fg(Color::Blue)),
+		ListItem::new(vec![Line::from(system_text.clone())]).style(Style::default().fg(Color::Blue)),
 	);
 
 	// Render text
-	let text_widget = List::new(text_items).block(
-		Block::default()
-			.borders(Borders::NONE)
-	);
+	let text_widget = List::new(text_items).block(Block::default().borders(Borders::NONE));
 	f.render_widget(text_widget, rows[1]);
 }
 
@@ -561,7 +597,7 @@ fn draw_node_storage(f: &mut Frame, area: Rect, _dash_state: &mut DashState, mon
 // Return ratio from two u64
 fn ratio(numerator: u64, denomimator: u64) -> f64 {
 	let percent = numerator as f64 / denomimator as f64;
-	if  percent.is_nan() || percent < 0.0 {
+	if percent.is_nan() || percent < 0.0 {
 		0.0
 	} else if percent > 1.0 {
 		1.0
@@ -572,15 +608,11 @@ fn ratio(numerator: u64, denomimator: u64) -> f64 {
 
 pub fn push_storage_subheading(items: &mut Vec<ListItem>, subheading: &String) {
 	items.push(
-		ListItem::new(vec![Line::from(subheading.clone())])
-			.style(Style::default().fg(Color::Yellow)),
+		ListItem::new(vec![Line::from(subheading.clone())]).style(Style::default().fg(Color::Yellow)),
 	);
 }
 
 pub fn push_storage_metric(items: &mut Vec<ListItem>, metric: &String, value: &String) {
 	let s = format!("{:<11}:{:>11}", metric, value);
-	items.push(
-		ListItem::new(vec![Line::from(s.clone())])
-			.style(Style::default().fg(Color::Blue)),
-	);
+	items.push(ListItem::new(vec![Line::from(s.clone())]).style(Style::default().fg(Color::Blue)));
 }
