@@ -55,7 +55,7 @@ press 'm' or 'M'.
 
 ## Operating Systems
 - **Linux:** works on Linux (tested on Ubuntu).
-- **Windows:** works on Windows 10. Not tested recently.
+- **Windows:** works on Windows 10 and 11. Not tested recently.
 - **MacOS:** works on MacOS. Not tested recently.
 
 ## Install using Linux package manager
@@ -65,6 +65,8 @@ press 'm' or 'M'.
 You can check the status of package `safe-vdash` in your distribution and choose whether to install from there or get the most recent version as explained below.
 
 ## Install from crates.io
+
+You must first install Rust. This applies to Windows, Linux and Mac so start with step 1 and then select the subsequent section for your operating system.
 
 1 Install **Rust** via https://doc.rust-lang.org/cargo/getting-started/installation.html
 
@@ -79,35 +81,31 @@ You can check the status of package `safe-vdash` in your distribution and choose
 
 2c. **Windows** install **vdash:**
 
-Windows has not been tested recently so you may like to try using `cargo insall vdash` first to see if that now works. If not, you will need to build using Rust Nightly.
+To install `vdash` on Windows 10 and 11 from crates.io you will need to install the Microsoft Visual C++ Redistributables for Visual Studio. If you have Visual Studio installed this will already be installed, but if you are using Visual Studio Code you still need to install the following.
 
-Until the 'itarget' feature becomes part of 'stable', build manually and use the Rust Nightly compiler first install Rust Nightly
-using `rustup`:
+- Got to https://visualstudio.microsoft.com/downloads/
+- scroll down to "All Downloads" and click "Other Tools, Frameworks, and Redistributables"
+- click on "Build Tools for Visual Studio"
+- under "Microsoft Visual C++ Redistributable for Visual Studio" choose from x64, ARM64 and x86
+- Click download and then run the VC 'Redist' installer
 
-    rustup toolchain install nightly
+Finally to install `vdash`:
 
-To build `vdash` on Windows, clone vdash, build with `+nightly` and use the binary it creates under `./taget/release`:
-
-    git clone https://github.com/happybeing/vdash
-    cd vdash
-    cargo +nightly build -Z features=itarget --bin vdash --release --no-default-features
-
-    ./target/release/vdash --help
+    cargo install vdash
+    vdash --help
 
 ## Using vdash - a Autononomi node Dashboard
 `vdash` provides a terminal based graphical dashboard of Autononomi node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
 
 
 ## Get Autononomi pre-requisites
-1. **Get Rust:** see: https://doc.rust-lang.org/cargo/getting-started/installation.html
+1. **Get the Autonomi Node Applications:** There are two options for running nodes at the launch of the beta on 5th June 2024. The `node-launchpad` is a simple terminal based UI (TUI) and the `safenode-manager` is command line program for 'power users', although the community can help you use either. See https://autonomi.com for details of how to obtain these apps and join the beta.
 
-2. **Get the Autonomi Node Applications:** There are two options for running nodes at the launch of the beta on 5th June 2024. The `node-launchpad` is a simple terminal based UI (TUI) and the `safenode-manager` is command line program for 'power users', although the community can help you use either. See https://autonomi.com for details of how to obtain these apps and join the beta.
+2. **Start your Autonomi Nodes:** See https://docs.autonomi.com for documentation and join the [forum](https://forum.autonomi.community) if you need help.
 
-3. **Start your Autonomi Nodes:** See https://docs.autonomi.com for documentation and join the [forum](https://forum.autonomi.community) if you need help.
+If you have also installed `vdash` you can test it by running it on the same machine you are using to run nodes on the Autonomi beta network.
 
-You are now ready to install `vdash` and can test it by running a local test network.
-
-## Usage
+## vdash Usage:
 
 For help:
 
@@ -196,7 +194,7 @@ To have `vdash` obtain the token rate from Coinmarketcap.com include the followi
 --currency-apiname "GBP" --currency-symbol "£" --coinmarketcap-key "YOUR-API-KEY"
 ```
 
-### Using vdash
+### Using vdash to Monitor Autonomi Nodes
 
 Start your nodes using an Autonomi Node Application.
 
@@ -210,6 +208,17 @@ For example, to enable display of earnings and storage costs using local currenc
 ```sh
 vdash --currency-apiname "USD" --currency-symbol "$" --glob-path "$HOME/.local/share/safe/node/*/logs/safenode.log"
 ```
+### What to Expect
+When you start `vdash` it shows the main summary. This shows a list of all nodes being monitored with several statistics for each node. At the top is a summary for all those nodes.
+
+Use the left/right arrow keys and space-bar to sort by each column, up/down to select a node and enter to see details about a particular node. Use '?' to see all keyboard commands.
+
+### Are My Nodes Working?
+It won't be immediately obvious whether your nodes are working correctly, but things to look for are explained below.
+
+Firstly, don't worry about the number of Errors. You will have a lot and that is normal! What you should see fairly quickly are non-zero values for GETS, PUTS, Peers. RAM will start at around 40-60MB but can rise and fall as node activity varies.
+
+Later you should also begin to see numbers of Records, but Earnings and Store Cost may stay at zero for quite some time depending on the amount of data being uploaded, and the number of other nodes competing to store that data. Eventually you should see Store Cost values for some nodes, and eventually some Earned Nanos.
 
 ### Using vdash With a Local Test Network
 
