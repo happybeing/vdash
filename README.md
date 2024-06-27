@@ -127,7 +127,14 @@ The path to logfiles vary depending on which Autonomi Node Application you are u
 
 **Windows:**
 
+When running nodes with `safenode-launchpad`:
+
+    vdash C:\ProgramData\safenode\logs\safenode*\safenode.log
+
+Or if running `safenode` binary directly:
+
     vdash C:\Users\<USERNAME>\AppData\Roaming\safe\node\*\logs\safenode.log
+
 
 Keyboard commands for `vdash` are summarised in the introduction above.
 
