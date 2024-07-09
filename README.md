@@ -278,6 +278,6 @@ Note: the above figures are out of date but illustrate the point.
 
 ## LICENSE
 
-Everything is GPL3.0 unless otherwise stated. Any contributions are accepted on the condition they conform to this license.
+Everything is AGPL3.0 unless otherwise stated. Any contributions are accepted on the condition they conform to this license.
 
 See also [./LICENSE](./LICENSE)
