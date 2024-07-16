@@ -9,15 +9,15 @@ pub use structopt::StructOpt;
 	about = "Monitor Safe Network nodes in the terminal.\nNavigate using tab and arrow keys."
 )]
 pub struct Opt {
-	/// Maximum number of lines to keep for each logfile
+	/// Maximum number of lines to display for each logfile
 	#[structopt(short = "l", long, default_value = "100")]
 	pub lines_max: usize,
 
-	/// Event update tick in milliseconds
+	/// Event update tick in milliseconds (controls screen refresh rate)
 	#[structopt(long, default_value = "200")]
 	pub tick_rate: u64,
 
-	/// Steps (width) of each timeline, helps tweak right justification.
+	/// Steps in each timeline for timeline graphs the Node Status display. Timeline 'width' = (steps * time units).
 	#[structopt(short, long, default_value = "210")]
 	pub timeline_steps: usize,
 
@@ -29,14 +29,14 @@ pub struct Opt {
 	/// Can be provided multiple times as here:
 	///
 	///   vdash -g "$HOME/.local/share/safe/node/**/safenode.log" -g "./remote-node-logs/*/logs/safenode.log"
-	#[structopt(name="glob-path", short, long, multiple=true)]
+	#[structopt(name = "glob-path", short, long, multiple = true)]
 	pub glob_paths: Vec<String>,
 
 	/// Enable periodic scan of any glob paths every so many seconds. 0 to disable.
 	#[structopt(long, default_value = "0")]
 	pub glob_scan: i64,
 
-	/// Set checkpoint interval in seconds. 0 to disable checkpoints.
+	/// Set checkpoint interval in seconds (0 will disable checkpoints). vdash saves node statistics every few seconds so that it doesn't lose data when restarted.
 	#[structopt(long, default_value = "300")]
 	pub checkpoint_interval: u64,
 
@@ -79,5 +79,9 @@ pub struct Opt {
 	pub debug_window: bool,
 }
 
-pub fn get_app_name() -> String { String::from(Opt::clap().get_name()) }
-pub fn get_app_version() -> String { String::from(structopt::clap::crate_version!()) }
+pub fn get_app_name() -> String {
+	String::from(Opt::clap().get_name())
+}
+pub fn get_app_version() -> String {
+	String::from(structopt::clap::crate_version!())
+}
