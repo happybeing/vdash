@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
+use std::sync::LazyLock;
 
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
@@ -29,10 +30,8 @@ pub static HELP_WINDOW_NAME: &str = "Help";
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
 
 use std::sync::Mutex;
-lazy_static::lazy_static! {
-	pub static ref DEBUG_LOGFILE: Mutex<Option<NamedTempFile>> =
-		Mutex::<Option<NamedTempFile>>::new(None);
-}
+static DEBUG_LOGFILE: LazyLock<Mutex<Option<NamedTempFile>>> =
+	LazyLock::new(|| Mutex::<Option<NamedTempFile>>::new(None));
 
 #[macro_export]
 macro_rules! debug_log {
@@ -59,15 +58,11 @@ pub unsafe fn debug_log(message: &str) {
 	};
 }
 
-lazy_static::lazy_static! {
-	pub static ref OPT: Mutex<Opt> =
-		Mutex::<Opt>::new(Opt::from_args());
-}
+pub static OPT: LazyLock<Mutex<Opt>> = LazyLock::new(|| Mutex::<Opt>::new(Opt::from_args()));
 
-lazy_static::lazy_static! {
-	pub static ref WEB_PRICES: Mutex<super::web_requests::WebPrices> =
-		Mutex::<super::web_requests::WebPrices>::new(super::web_requests::WebPrices::new());
-}
+pub static WEB_PRICES: LazyLock<Mutex<super::web_requests::WebPrices>> = LazyLock::new(|| {
+	Mutex::<super::web_requests::WebPrices>::new(super::web_requests::WebPrices::new())
+});
 
 pub struct App {
 	pub dash_state: DashState,
@@ -892,10 +887,12 @@ impl LogMonitor {
 }
 
 use regex::Regex;
-lazy_static::lazy_static! {
-	static ref LOG_LINE_PATTERN: Regex =
-		Regex::new(r"\[(?P<time_string>[^ ]{27}) (?P<category>[A-Z]{4,6}) (?P<source>[^\]]*)\] (?P<message>.*)").expect("The regex failed to compile. This is a bug.");
-}
+pub static LOG_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+	Regex::new(
+		r"\[(?P<time_string>[^ ]{27}) (?P<category>[A-Z]{4,6}) (?P<source>[^\]]*)\] (?P<message>.*)",
+	)
+	.expect("The regex failed to compile. This is a bug.")
+});
 
 #[derive(PartialEq, Clone, Default, Debug, Serialize, Deserialize)]
 pub enum NodeStatus {
