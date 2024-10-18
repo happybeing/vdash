@@ -8,17 +8,17 @@ use super::ui_node::draw_node_dash;
 use super::ui_help::draw_help_dash;
 use super::ui_debug::draw_debug_dash;
 
-/// Provides string representation of a nanos amount, in either nanos or currency depending on dash_state
-pub fn monetary_string(dash_state: &DashState, nanos: u64) -> String {
+/// Provides string representation of a attos amount, in either attos or currency depending on dash_state
+pub fn monetary_string(dash_state: &DashState, attos: u64) -> String {
 	if dash_state.ui_uses_currency && dash_state.currency_per_token.is_some() {
-		let value = (dash_state.currency_per_token.unwrap() * (nanos as f64)) / 1e9 as f64;
+		let value = (dash_state.currency_per_token.unwrap() * (attos as f64)) / 1e9 as f64;
 		return if value >= 0.01 {
 			format!("{:<1}{:.2}", dash_state.currency_symbol, value)
 		} else {
 			format!("{:<1}{:.9}", dash_state.currency_symbol, value)
 		}
 	} else {
-		return format!("{}", nanos);
+		return format!("{}", attos);
 	}
 }
 

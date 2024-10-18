@@ -106,7 +106,7 @@ fn draw_node_stats(
 	// TODO maybe add items to monitor.metrics_status and make items from that as in draw_logfile()
 	let mut items = Vec::<ListItem>::new();
 
-	let mut node_title_text = String::from(super::app::SAFENODE_BINARY_NAME);
+	let mut node_title_text = String::from(super::app::NODE_BINARY_NAME);
 
 	if let Some(node_running_version) = &monitor.metrics.running_version {
 		node_title_text += format!(" {}", node_running_version).as_str();
@@ -144,7 +144,7 @@ fn draw_node_stats(
 		&units_text.to_string(),
 	);
 
-	let storage_payments_txt = monetary_string(dash_state, monitor.metrics.nanos_earned.total);
+	let storage_payments_txt = monetary_string(dash_state, monitor.metrics.attos_earned.total);
 	push_metric_with_units(
 		&mut items,
 		&"Earnings".to_string(),

@@ -33,7 +33,7 @@ pub fn draw_help_window(f: &mut Frame, area: Rect, dash_state: &mut DashState) {
     'n' or 'enter' :   Switch to Node Status where you can cycle through status of each node.\n
     's' or 'enter' :   Switch to Summary of all monitored nodes.\n
     'r'            :   Re-scan any 'glob' paths to add new nodes.\n
-    '$'            :   Toggle between nanos and a currency (if rate specified on the command line).
+    '$'            :   Toggle between attos and a currency (if rate specified on the command line).
 
 	'q'            :   Quit vdash.
     'h' or '?'     :   Shows this help. Press 'n' or 's' to exit help.",

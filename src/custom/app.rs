@@ -24,7 +24,7 @@ use super::logfiles_manager::LogfilesManager;
 use super::opt::{Opt, MIN_TIMELINE_STEPS};
 use super::timelines::{get_duration_text, MinMeanMax};
 
-pub const SAFENODE_BINARY_NAME: &str = "safenode";
+pub const NODE_BINARY_NAME: &str = "safenode";
 pub static SUMMARY_WINDOW_NAME: &str = "Summary of Monitored Nodes";
 pub static HELP_WINDOW_NAME: &str = "Help";
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
@@ -798,7 +798,7 @@ impl LogMonitor {
 		checkpoint_interval: u64,
 	) -> Result<String, std::io::Error> {
 		self.metrics.parser_output = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
-																																												// debug_log!(&self.parser_output.clone());
+																																													// debug_log!(&self.parser_output.clone());
 
 		self.metrics.entry_metadata = LogEntry::decode_metadata(line);
 
@@ -847,7 +847,7 @@ impl LogMonitor {
 		after_time: Option<DateTime<Utc>>,
 	) -> Result<(), std::io::Error> {
 		self.metrics.parser_output = format!("LogMeta::decode_metadata() failed on: {}", line); // For debugging
-																																												// debug_log!(&self.parser_output.clone());
+																																													// debug_log!(&self.parser_output.clone());
 
 		if let Some(entry_metadata) = LogEntry::decode_metadata(line) {
 			if let Some(after_time) = after_time {
@@ -970,7 +970,7 @@ pub struct NodeMetrics {
 	pub activity_gets: MmmStat,
 	pub activity_puts: MmmStat,
 	pub activity_errors: MmmStat,
-	pub nanos_earned: MmmStat,
+	pub attos_earned: MmmStat,
 	pub storage_cost: MmmStat,
 	pub peers_connected: MmmStat,
 	pub memory_used_mb: MmmStat,
@@ -1027,7 +1027,7 @@ impl NodeMetrics {
 			activity_errors: MmmStat::new(),
 
 			// Storage Payments
-			nanos_earned: MmmStat::new(),
+			attos_earned: MmmStat::new(),
 			storage_cost: MmmStat::new(),
 			peers_connected: MmmStat::new(),
 
@@ -1112,7 +1112,7 @@ impl NodeMetrics {
 		self.memory_used_mb = MmmStat::new();
 	}
 
-	///! Process a line from a SAFE Node logfile.
+	///! Process a line from a  Node logfile.
 	///! Use a created LogMeta to update metrics.
 	pub fn gather_metrics(&mut self, line: &str) -> Result<(), std::io::Error> {
 		let entry = LogEntry {
@@ -1216,9 +1216,9 @@ impl NodeMetrics {
 			};
 			return false; // Continue processing for records stored (parse_states())
 		} else if line.contains("after earning ") {
-			if let Some(nanos_earned) = self.parse_u64("after earning ", line) {
-				self.count_nanos_earned(entry_time, nanos_earned);
-				self.parser_output = format!("Payment received: {}", nanos_earned);
+			if let Some(attos_earned) = self.parse_u64("after earning ", line) {
+				self.count_attos_earned(entry_time, attos_earned);
+				self.parser_output = format!("Payment received: {}", attos_earned);
 				return true;
 			};
 		} else if line.contains("PeersInRoutingTable") {
@@ -1518,9 +1518,9 @@ impl NodeMetrics {
 		self.apply_timeline_sample(ERRORS_TIMELINE_KEY, time, 1);
 	}
 
-	fn count_nanos_earned(&mut self, time: &DateTime<Utc>, nanos_earned: u64) {
-		self.nanos_earned.add_sample(nanos_earned);
-		self.apply_timeline_sample(EARNINGS_TIMELINE_KEY, time, nanos_earned);
+	fn count_attos_earned(&mut self, time: &DateTime<Utc>, attos_earned: u64) {
+		self.attos_earned.add_sample(attos_earned);
+		self.apply_timeline_sample(EARNINGS_TIMELINE_KEY, time, attos_earned);
 	}
 
 	fn count_storage_cost(&mut self, time: &DateTime<Utc>, storage_cost: u64) {

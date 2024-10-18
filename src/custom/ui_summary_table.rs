@@ -32,7 +32,7 @@ pub const COLUMN_HEADERS: [(NodeMetric, &str, &str); 10] = [
 	(NodeMetric::Index, "Node", "{index:>4} "),
 	(
 		NodeMetric::StoragePayments,
-		"Earned nanos",
+		"Earned attos",
 		"{storage_payments:>13} ",
 	),
 	(NodeMetric::StorageCost, "StoreCost", "{storage_cost:>13} "),
@@ -62,9 +62,9 @@ pub fn sort_nodes_by_column(
 					NodeMetric::Index => a.index.cmp(&b.index),
 					NodeMetric::StoragePayments => a
 						.metrics
-						.nanos_earned
+						.attos_earned
 						.total
-						.cmp(&b.metrics.nanos_earned.total),
+						.cmp(&b.metrics.attos_earned.total),
 					NodeMetric::StorageCost => a
 						.metrics
 						.storage_cost
@@ -118,7 +118,7 @@ pub fn format_table_row(dash_state: &DashState, monitor: &mut LogMonitor) -> Str
 		let (metric, _heading, format_string) = &COLUMN_HEADERS[i];
 		row_text += &match metric {
             NodeMetric::Index =>            { strfmt!(format_string, index => monitor.index + 1).unwrap() },
-            NodeMetric::StoragePayments =>  { strfmt!(format_string, storage_payments  => monetary_string(dash_state, monitor.metrics.nanos_earned.total)).unwrap() },
+            NodeMetric::StoragePayments =>  { strfmt!(format_string, storage_payments  => monetary_string(dash_state, monitor.metrics.attos_earned.total)).unwrap() },
             NodeMetric::StorageCost =>      { strfmt!(format_string, storage_cost => monetary_string(dash_state, monitor.metrics.storage_cost.most_recent)).unwrap() },
             NodeMetric::Records =>          { strfmt!(format_string, records_stored => monitor.metrics.records_stored).unwrap() },
             NodeMetric::Puts =>             { strfmt!(format_string, puts => monitor.metrics.activity_puts.total).unwrap() },
