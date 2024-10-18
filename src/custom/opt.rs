@@ -6,7 +6,7 @@ pub use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
-	about = "Monitor Safe Network nodes in the terminal.\nNavigate using tab and arrow keys."
+	about = "Monitor Autonomi Network nodes in the terminal.\nNavigate using tab and arrow keys."
 )]
 pub struct Opt {
 	/// Maximum number of lines to display for each logfile
