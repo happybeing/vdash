@@ -69,7 +69,7 @@ impl SummaryStats {
 					.storage_cost
 					.add_sample(monitor.metrics.storage_cost.most_recent);
 				self.records.add_sample(monitor.metrics.records_stored);
-				self.earnings.add_sample(monitor.metrics.nanos_earned.total);
+				self.earnings.add_sample(monitor.metrics.attos_earned.total);
 				self.puts.add_sample(monitor.metrics.activity_puts.total);
 				self.gets.add_sample(monitor.metrics.activity_gets.total);
 				self

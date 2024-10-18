@@ -19,8 +19,8 @@ pub static TIMESCALES: LazyLock<std::vec::Vec<(&'static str, Duration)>> = LazyL
 	]
 });
 
-pub const EARNINGS_UNITS_TEXT: &str = "nanos";
-pub const STORAGE_COST_UNITS_TEXT: &str = "nanos/MB";
+pub const EARNINGS_UNITS_TEXT: &str = "attos";
+pub const STORAGE_COST_UNITS_TEXT: &str = "attos/MB";
 
 /// keys (used to access timelines)
 pub const EARNINGS_TIMELINE_KEY: &str = "earnings";
