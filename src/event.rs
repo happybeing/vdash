@@ -8,9 +8,6 @@ use std::thread;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
-use termion::event::Key;
-use termion::input::TermRead;
-
 pub enum Event<I> {
 	Input(I),
 	Tick,
