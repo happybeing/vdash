@@ -1215,8 +1215,8 @@ impl NodeMetrics {
 				}
 			};
 			return false; // Continue processing for records stored (parse_states())
-		} else if line.contains("after earning ") {
-			if let Some(attos_earned) = self.parse_u64("after earning ", line) {
+		} else if line.contains("Total payment of") {
+			if let Some(attos_earned) = self.parse_u64("Total payment of AttoTokens(", line) {
 				self.count_attos_earned(entry_time, attos_earned);
 				self.parser_output = format!("Payment received: {}", attos_earned);
 				return true;
