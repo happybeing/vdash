@@ -1290,7 +1290,7 @@ impl NodeMetrics {
 			return true;
 		}
 
-		if content.contains("Cost is now") {
+		if content.contains("Created payment quote for") {
 			if let Some(records_stored) = self.parse_u64("records_stored: ", line) {
 				self.records_stored = records_stored;
 				self.parser_output = format!("Records stored: {}", records_stored);
