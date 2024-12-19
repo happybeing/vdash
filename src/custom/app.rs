@@ -1216,7 +1216,7 @@ impl NodeMetrics {
 			};
 			return false; // Continue processing for records stored (parse_states())
 		} else if line.contains("Total payment of") {
-			if let Some(attos_earned) = self.parse_u64("Total payment of AttoTokens(", line) {
+			if let Some(attos_earned) = self.parse_u64("Total payment of", line) {
 				self.count_attos_earned(entry_time, attos_earned);
 				self.parser_output = format!("Payment received: {}", attos_earned);
 				return true;
@@ -1312,7 +1312,7 @@ impl NodeMetrics {
 		// }
 
 		// Metrics
-		if content.contains("sn_logging::metrics") {
+		if content.contains("ant_logging::metrics") {
 			// System
 			let mut parser_output = String::from("system_cpu_usage_percent:");
 			if let Some(system_cpu) = self.parse_float32("system_cpu_usage_percent\":", content) {
