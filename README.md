@@ -1,6 +1,6 @@
-# Autononomi node Dashboard
+# Autonomi node Dashboard
 
-`vdash` is a terminal based dashboard for monitoring Autononomi nodes. It is written in
+`vdash` is a terminal based dashboard for monitoring Autonomi nodes. It is written in
 Rust, the terminal GUI is implemented using [ratatui](https://github.com/ratatui-org/ratatui) and it monitors one or more node logfiles using [linemux](https://github.com/jmagnuson/linemux).
 
 **Status:** working on Windows, MacOS and Linux with public and local test networks.
@@ -94,11 +94,11 @@ Finally to install `vdash`:
     cargo install vdash
     vdash --help
 
-## Using vdash - a node Dashboard for Autononomi
-`vdash` provides a terminal based graphical dashboard of Autononomi node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
+## Using vdash - a node Dashboard for Autonomi
+`vdash` provides a terminal based graphical dashboard of Autonomi node activity on the local machine. It parses input from one or more node logfiles to gather live node metrics which are displayed using terminal graphics.
 
 
-## Get Autononomi pre-requisites
+## Get Autonomi pre-requisites
 1. **Get the Autonomi Node Applications:** There various ways to start and run nodes, including two helper apps by Autonomi. The `node-launchpad` is a simple terminal based UI (TUI) and `antctl` is command line program for 'power users', although the community can help you use either. See https://autonomi.com for details of how to obtain these apps.
 
 2. **Start your Autonomi Nodes:** See https://docs.autonomi.com for documentation and join the [forum](https://forum.autonomi.community) if you need help.
@@ -111,7 +111,7 @@ For help:
 
     vdash --help
 
-Typically you can just pass the paths of one or more node logfiles you want to monitor. For example, to run `vdash` first start your Autononomi node(s) with on of the Autonomi Node Applications (see above).
+Typically you can just pass the paths of one or more node logfiles you want to monitor. For example, to run `vdash` first start your Autonomi node(s) with on of the Autonomi Node Applications (see above).
 
 Then, start `vdash`. You can give a path to one or more logfiles. You can also use `-g` to specify a glob path. When you provide a glob path you can press 'r' to re-scan the path for logfiles after starting more nodes.
 
@@ -155,7 +155,7 @@ Using double rather than single quotes enables you to use '$HOME' in the path in
 The path to logfiles vary depending on which Autonomi Node Application you are using, and also on your operating system. The following are just examples so you will need to provide paths for your particular setup.
 
 ### Display of Token values
-`vdash` shows node earnings and storage cost in terms of Autononomi tokens as 'nanos' or billionths of a token. It can though
+`vdash` shows node earnings and storage cost in terms of Autonomi tokens as 'nanos' or billionths of a token. It can though
 be made to display token values in a local currency (e.g. U.S. dollar, British pound etc). For this it needs
 a way to obtain the conversion rate for the currency and be told what symbol to use in the
 display (e.g. "$", "£" etc.).
@@ -177,7 +177,7 @@ You can use the above to provide a default conversion and have live prices overr
 For more type `vdash --help`.
 
 ### Live Prices via Web API
-`vdash` can obtain the Autononomi token price in a specified currency from the
+`vdash` can obtain the Autonomi token price in a specified currency from the
 Coingecko.com or Coinmarketcap.com web APIs provided you have an access key for the corresponding API. At this time, both offer both paid and free/demo API
 keys which you obtain by signing up for an account with those websites.
 
@@ -231,7 +231,7 @@ To start with it is wise to only run a couple of nodes until you are sure things
 
 ### Using vdash With a Local Test Network
 
-First clone the Autononomi repository and change directory into the cloned copy and checkout branch `stable`:
+First clone the Autonomi repository and change directory into the cloned copy and checkout branch `stable`:
 
 ```sh
 git clone https://github.com/maidsafe/autonomi
@@ -251,7 +251,7 @@ If you return to the instructions [here](https://github.com/maidsafe/autonomi?ta
 
 ## Build (for Developers Only)
 
-See [Get Autononomi Pre-requisites](#get-autonomi-pre-requisites).
+See [Get Autonomi Pre-requisites](#get-autonomi-pre-requisites).
 
 ### Get code
 ```
