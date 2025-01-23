@@ -13,7 +13,8 @@ use crate::custom::app_timelines::EARNINGS_UNITS_TEXT;
 use crate::custom::timelines::{get_duration_text, get_max_buckets_value, get_min_buckets_value};
 
 use crate::custom::ui::{
-	draw_sparkline, monetary_string, push_metric, push_metric_with_units, push_subheading,
+	draw_sparkline, monetary_string, monetary_string_ant, push_metric, push_metric_with_units,
+	push_subheading,
 };
 
 use ratatui::{
@@ -133,10 +134,10 @@ fn draw_node_stats(
 	let units_text = if dash_state.ui_uses_currency {
 		""
 	} else {
-		crate::custom::app_timelines::EARNINGS_UNITS_TEXT
+		"ANT" // crate::custom::app_timelines::EARNINGS_UNITS_TEXT
 	};
 
-	let wallet_balance = monetary_string(dash_state, monitor.metrics.wallet_balance);
+	let wallet_balance = monetary_string_ant(dash_state, monitor.metrics.wallet_balance);
 	push_metric_with_units(
 		&mut items,
 		&"Wallet".to_string(),
@@ -144,7 +145,7 @@ fn draw_node_stats(
 		&units_text.to_string(),
 	);
 
-	let storage_payments_txt = monetary_string(dash_state, monitor.metrics.attos_earned.total);
+	let storage_payments_txt = monetary_string_ant(dash_state, monitor.metrics.attos_earned.total);
 	push_metric_with_units(
 		&mut items,
 		&"Earnings".to_string(),

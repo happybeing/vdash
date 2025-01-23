@@ -5,7 +5,10 @@ use std::collections::HashMap;
 use super::app::{DashState, LogMonitor, MmmStat, SUMMARY_WINDOW_NAME};
 
 use super::opt::{get_app_name, get_app_version};
-use super::ui::{monetary_string, push_blank, push_metric, push_price, push_subheading};
+use super::ui::{
+	monetary_string, monetary_string_ant, push_blank, push_metric, push_price, push_subheading,
+	ATTOS_PER_ANT,
+};
 use super::web_requests::{BTC_TICKER, SAFE_TOKEN_TICKER};
 
 use ratatui::{
@@ -161,13 +164,14 @@ fn draw_summary_stats(
 			"                       Total                min          mean           max         ",
 		),
 	);
+
 	let earnings_text = format!(
 		"{:>14} {:<6}{:>12}  {:>12}  {:>12}",
-		monetary_string(dash_state, ss.earnings.total),
-		units_text,
-		monetary_string(dash_state, ss.earnings.min),
-		monetary_string(dash_state, ss.earnings.mean),
-		monetary_string(dash_state, ss.earnings.max)
+		monetary_string_ant(dash_state, ss.earnings.total),
+		"ANT", //was ' {:<6}'
+		monetary_string_ant(dash_state, ss.earnings.min),
+		monetary_string_ant(dash_state, ss.earnings.mean),
+		monetary_string_ant(dash_state, ss.earnings.max)
 	);
 	let records_text = format!(
 		"{:>14} {:<6}{:>12}  {:>12}  {:>12}",

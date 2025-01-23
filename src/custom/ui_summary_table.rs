@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::app::{DashState, LogMonitor};
-use super::ui::monetary_string;
+use super::ui::{monetary_string, monetary_string_ant};
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
@@ -32,7 +32,7 @@ pub const COLUMN_HEADERS: [(NodeMetric, &str, &str); 10] = [
 	(NodeMetric::Index, "Node", "{index:>4} "),
 	(
 		NodeMetric::StoragePayments,
-		"Earned attos",
+		"Earnings",
 		"{storage_payments:>13} ",
 	),
 	(NodeMetric::StorageCost, "StoreCost", "{storage_cost:>13} "),
@@ -118,7 +118,7 @@ pub fn format_table_row(dash_state: &DashState, monitor: &mut LogMonitor) -> Str
 		let (metric, _heading, format_string) = &COLUMN_HEADERS[i];
 		row_text += &match metric {
             NodeMetric::Index =>            { strfmt!(format_string, index => monitor.index + 1).unwrap() },
-            NodeMetric::StoragePayments =>  { strfmt!(format_string, storage_payments  => monetary_string(dash_state, monitor.metrics.attos_earned.total)).unwrap() },
+            NodeMetric::StoragePayments =>  { strfmt!(format_string, storage_payments  => monetary_string_ant(dash_state, monitor.metrics.attos_earned.total)).unwrap() },
             NodeMetric::StorageCost =>      { strfmt!(format_string, storage_cost => monetary_string(dash_state, monitor.metrics.storage_cost.most_recent)).unwrap() },
             NodeMetric::Records =>          { strfmt!(format_string, records_stored => monitor.metrics.records_stored).unwrap() },
             NodeMetric::Puts =>             { strfmt!(format_string, puts => monitor.metrics.activity_puts.total).unwrap() },
