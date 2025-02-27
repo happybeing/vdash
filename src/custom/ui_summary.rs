@@ -9,7 +9,7 @@ use super::ui::{
 	monetary_string, monetary_string_ant, push_blank, push_metric, push_price, push_subheading,
 	ATTOS_PER_ANT,
 };
-use super::web_requests::{BTC_TICKER, SAFE_TOKEN_TICKER};
+use super::web_requests::{ANT_TOKEN_TICKER, BTC_TICKER};
 
 use ratatui::{
 	layout::{Constraint, Direction, Layout, Rect},
@@ -245,12 +245,12 @@ fn draw_live_prices(
 	let prices = super::app::WEB_PRICES.lock().unwrap();
 	if let Some(snt_rate) = prices.snt_rate {
 		let value_text = format!("{}{:.2}", prices.currency_symbol, snt_rate);
-		push_price(&mut items, &SAFE_TOKEN_TICKER.to_string(), &value_text);
+		push_price(&mut items, &ANT_TOKEN_TICKER.to_string(), &value_text);
 
 		if let Some(btc_rate) = prices.btc_rate {
 			let btc_per_snt = snt_rate / btc_rate;
 			let btc_snt_text = format!("B{:.6}", btc_per_snt);
-			push_price(&mut items, &SAFE_TOKEN_TICKER.to_string(), &btc_snt_text);
+			push_price(&mut items, &ANT_TOKEN_TICKER.to_string(), &btc_snt_text);
 
 			let btc_currency_text = format!("{}{:.0}", prices.currency_symbol, btc_rate);
 			push_price(&mut items, &BTC_TICKER.to_string(), &btc_currency_text);

@@ -530,7 +530,7 @@ fn draw_node_storage(
 	// push_storage_subheading(&mut text_items, &"".to_string());
 	push_storage_subheading(&mut text_items, &"Network".to_string());
 
-	const UPDATE_INTERVAL: u64 = 5; // Match value in s from maidsafe/safe_network/sn_logging/metrics.rs
+	const UPDATE_INTERVAL: u64 = 5; // Match value in s from maidsafe/autonomi/sn_logging/metrics.rs
 
 	let current_rx_text = format!("{:9} B/s", monitor.metrics.bytes_written / UPDATE_INTERVAL,);
 

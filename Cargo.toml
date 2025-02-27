@@ -8,7 +8,7 @@ homepage = "https://github.com/happybeing/vdash"
 repository = "https://github.com/happybeing/vdash"
 readme = "README.md"
 exclude = [".github"]
-keywords = ["utility", "logfile", "monitor", "cli", "safenetwork"]
+keywords = ["utility", "logfile", "monitor", "p2p", "autonomi"]
 categories = ["command-line-utilities"]
 edition = "2021"
 

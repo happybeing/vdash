@@ -24,7 +24,7 @@ use super::logfiles_manager::LogfilesManager;
 use super::opt::{Opt, MIN_TIMELINE_STEPS};
 use super::timelines::{get_duration_text, MinMeanMax};
 
-pub const NODE_BINARY_NAME: &str = "safenode";
+pub const NODE_BINARY_NAME: &str = "antnode";
 pub static SUMMARY_WINDOW_NAME: &str = "Summary of Monitored Nodes";
 pub static HELP_WINDOW_NAME: &str = "Help";
 pub static DEBUG_WINDOW_NAME: &str = "Debug Window";
@@ -1139,9 +1139,9 @@ impl NodeMetrics {
 	}
 
 	///! Return a LogMeta and capture metadata for logfile node start:
-	///!	'Running safenode v0.98.32'
+	///!	'Running antnode v0.98.32'
 	pub fn parse_start(&mut self, line: &String, entry_metadata: &LogMeta) -> bool {
-		let running_prefix = String::from("Running safenode ");
+		let running_prefix = String::from("Running antnode ");
 
 		if line.starts_with(&running_prefix) {
 			self.set_node_status(NodeStatus::Started);

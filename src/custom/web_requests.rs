@@ -46,10 +46,12 @@ pub struct WebPriceAPIs {
 	coinmarketcap_min_poll_interval: Duration,
 }
 
-pub const CMC_API_SAFE_TOKEN_NAME: &str = "EMAID"; // Coinmarketcap API
+// Coinmarketcap API token name (others: "EMAID")
+// pub const CMC_API_ARB_ANT_TOKEN_NAME: &str = "EMAID"; 	// As of 14/02/25 "ANT" is not unique
+pub const CMC_API_ARB_ANT_TOKEN_ID: &str = "35793"; // so use ID
 
 // For vdash UI:
-pub const SAFE_TOKEN_TICKER: &str = "SNT";
+pub const ANT_TOKEN_TICKER: &str = "ANT";
 pub const BTC_TICKER: &str = "BTC";
 
 impl WebPriceAPIs {
@@ -134,7 +136,7 @@ impl WebPriceAPIs {
 				.get(url)
 				.header("x-cg-demo-api-key", api_key)
 				.query(&[
-					("ids", "maidsafecoin,bitcoin"),
+					("ids", "autonomi,bitcoin"),
 					(
 						"vs_currencies",
 						&format!("{}", self.currency_apiname).to_lowercase(),
@@ -162,7 +164,7 @@ impl WebPriceAPIs {
 
 				prices.btc_rate = btcprices[self.currency_apiname.to_lowercase().as_str()].as_f64();
 			}
-			if let Some(token_prices) = json["maidsafecoin"].as_object() {
+			if let Some(token_prices) = json["autonomi"].as_object() {
 				prices.snt_rate = token_prices[self.currency_apiname.to_lowercase().as_str()].as_f64();
 				prices.last_update_time = time_now;
 				return Ok(prices.snt_rate);
@@ -187,19 +189,19 @@ impl WebPriceAPIs {
 				.header("X-CMC_PRO_API_KEY", api_key)
 				.header("Accept", "application/json")
 				.query(&[
-					("symbol", CMC_API_SAFE_TOKEN_NAME),
+					("id", CMC_API_ARB_ANT_TOKEN_ID),
 					("convert", self.currency_apiname.as_str()),
 				])
 				.send()
 				.await?;
-
 			let body = response.text().await?;
 			let json = serde_json::from_str::<Value>(&body)?;
 
 			let _ = json["data"].as_object().is_some_and(|data| {
-				data["EMAID"].as_array().is_some_and(|emaid| {
-					emaid[0].as_object().is_some_and(|emaid_0| {
-						emaid_0["quote"].as_object().is_some_and(|quote| {
+				data[CMC_API_ARB_ANT_TOKEN_ID]
+					.as_object()
+					.is_some_and(|id| {
+						id["quote"].as_object().is_some_and(|quote| {
 							let currency_key = &self.currency_apiname.as_str().to_uppercase();
 							if !quote.contains_key(currency_key) {
 								let message = format!(
@@ -212,8 +214,8 @@ impl WebPriceAPIs {
 								));
 								return false;
 							}
-							quote[currency_key].as_object().is_some_and(|usd| {
-								usd["price"].as_f64().is_some_and(|token_price| {
+							quote[currency_key].as_object().is_some_and(|currency| {
+								currency["price"].as_f64().is_some_and(|token_price| {
 									let mut prices = super::app::WEB_PRICES.lock().unwrap();
 									prices.snt_rate = Some(token_price);
 									prices.last_update_time = Some(Utc::now());
@@ -223,7 +225,6 @@ impl WebPriceAPIs {
 							})
 						})
 					})
-				})
 			});
 		}
 
