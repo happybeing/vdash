@@ -1,3 +1,8 @@
+#This repository has moved
+This repository has been migrated from Microsoft Github to the EU based non-profit Codeberg.org where members have a say and contributors to Open Source software are not farmed like cattle.
+
+You will find this and my other r epositories at https://codeberg.org/happybeing
+
 # Autonomi node Dashboard
 
 `vdash` is a terminal based dashboard for monitoring Autonomi nodes. It is written in
